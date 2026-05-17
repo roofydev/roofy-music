@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Checkbox, Group, Progress, Stack, Text, TextInput } from '@mantine/core';
+import { queryKeys } from '/@/renderer/api/query-keys';
+import { queryClient } from '/@/renderer/lib/react-query';
+import { useCurrentServer } from '/@/renderer/store';
 
 type ImportJob = {
     error: string;
@@ -36,6 +39,7 @@ export const QuickImport = () => {
     const [status, setStatus] = useState<LocalStatus | null>(null);
     const [createPlaylist, setCreatePlaylist] = useState(false);
     const [playlistName, setPlaylistName] = useState('');
+    const server = useCurrentServer();
 
     const refresh = async () => {
         const next = await window.api.localFirst.status();
@@ -47,6 +51,17 @@ export const QuickImport = () => {
         const timer = window.setInterval(refresh, 1500);
         return () => window.clearInterval(timer);
     }, []);
+
+    useEffect(() => {
+        const removeListener = window.api.localFirst.onPlaylistImported(() => {
+            if (server?.id) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.playlists.root(server.id) });
+                queryClient.invalidateQueries({ queryKey: queryKeys.playlists.list(server.id) });
+                queryClient.invalidateQueries({ queryKey: queryKeys.songs.root(server.id) });
+            }
+        });
+        return () => removeListener();
+    }, [server?.id]);
 
     useEffect(() => {
         const detected = isPlaylistUrl(input);

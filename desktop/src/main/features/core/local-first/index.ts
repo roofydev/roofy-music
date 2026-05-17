@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from '
 import path from 'path';
 import { randomBytes, randomUUID } from 'crypto';
 
+import { getMainWindow } from '/@/main/index';
 import { store } from '../settings';
 
 type LocalFirstStatus = {
@@ -659,6 +660,7 @@ const runImport = (job: ImportJob, attemptIndex = 0, attemptedBrowsers: string[]
                     });
                     await triggerNavidromeScan();
                     message = 'Import complete - playlist created';
+                    getMainWindow()?.webContents.send('roofy-local-playlist-imported');
                 } catch (error: any) {
                     console.error('[local-first] Failed to create playlist:', error);
                     message = 'Import complete - playlist creation failed';
@@ -991,12 +993,15 @@ const writePlaylistM3U = (job: ImportJob, audioFiles: string[]) => {
         counter++;
     }
 
-    const lines = [`#PLAYLIST: ${playlistName}`];
+    const lines = ['#EXTM3U', `#PLAYLIST: ${playlistName}`];
     for (const file of audioFiles) {
-        // Write paths relative to the library folder so Navidrome can resolve them reliably
+        // Only include files that actually exist on disk
+        if (!existsSync(file)) continue;
+
+        // Write paths relative to the M3U file's directory so Navidrome resolves them correctly
         let relativePath = file;
         try {
-            relativePath = path.relative(libraryPath, file);
+            relativePath = path.relative(playlistDir, file);
             if (!relativePath || relativePath.startsWith('..')) {
                 relativePath = file;
             }

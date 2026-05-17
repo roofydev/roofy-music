@@ -32,11 +32,19 @@ const cancelImport = (id: string) => {
     return ipcRenderer.invoke('roofy-local-cancel-import', id);
 };
 
+const onPlaylistImported = (cb: () => void) => {
+    ipcRenderer.on('roofy-local-playlist-imported', cb);
+    return () => {
+        ipcRenderer.removeListener('roofy-local-playlist-imported', cb);
+    };
+};
+
 export const localFirst = {
     cancelImport,
     createImport,
     createUser,
     credentials,
+    onPlaylistImported,
     openLibraryFolder,
     previewImport,
     selectLibrary,
