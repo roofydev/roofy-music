@@ -37,6 +37,12 @@ const AdvancedTab = lazy(() =>
     })),
 );
 
+const LocalTab = lazy(() =>
+    import('/@/renderer/features/settings/components/local/local-tab').then((module) => ({
+        default: module.LocalTab,
+    })),
+);
+
 export const SettingsContent = () => {
     const { t } = useTranslation();
     const currentTab = useSettingsStore((state) => state.tab);
@@ -60,6 +66,7 @@ export const SettingsContent = () => {
                             <Tabs.Tab value="window">{t('page.setting.windowTab')}</Tabs.Tab>
                         )}
                         <Tabs.Tab value="advanced">{t('page.setting.advanced')}</Tabs.Tab>
+                        {isElectron() && <Tabs.Tab value="local">Local</Tabs.Tab>}
                     </Tabs.List>
                     <Tabs.Panel value="general">
                         <Suspense fallback={<Spinner container />}>
@@ -88,6 +95,13 @@ export const SettingsContent = () => {
                             <AdvancedTab />
                         </Suspense>
                     </Tabs.Panel>
+                    {isElectron() && (
+                        <Tabs.Panel value="local">
+                            <Suspense fallback={<Spinner container />}>
+                                <LocalTab />
+                            </Suspense>
+                        </Tabs.Panel>
+                    )}
                 </Tabs>
             </div>
         </LibraryContainer>

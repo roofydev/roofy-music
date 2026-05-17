@@ -1,8 +1,10 @@
 node_modules/
+.pnpm-store/
 desktop/node_modules/
 desktop/out/
 desktop/dist/
 desktop/dist-electron/
+desktop/release/
 desktop/resources/bin/**/*
 !desktop/resources/bin/README.md
 app-data/*.json
@@ -10,5 +12,13 @@ app-data/staging/
 upstream-feishin/
 upstream-navidrome/
 *.log
+*.log*
 .DS_Store
 Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Local tooling
+.tools/

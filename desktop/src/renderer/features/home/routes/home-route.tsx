@@ -7,6 +7,7 @@ import { AlbumInfiniteCarousel } from '/@/renderer/features/albums/components/al
 import { AlbumInfiniteFeatureCarousel } from '/@/renderer/features/home/components/album-infinite-feature-carousel';
 import { AlbumInfiniteSingleFeatureCarousel } from '/@/renderer/features/home/components/album-infinite-single-feature-carousel';
 import { FeaturedGenres } from '/@/renderer/features/home/components/featured-genres';
+import { QuickImport } from '/@/renderer/features/local-first/components/quick-import';
 import { AnimatedPage } from '/@/renderer/features/shared/components/animated-page';
 import { LibraryContainer } from '/@/renderer/features/shared/components/library-container';
 import { LibraryHeaderBar } from '/@/renderer/features/shared/components/library-header-bar';
@@ -113,6 +114,7 @@ const HomeRoute = () => {
                         px="2rem"
                         ref={containerQuery.ref}
                     >
+                        <QuickImport />
                         {homeFeature && homeFeatureStyle === HomeFeatureStyle.SINGLE && (
                             <AlbumInfiniteSingleFeatureCarousel />
                         )}
