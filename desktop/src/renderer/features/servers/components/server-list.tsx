@@ -3,12 +3,10 @@ import isElectron from 'is-electron';
 import { useTranslation } from 'react-i18next';
 
 import { isServerLock } from '/@/renderer/features/action-required/utils/window-properties';
-import JellyfinLogo from '/@/renderer/features/servers/assets/jellyfin.png';
-import NavidromeLogo from '/@/renderer/features/servers/assets/navidrome.png';
-import OpenSubsonicLogo from '/@/renderer/features/servers/assets/opensubsonic.png';
 import { AddServerForm } from '/@/renderer/features/servers/components/add-server-form';
 import { IgnoreCorsSslSwitches } from '/@/renderer/features/servers/components/ignore-cors-ssl-switches';
 import { ServerListItem } from '/@/renderer/features/servers/components/server-list-item';
+import { getServerLogo } from '/@/renderer/features/servers/utils/server-logo';
 import { useCurrentServer, useServerList } from '/@/renderer/store';
 import { Accordion } from '/@/shared/components/accordion/accordion';
 import { Button } from '/@/shared/components/button/button';
@@ -18,7 +16,6 @@ import { Icon } from '/@/shared/components/icon/icon';
 import { ContextModalVars } from '/@/shared/components/modal/modal';
 import { Stack } from '/@/shared/components/stack/stack';
 import { Text } from '/@/shared/components/text/text';
-import { ServerType } from '/@/shared/types/domain-types';
 
 export const ServerList = () => {
     const { t } = useTranslation();
@@ -49,13 +46,7 @@ export const ServerList = () => {
                                 <Accordion.Control>
                                     <Group>
                                         <img
-                                            src={
-                                                server.type === ServerType.NAVIDROME
-                                                    ? NavidromeLogo
-                                                    : server.type === ServerType.JELLYFIN
-                                                      ? JellyfinLogo
-                                                      : OpenSubsonicLogo
-                                            }
+                                            src={getServerLogo(server)}
                                             style={{
                                                 height: 'var(--theme-font-size-lg)',
                                                 width: 'var(--theme-font-size-lg)',

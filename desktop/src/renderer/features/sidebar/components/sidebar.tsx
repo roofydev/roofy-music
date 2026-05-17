@@ -19,6 +19,7 @@ import {
     SidebarPlaylistList,
     SidebarSharedPlaylistList,
 } from '/@/renderer/features/sidebar/components/sidebar-playlist-list';
+import { AppRoute } from '/@/renderer/router/routes';
 import {
     useAppStore,
     useAppStoreActions,
@@ -79,7 +80,7 @@ export const Sidebar = () => {
         if (!sidebarItems) return [];
 
         const items = sidebarItems
-            .filter((item) => !item.disabled)
+            .filter((item) => !item.disabled && item.route !== AppRoute.LOCAL_FIRST)
             .map((item) => ({
                 ...item,
                 label:
