@@ -22,7 +22,7 @@ extraResources:
 asarUnpack:
     - resources/**
 win:
-    signAndEditExecutable: false
+    signAndEditExecutable: true
     target:
         - target: zip
           arch:
