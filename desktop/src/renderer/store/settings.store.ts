@@ -989,12 +989,6 @@ export const sidebarItems: SidebarItemType[] = [
     { disabled: false, id: 'Home', label: i18n.t('page.sidebar.home'), route: AppRoute.HOME },
     {
         disabled: false,
-        id: 'Roofy Local',
-        label: 'Roofy Local',
-        route: AppRoute.LOCAL_FIRST,
-    },
-    {
-        disabled: false,
         id: 'Favorites',
         label: i18n.t('page.sidebar.favorites'),
         route: AppRoute.FAVORITES,

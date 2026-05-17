@@ -1,0 +1,58 @@
+name: Release Windows
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: desktop/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: desktop
+        run: pnpm install
+
+      - name: Build Windows package
+        working-directory: desktop
+        run: pnpm run package:win:pr
+
+      - name: Get version
+        id: get_version
+        shell: pwsh
+        run: |
+          $json = Get-Content desktop/package.json | ConvertFrom-Json
+          "version=$($json.version)" >> $env:GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}-build.${{ github.run_number }}
+          name: Roofy Music v${{ steps.get_version.outputs.version }} Build ${{ github.run_number }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            desktop/dist/*.exe
+            desktop/dist/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
