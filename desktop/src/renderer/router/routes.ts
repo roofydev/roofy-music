@@ -33,4 +33,5 @@ export enum AppRoute {
     SEARCH = '/search/:itemType',
     SERVERS = '/servers',
     SETTINGS = '/settings',
+    STATS = '/stats',
 }

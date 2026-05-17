@@ -66,6 +66,7 @@ export const Sidebar = () => {
             Radio: t('page.sidebar.radio'),
             Search: t('page.sidebar.search'),
             Settings: t('page.sidebar.settings'),
+            Stats: t('page.sidebar.stats'),
             Tracks: t('page.sidebar.tracks'),
         }),
         [t],

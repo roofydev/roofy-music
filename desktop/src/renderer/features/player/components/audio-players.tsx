@@ -25,6 +25,7 @@ import {
     useIsRadioActive,
 } from '/@/renderer/features/radio/hooks/use-radio-player';
 import { RemoteHook } from '/@/renderer/features/remote/hooks/use-remote';
+import { LocalStatsTrackerHook } from '/@/renderer/features/stats/hooks/use-local-stats-tracker';
 import { VisualizerSystemAudioBridgeHook } from '/@/renderer/features/visualizer/components/visualizer-system-audio-bridge';
 import {
     updateQueueFavorites,
@@ -125,6 +126,7 @@ export const AudioPlayers = () => {
         <>
             <SleepTimerHook />
             <ScrobbleHook />
+            <LocalStatsTrackerHook />
             <PowerSaveBlockerHook />
             <DiscordRpcHook />
             <MPRISHook />

@@ -1,0 +1,140 @@
+.container {
+    min-height: 100%;
+    padding: var(--theme-spacing-xl);
+}
+
+.header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--theme-spacing-lg);
+    margin-bottom: var(--theme-spacing-xl);
+}
+
+.titleBlock {
+    display: grid;
+    gap: var(--theme-spacing-xs);
+}
+
+.summary {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--theme-spacing-md);
+    margin-bottom: var(--theme-spacing-xl);
+}
+
+.summaryItem {
+    min-width: 0;
+    padding-bottom: var(--theme-spacing-md);
+    border-bottom: 1px solid var(--theme-colors-border);
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.75fr);
+    gap: var(--theme-spacing-xl);
+}
+
+.section {
+    min-width: 0;
+}
+
+.sectionHeader {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--theme-spacing-md);
+    margin-bottom: var(--theme-spacing-sm);
+}
+
+.songList,
+.rankedList {
+    display: grid;
+    gap: 1px;
+    overflow: hidden;
+    border: 1px solid var(--theme-colors-border);
+    border-radius: var(--theme-card-default-radius);
+    background: var(--theme-colors-border);
+}
+
+.songRow,
+.rankedRow {
+    display: grid;
+    align-items: center;
+    min-width: 0;
+    background: var(--theme-colors-body);
+}
+
+.songRow {
+    grid-template-columns: 40px 48px minmax(0, 1fr) 96px 112px;
+    gap: var(--theme-spacing-md);
+    padding: var(--theme-spacing-sm) var(--theme-spacing-md);
+}
+
+.rankedRow {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: var(--theme-spacing-md);
+    padding: var(--theme-spacing-sm) var(--theme-spacing-md);
+}
+
+.art {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: var(--theme-card-default-radius);
+    background: var(--theme-colors-surface);
+}
+
+.placeholderArt {
+    display: grid;
+    width: 48px;
+    height: 48px;
+    place-items: center;
+    border-radius: var(--theme-card-default-radius);
+    background: var(--theme-colors-surface);
+}
+
+.meta {
+    min-width: 0;
+}
+
+.sideStack {
+    display: grid;
+    align-content: start;
+    gap: var(--theme-spacing-xl);
+}
+
+.empty {
+    display: grid;
+    min-height: 45vh;
+    place-items: center;
+    text-align: center;
+}
+
+@media (max-width: 900px) {
+    .container {
+        padding: var(--theme-spacing-md);
+    }
+
+    .header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .layout {
+        grid-template-columns: 1fr;
+    }
+
+    .songRow {
+        grid-template-columns: 28px 44px minmax(0, 1fr);
+    }
+
+    .songRow > :nth-child(4),
+    .songRow > :nth-child(5) {
+        display: none;
+    }
+}

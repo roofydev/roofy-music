@@ -640,6 +640,7 @@
             "search": "$t(common.search)",
             "settings": "$t(common.setting, {\"count\": 2})",
             "shared": "Shared $t(entity.playlist, {\"count\": 2})",
+            "stats": "Stats",
             "tracks": "$t(entity.track, {\"count\": 2})"
         },
         "trackList": {

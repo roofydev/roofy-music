@@ -23,6 +23,7 @@ const SIDEBAR_ITEMS: Array<[string, string]> = [
     [SidebarItem.RADIO, 'page.sidebar.radio'],
     [SidebarItem.SEARCH, 'page.sidebar.search'],
     [SidebarItem.SETTINGS, 'page.sidebar.settings'],
+    [SidebarItem.STATS, 'page.sidebar.stats'],
     [SidebarItem.TRACKS, 'page.sidebar.tracks'],
 ];
 

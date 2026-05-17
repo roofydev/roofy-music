@@ -860,6 +860,7 @@ export enum SidebarItem {
     RADIO = 'Radio',
     SEARCH = 'Search',
     SETTINGS = 'Settings',
+    STATS = 'Stats',
     TRACKS = 'Tracks',
 }
 
@@ -992,6 +993,12 @@ export const sidebarItems: SidebarItemType[] = [
         id: 'Favorites',
         label: i18n.t('page.sidebar.favorites'),
         route: AppRoute.FAVORITES,
+    },
+    {
+        disabled: false,
+        id: 'Stats',
+        label: i18n.t('page.sidebar.stats'),
+        route: AppRoute.STATS,
     },
     {
         disabled: false,
@@ -2427,10 +2434,25 @@ export const useSettingsStore = createWithEqualityFn<SettingsSlice>()(
                     }
                 }
 
+                if (version <= 28) {
+                    const hasStats = state.general.sidebarItems?.some(
+                        (item) => item.id === SidebarItem.STATS,
+                    );
+
+                    if (!hasStats) {
+                        state.general.sidebarItems.splice(2, 0, {
+                            disabled: false,
+                            id: SidebarItem.STATS,
+                            label: i18n.t('page.sidebar.stats'),
+                            route: AppRoute.STATS,
+                        });
+                    }
+                }
+
                 return persistedState;
             },
             name: 'store_settings',
-            version: 27,
+            version: 28,
         },
     ),
 );
