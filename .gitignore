@@ -1,0 +1,14 @@
+node_modules/
+desktop/node_modules/
+desktop/out/
+desktop/dist/
+desktop/dist-electron/
+desktop/resources/bin/**/*
+!desktop/resources/bin/README.md
+app-data/*.json
+app-data/staging/
+upstream-feishin/
+upstream-navidrome/
+*.log
+.DS_Store
+Thumbs.db
