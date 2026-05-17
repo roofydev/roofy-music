@@ -1,0 +1,19 @@
+{
+  "name": "roofy-music",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first personal music app built on Feishin, Navidrome, yt-dlp, and ffmpeg.",
+  "type": "commonjs",
+  "scripts": {
+    "desktop:install": "corepack pnpm install --dir desktop",
+    "desktop:dev": "corepack pnpm --dir desktop dev",
+    "desktop:build": "corepack pnpm --dir desktop run build:electron && corepack pnpm --dir desktop run build:remote",
+    "desktop:package:dir": "set PATH=%CD%\\.tools;%PATH%&& corepack pnpm --dir desktop exec electron-builder --dir",
+    "desktop:typecheck": "corepack pnpm --dir desktop run typecheck:node && corepack pnpm --dir desktop run typecheck:web",
+    "legacy:mvp": "node src/server/index.js",
+    "legacy:check": "node --check src/server/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
