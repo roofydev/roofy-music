@@ -4,11 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { isServerLock } from '/@/renderer/features/action-required/utils/window-properties';
-import JellyfinLogo from '/@/renderer/features/servers/assets/jellyfin.png';
-import NavidromeLogo from '/@/renderer/features/servers/assets/navidrome.png';
-import OpenSubsonicLogo from '/@/renderer/features/servers/assets/opensubsonic.png';
 import { AddServerForm } from '/@/renderer/features/servers/components/add-server-form';
 import { EditServerForm } from '/@/renderer/features/servers/components/edit-server-form';
+import { getServerLogo } from '/@/renderer/features/servers/utils/server-logo';
 import { AppRoute } from '/@/renderer/router/routes';
 import { useAuthStoreActions, useCurrentServer, useServerList } from '/@/renderer/store';
 import { Button } from '/@/shared/components/button/button';
@@ -93,12 +91,7 @@ function ServerSelector() {
                 const isJellyfinExpired = server.type === ServerType.JELLYFIN && !server.credential;
                 const isSessionExpired = isNavidromeExpired || isJellyfinExpired;
 
-                const logo =
-                    server.type === ServerType.NAVIDROME
-                        ? NavidromeLogo
-                        : server.type === ServerType.JELLYFIN
-                          ? JellyfinLogo
-                          : OpenSubsonicLogo;
+                const logo = getServerLogo(server);
 
                 return (
                     <Button

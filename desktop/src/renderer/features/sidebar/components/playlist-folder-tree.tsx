@@ -31,7 +31,7 @@ import { useLocalStorage } from '/@/shared/hooks/use-local-storage';
 import { LibraryItem, Playlist } from '/@/shared/types/domain-types';
 import { DragData, DragOperation, DragTarget } from '/@/shared/types/drag-and-drop';
 
-const STORAGE_KEY_PREFIX = 'feishin:playlist-folder-state';
+const STORAGE_KEY_PREFIX = 'roofy:playlist-folder-state';
 
 export const getPlaylistLeafName = (name: string, separator: string): string => {
     if (!separator) return name;

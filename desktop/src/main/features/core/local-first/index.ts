@@ -1,6 +1,6 @@
 import { app, dialog, ipcMain, shell } from 'electron';
 import { ChildProcessWithoutNullStreams, spawn, spawnSync } from 'child_process';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import path from 'path';
 import { randomBytes, randomUUID } from 'crypto';
 
@@ -34,9 +34,11 @@ type ImportJob = {
     cookieBrowser: string;
     createdAt: string;
     error: string;
+    expectedFiles?: string[];
     id: string;
     input: string;
     message: string;
+    name?: string;
     playlist: boolean;
     progress: number;
     status: 'cancelled' | 'completed' | 'failed' | 'queued' | 'running';
@@ -54,7 +56,7 @@ type CreateLocalUserArgs = {
 const LOCAL_SERVER_ID = 'roofy-local-navidrome';
 const LOCAL_SERVER_USERNAME = 'admin';
 const DEFAULT_PORT = 4533;
-const DEFAULT_IMPORT_FORMAT = 'mp3';
+const DEFAULT_IMPORT_FORMAT = 'best';
 const COOKIE_BROWSER_ALLOWLIST = new Set([
     '',
     'auto',
@@ -265,7 +267,6 @@ const createLocalUser = async (args: CreateLocalUserArgs) => {
 
 export const startLocalFirst = async () => {
     ensureLocalFolders();
-    configureRendererServerLock();
 
     if (navidromeProcess && !navidromeProcess.killed) {
         return getLocalFirstStatus();
@@ -273,6 +274,13 @@ export const startLocalFirst = async () => {
 
     const binaryPath = navidromeBinaryPath();
     if (!binaryPath) {
+        dialog.showErrorBox(
+            'Roofy Local Engine Not Available',
+            'The bundled Navidrome binary was not found.\n\n' +
+                'To fix this, either:\n' +
+                '1. Download navidrome.exe and place it under resources/bin/<platform>/<arch>/\n' +
+                '2. Set the ROOFY_NAVIDROME_PATH environment variable to the binary location.',
+        );
         return getLocalFirstStatus(
             'Navidrome binary not found. Set ROOFY_NAVIDROME_PATH or add a bundled binary under resources/bin.',
         );
@@ -313,7 +321,23 @@ export const startLocalFirst = async () => {
         navidromeProcess = null;
     });
 
-    await waitForNavidrome();
+    const ready = await waitForNavidrome();
+    if (!ready) {
+        if (navidromeProcess) {
+            navidromeProcess.kill();
+            navidromeProcess = null;
+        }
+        dialog.showErrorBox(
+            'Roofy Local Engine Failed to Start',
+            'The local Navidrome engine did not start within 25 seconds.\n\n' +
+                'This may be caused by a port conflict, antivirus blocking the binary, or a corrupted data folder.\n' +
+                'Try restarting the app, or delete the data folder at:\n' +
+                getDataPath(),
+        );
+        return getLocalFirstStatus('Navidrome failed to start within 25 seconds.');
+    }
+
+    configureRendererServerLock();
     return getLocalFirstStatus();
 };
 
@@ -513,12 +537,22 @@ const runImport = (job: ImportJob, attemptIndex = 0, attemptedBrowsers: string[]
     const args = [
         '--newline',
         '--progress',
+        '--format',
+        'bestaudio/best',
         '--extract-audio',
+        '--audio-quality',
+        '0',
         '--embed-thumbnail',
         '--convert-thumbnails',
         'jpg',
         '--add-metadata',
         '--no-mtime',
+        '--write-subs',
+        '--write-auto-subs',
+        '--sub-langs',
+        'en,-live_chat',
+        '--convert-subs',
+        'srt',
         job.playlist ? '--yes-playlist' : '--no-playlist',
         '--audio-format',
         job.audioFormat,
@@ -531,12 +565,27 @@ const runImport = (job: ImportJob, attemptIndex = 0, attemptedBrowsers: string[]
     ];
 
     updateJob(job.id, {
+        error: '',
         message: cookieBrowser ? 'Preparing signed-in import' : 'Starting import',
         progress: 1,
         status: 'running',
     });
 
     const recentOutput: string[] = [];
+    const candidatePaths: string[] = [];
+    const audioExts = new Set([
+        '.aac',
+        '.flac',
+        '.m4a',
+        '.mka',
+        '.mp3',
+        '.ogg',
+        '.opus',
+        '.wav',
+        '.webm',
+        '.wma',
+    ]);
+
     const child = spawn(ytDlp, args, {
         cwd: libraryPath,
         windowsHide: true,
@@ -559,19 +608,62 @@ const runImport = (job: ImportJob, attemptIndex = 0, attemptedBrowsers: string[]
             return;
         }
 
+        const extractAudioDest = /\[ExtractAudio\] Destination:\s*(.+)/.exec(clean);
+        if (extractAudioDest) candidatePaths.push(extractAudioDest[1]);
+
+        const extractAudioSkip = /\[ExtractAudio\] Not converting media file "([^"]+)"/.exec(clean);
+        if (extractAudioSkip) candidatePaths.push(extractAudioSkip[1]);
+
+        const alreadyDownloaded = /\[download\]\s*(.+?)\s+has already been downloaded/.exec(clean);
+        if (alreadyDownloaded) candidatePaths.push(alreadyDownloaded[1]);
+
+        const downloadDest = /\[download\] Destination:\s*(.+)/.exec(clean);
+        if (downloadDest) candidatePaths.push(downloadDest[1]);
+
         updateJob(job.id, { message: clean });
     };
 
     child.stdout.on('data', (chunk) => chunk.toString().split(/\r?\n/).forEach(handleLine));
     child.stderr.on('data', (chunk) => chunk.toString().split(/\r?\n/).forEach(handleLine));
 
-    child.on('close', (code) => {
+    child.on('close', async (code) => {
         activeImport = null;
         const current = importJobs.find((item) => item.id === job.id);
+
+        const uniquePaths = [...new Set(candidatePaths)];
+        const audioFiles = uniquePaths.filter((p) => audioExts.has(path.extname(p).toLowerCase()));
+
+        if (code === 0) {
+            for (const filePath of audioFiles) {
+                try {
+                    processSubtitleForFile(filePath);
+                } catch (error) {
+                    console.error('[local-first] Subtitle conversion failed:', error);
+                }
+            }
+        }
+
         if (current?.status === 'cancelled') {
             updateJob(job.id, { message: 'Cancelled' });
         } else if (code === 0) {
-            updateJob(job.id, { message: 'Import complete', progress: 100, status: 'completed' });
+            let message = 'Import complete';
+
+            if (job.playlist && audioFiles.length > 0) {
+                try {
+                    writePlaylistM3U(job, audioFiles);
+                    updateJob(job.id, {
+                        error: '',
+                        message: 'Import complete - creating playlist',
+                    });
+                    await triggerNavidromeScan();
+                    message = 'Import complete - playlist created';
+                } catch (error: any) {
+                    console.error('[local-first] Failed to create playlist:', error);
+                    message = 'Import complete - playlist creation failed';
+                }
+            }
+
+            updateJob(job.id, { error: '', message, progress: 100, status: 'completed' });
         } else {
             const output = recentOutput.join('\n');
             const nextAttempt = attemptIndex + 1;
@@ -592,6 +684,7 @@ const runImport = (job: ImportJob, attemptIndex = 0, attemptedBrowsers: string[]
 
             if (canTryNextBrowser) {
                 updateJob(job.id, {
+                    error: '',
                     message: 'Trying another local sign-in source',
                     progress: Math.max(1, current?.progress || 1),
                     status: 'running',
@@ -604,6 +697,7 @@ const runImport = (job: ImportJob, attemptIndex = 0, attemptedBrowsers: string[]
             const usedBrowserCookies = !triedWithoutCookies && Boolean(cookieBrowser);
             if (usedBrowserCookies) {
                 updateJob(job.id, {
+                    error: '',
                     message: dbLocked
                         ? 'Browser cookies locked, trying without cookies'
                         : 'Trying without cookies',
@@ -760,7 +854,7 @@ const previewImport = async (input: string, playlist?: boolean, cookieBrowser?: 
     throw new Error(formatYtDlpError(lastError || 'yt-dlp preview failed', effectiveBrowser, attemptedBrowsers));
 };
 
-const createImportJob = (
+const createImportJob = async (
     input: string,
     playlist?: boolean,
     audioFormat = DEFAULT_IMPORT_FORMAT,
@@ -775,6 +869,18 @@ const createImportJob = (
             ? normalizeCookieBrowser(cookieBrowser)
             : normalizeCookieBrowser(store.get('roofy.cookieBrowser') as string | undefined);
 
+    const isPlaylist = inferPlaylistImport(input, playlist);
+    let name = '';
+
+    if (isPlaylist) {
+        try {
+            const preview = await previewImport(input.trim(), true, effectiveBrowser);
+            name = preview.title;
+        } catch {
+            // Ignore preview failures; we'll fall back to a generic name.
+        }
+    }
+
     const job: ImportJob = {
         audioFormat,
         cookieBrowser: effectiveBrowser,
@@ -783,7 +889,8 @@ const createImportJob = (
         id: randomUUID(),
         input: input.trim(),
         message: 'Queued',
-        playlist: inferPlaylistImport(input, playlist),
+        name,
+        playlist: isPlaylist,
         progress: 0,
         status: 'queued',
         updatedAt: now(),
@@ -792,6 +899,116 @@ const createImportJob = (
     importJobs.unshift(job);
     processImportQueue();
     return job;
+};
+
+
+const convertSrtToLrc = (srtContent: string): string => {
+    const lines = srtContent.split(/\r?\n/);
+    const result: string[] = [];
+    let i = 0;
+
+    while (i < lines.length) {
+        if (!lines[i].trim()) {
+            i++;
+            continue;
+        }
+
+        if (/^\d+$/.test(lines[i].trim())) {
+            i++;
+            continue;
+        }
+
+        const timeMatch = /^(\d{2}):(\d{2}):(\d{2})[,.](\d{3})\s*-->/.exec(lines[i]);
+        if (!timeMatch) {
+            i++;
+            continue;
+        }
+
+        const mins = parseInt(timeMatch[2], 10);
+        const secs = parseInt(timeMatch[3], 10);
+        const ms = parseInt(timeMatch[4], 10);
+        const hundredths = Math.round(ms / 10);
+        const timestamp = `[${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(hundredths).padStart(2, '0')}]`;
+
+        i++;
+
+        const textLines: string[] = [];
+        while (i < lines.length && lines[i].trim() !== '') {
+            let text = lines[i].trim();
+            text = text.replace(/<[^>]+>/g, '');
+            if (text) textLines.push(text);
+            i++;
+        }
+
+        for (const text of textLines) {
+            result.push(`${timestamp}${text}`);
+        }
+
+        i++;
+    }
+
+    return result.join('\n') + '\n';
+};
+
+const processSubtitleForFile = (audioPath: string) => {
+    const dir = path.dirname(audioPath);
+    const base = path.basename(audioPath, path.extname(audioPath));
+    const srtPath = path.join(dir, `${base}.en.srt`);
+
+    if (!existsSync(srtPath)) return;
+
+    const srtContent = readFileSync(srtPath, 'utf8');
+    const lrcContent = convertSrtToLrc(srtContent);
+    const lrcPath = path.join(dir, `${base}.lrc`);
+    writeFileSync(lrcPath, lrcContent, 'utf8');
+    unlinkSync(srtPath);
+};
+
+const writePlaylistM3U = (job: ImportJob, audioFiles: string[]) => {
+    const libraryPath = getLibraryPath();
+    const playlistDir = path.join(libraryPath, 'Playlists');
+    mkdirSync(playlistDir, { recursive: true });
+
+    const playlistName = job.name || 'Imported Playlist';
+    const safeName = playlistName.replace(/[<>:"/\\|?*]/g, '_').trim() || 'playlist';
+    const m3uPath = path.join(playlistDir, `${safeName}.m3u`);
+
+    let finalPath = m3uPath;
+    let counter = 1;
+    while (existsSync(finalPath)) {
+        finalPath = path.join(playlistDir, `${safeName} (${counter}).m3u`);
+        counter++;
+    }
+
+    const lines = [`#PLAYLIST: ${playlistName}`];
+    for (const file of audioFiles) {
+        lines.push(file);
+    }
+
+    writeFileSync(finalPath, lines.join('\n') + '\n', 'utf8');
+    return finalPath;
+};
+
+const triggerNavidromeScan = async () => {
+    const url = getUrl();
+    const username = LOCAL_SERVER_USERNAME;
+    const password = getPassword();
+    const baseParams = `u=${encodeURIComponent(username)}&p=${encodeURIComponent(password)}&v=1.16.1&c=roofy&f=json`;
+
+    try {
+        await fetch(`${url}/rest/startScan?${baseParams}`);
+
+        const started = Date.now();
+        while (Date.now() - started < 120000) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            const res = await fetch(`${url}/rest/getScanStatus?${baseParams}`);
+            const data = await parseResponseBody(res);
+            const scanning = data?.['subsonic-response']?.scanStatus?.scanning;
+            if (!scanning) break;
+        }
+    } catch (error) {
+        console.error('[local-first] Failed to trigger Navidrome scan:', error);
+    }
 };
 
 const getLocalFirstStatus = (message = ''): LocalFirstStatus => {
@@ -858,7 +1075,7 @@ ipcMain.handle(
 
 ipcMain.handle(
     'roofy-local-create-import',
-    (
+    async (
         _event,
         args: { audioFormat?: string; cookieBrowser?: string; input: string; playlist?: boolean },
     ) => {

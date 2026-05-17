@@ -112,7 +112,7 @@ export default defineConfig({
                         type: 'image/png',
                     },
                 ],
-                name: 'Feishin',
+                name: 'Roofy Music',
                 orientation: 'portrait',
                 screenshots: [
                     {
@@ -123,7 +123,7 @@ export default defineConfig({
                         type: 'image/webp',
                     },
                 ],
-                short_name: 'Feishin',
+                short_name: 'Roofy Music',
                 start_url: '/',
                 theme_color: '#1E003D',
             },

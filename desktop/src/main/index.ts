@@ -53,14 +53,14 @@ const ALPHA_UPDATER_CONFIG: {
 } = {
     bucket: '',
     channel: 'alpha',
-    endpoint: 'https://feishin-nightly-bucket.jeffvli.org',
+    endpoint: 'https://roofy-music-nightly.s3.amazonaws.com',
     provider: 's3',
 };
 
 const GITHUB_UPDATER_CONFIG = {
-    owner: 'jeffvli',
+    owner: 'roofy',
     provider: 'github' as const,
-    repo: 'feishin',
+    repo: 'roofy-music',
 };
 
 type UpdaterInstance = AppImageUpdater | MacUpdater | NsisUpdater | typeof autoUpdater;
@@ -258,7 +258,7 @@ function createAlphaUpdaterInstance(): AppImageUpdater | MacUpdater | NsisUpdate
     return new NsisUpdater(ALPHA_UPDATER_CONFIG);
 }
 
-protocol.registerSchemesAsPrivileged([{ privileges: { bypassCSP: true }, scheme: 'feishin' }]);
+protocol.registerSchemesAsPrivileged([{ privileges: { bypassCSP: true }, scheme: 'roofy' }]);
 
 process.on('uncaughtException', (error: any) => {
     console.error('Error in main process', error);
@@ -328,6 +328,10 @@ const userDataPath = app.getPath('userData');
 if (isDevelopment) {
     const devUserDataPath = `${userDataPath}-dev`;
     app.setPath('userData', devUserDataPath);
+}
+
+if (isWindows()) {
+    app.setAppUserModelId('app.roofy.music');
 }
 
 const RESOURCES_PATH = app.isPackaged
@@ -716,10 +720,6 @@ async function createWindow(first = true): Promise<void> {
         }
     });
 
-    if (isWindows()) {
-        app.setAppUserModelId('app.roofy.music');
-    }
-
     if (isMacOS()) {
         app.on('before-quit', () => {
             forceQuit = true;
@@ -789,7 +789,7 @@ const shouldDisableMediaFeatures =
     isLinux() || !enableMediaSession || playbackType !== PlayerType.WEB;
 
 const chromiumDisabledFeatures: string[] = [];
-// Fractional scaling on Wayland: https://github.com/jeffvli/feishin/issues/1271#issuecomment-4063326712
+// Fractional scaling on Wayland: https://github.com/roofy/roofy-music/issues
 if (isLinux()) {
     chromiumDisabledFeatures.push('WaylandFractionalScaleV1');
 }
@@ -998,8 +998,8 @@ if (!singleInstance) {
     app.whenReady()
         .then(async () => {
             await startLocalFirst();
-            protocol.handle('feishin', async (request) => {
-                const filePath = `file:${request.url.slice('feishin:'.length)}`;
+            protocol.handle('roofy', async (request) => {
+                const filePath = `file:${request.url.slice('roofy:'.length)}`;
                 const response = await net.fetch(filePath);
                 const contentType = response.headers.get('content-type');
 

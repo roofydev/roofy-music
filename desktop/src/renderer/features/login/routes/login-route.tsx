@@ -14,10 +14,11 @@ import {
     isLegacyAuth,
     isServerLock,
 } from '/@/renderer/features/action-required/utils/window-properties';
-import JellyfinIcon from '/@/renderer/features/servers/assets/jellyfin.png';
-import NavidromeIcon from '/@/renderer/features/servers/assets/navidrome.png';
-import SubsonicIcon from '/@/renderer/features/servers/assets/opensubsonic.png';
 import { IgnoreCorsSslSwitches } from '/@/renderer/features/servers/components/ignore-cors-ssl-switches';
+import {
+    getServerLogo,
+    ROOFY_LOCAL_SERVER_ID,
+} from '/@/renderer/features/servers/utils/server-logo';
 import { AnimatedPage } from '/@/renderer/features/shared/components/animated-page';
 import { PageErrorBoundary } from '/@/renderer/features/shared/components/page-error-boundary';
 import { AppRoute } from '/@/renderer/router/routes';
@@ -42,12 +43,6 @@ import { AuthenticationResponse, ServerListItemWithCredential } from '/@/shared/
 import { ServerType, toServerType } from '/@/shared/types/types';
 
 const localSettings = isElectron() ? window.api.localSettings : null;
-
-const SERVER_ICONS: Record<ServerType, string> = {
-    [ServerType.JELLYFIN]: JellyfinIcon,
-    [ServerType.NAVIDROME]: NavidromeIcon,
-    [ServerType.SUBSONIC]: SubsonicIcon,
-};
 
 const SERVER_NAMES: Record<ServerType, string> = {
     [ServerType.JELLYFIN]: 'Jellyfin',
@@ -259,7 +254,10 @@ const LoginRoute = () => {
     }, [currentServer, serverLock, serverType]);
 
     const isSubmitDisabled = !form.values.username || !form.values.password;
-    const serverIcon = SERVER_ICONS[serverType as ServerType];
+    const serverIcon = getServerLogo({
+        id: serverLock && serverType === ServerType.NAVIDROME ? ROOFY_LOCAL_SERVER_ID : undefined,
+        type: serverType as ServerType,
+    });
     const serverDisplayName = SERVER_NAMES[serverType as ServerType];
 
     return (

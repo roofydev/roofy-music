@@ -12,7 +12,13 @@ extraResources:
     - from: resources/bin
       to: bin
       filter:
-          - '**/*'
+          - '**/deno*'
+          - '**/ffmpeg*'
+          - '**/navidrome*'
+          - '**/yt-dlp*'
+          - '**/LICENSE'
+          - '**/README.md'
+          - '!**/ffprobe*'
 asarUnpack:
     - resources/**
 win:
@@ -45,7 +51,7 @@ mac:
           arch:
               - arm64
               - x64
-    icon: media/feishin.icon
+    icon: assets/icons/512x512.png
     type: distribution
     hardenedRuntime: false
     identity: '-'

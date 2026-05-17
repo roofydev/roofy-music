@@ -23,10 +23,10 @@ export default defineConfig({
                 assetFileNames: '[name].[ext]',
                 chunkFileNames: '[name].js',
                 entryFileNames: '[name].js',
-                sourcemapExcludeSources: false,
+                sourcemapExcludeSources: true,
             },
         },
-        sourcemap: true,
+        sourcemap: false,
     },
     css: {
         modules: {
