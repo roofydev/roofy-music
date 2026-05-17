@@ -32,6 +32,7 @@ type LocalFirstStatus = {
 type ImportJob = {
     audioFormat: string;
     cookieBrowser: string;
+    createPlaylist: boolean;
     createdAt: string;
     error: string;
     expectedFiles?: string[];
@@ -40,6 +41,7 @@ type ImportJob = {
     message: string;
     name?: string;
     playlist: boolean;
+    playlistName?: string;
     progress: number;
     status: 'cancelled' | 'completed' | 'failed' | 'queued' | 'running';
     updatedAt: string;
@@ -648,7 +650,7 @@ const runImport = (job: ImportJob, attemptIndex = 0, attemptedBrowsers: string[]
         } else if (code === 0) {
             let message = 'Import complete';
 
-            if (job.playlist && audioFiles.length > 0) {
+            if (job.createPlaylist && audioFiles.length > 0) {
                 try {
                     writePlaylistM3U(job, audioFiles);
                     updateJob(job.id, {
@@ -778,12 +780,13 @@ const runYtDlpPreview = (
                 const data = JSON.parse(stdout);
                 const entries = Array.isArray(data.entries) ? data.entries.filter(Boolean) : [data];
                 const first = entries[0] || data;
+                const isPlaylist = Boolean(data.entries);
                 resolve({
                     count: entries.length,
                     duration: first.duration || null,
-                    isPlaylist: Boolean(data.entries),
+                    isPlaylist,
                     thumbnail: first.thumbnail || data.thumbnail || '',
-                    title: first.title || data.title || 'Untitled',
+                    title: (isPlaylist ? data.title : first.title) || data.title || 'Untitled',
                     uploader: first.uploader || first.channel || data.uploader || 'Unknown',
                     webpageUrl: first.webpage_url || data.webpage_url || '',
                 });
@@ -859,6 +862,8 @@ const createImportJob = async (
     playlist?: boolean,
     audioFormat = DEFAULT_IMPORT_FORMAT,
     cookieBrowser?: string,
+    createPlaylist?: boolean,
+    playlistName?: string,
 ) => {
     if (!input.trim()) {
         throw new Error('Enter a URL or search query.');
@@ -873,17 +878,22 @@ const createImportJob = async (
     let name = '';
 
     if (isPlaylist) {
-        try {
-            const preview = await previewImport(input.trim(), true, effectiveBrowser);
-            name = preview.title;
-        } catch {
-            // Ignore preview failures; we'll fall back to a generic name.
+        if (playlistName && playlistName.trim()) {
+            name = playlistName.trim();
+        } else {
+            try {
+                const preview = await previewImport(input.trim(), true, effectiveBrowser);
+                name = preview.title;
+            } catch {
+                // Ignore preview failures; we'll fall back to a generic name.
+            }
         }
     }
 
     const job: ImportJob = {
         audioFormat,
         cookieBrowser: effectiveBrowser,
+        createPlaylist: isPlaylist ? (typeof createPlaylist === 'boolean' ? createPlaylist : true) : false,
         createdAt: now(),
         error: '',
         id: randomUUID(),
@@ -891,6 +901,7 @@ const createImportJob = async (
         message: 'Queued',
         name,
         playlist: isPlaylist,
+        playlistName: name || undefined,
         progress: 0,
         status: 'queued',
         updatedAt: now(),
@@ -969,7 +980,7 @@ const writePlaylistM3U = (job: ImportJob, audioFiles: string[]) => {
     const playlistDir = path.join(libraryPath, 'Playlists');
     mkdirSync(playlistDir, { recursive: true });
 
-    const playlistName = job.name || 'Imported Playlist';
+    const playlistName = job.playlistName || job.name || 'Imported Playlist';
     const safeName = playlistName.replace(/[<>:"/\\|?*]/g, '_').trim() || 'playlist';
     const m3uPath = path.join(playlistDir, `${safeName}.m3u`);
 
@@ -982,7 +993,17 @@ const writePlaylistM3U = (job: ImportJob, audioFiles: string[]) => {
 
     const lines = [`#PLAYLIST: ${playlistName}`];
     for (const file of audioFiles) {
-        lines.push(file);
+        // Write paths relative to the library folder so Navidrome can resolve them reliably
+        let relativePath = file;
+        try {
+            relativePath = path.relative(libraryPath, file);
+            if (!relativePath || relativePath.startsWith('..')) {
+                relativePath = file;
+            }
+        } catch {
+            relativePath = file;
+        }
+        lines.push(relativePath.split(path.sep).join('/'));
     }
 
     writeFileSync(finalPath, lines.join('\n') + '\n', 'utf8');
@@ -1077,13 +1098,22 @@ ipcMain.handle(
     'roofy-local-create-import',
     async (
         _event,
-        args: { audioFormat?: string; cookieBrowser?: string; input: string; playlist?: boolean },
+        args: {
+            audioFormat?: string;
+            cookieBrowser?: string;
+            createPlaylist?: boolean;
+            input: string;
+            playlist?: boolean;
+            playlistName?: string;
+        },
     ) => {
         return createImportJob(
             args.input,
             args.playlist,
             args.audioFormat || DEFAULT_IMPORT_FORMAT,
             args.cookieBrowser,
+            args.createPlaylist,
+            args.playlistName,
         );
     },
 );

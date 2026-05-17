@@ -18,7 +18,13 @@ const previewImport = (args: { cookieBrowser?: string; input: string }) => {
     return ipcRenderer.invoke('roofy-local-preview-import', args);
 };
 
-const createImport = (args: { audioFormat?: string; cookieBrowser?: string; input: string }) => {
+const createImport = (args: {
+    audioFormat?: string;
+    cookieBrowser?: string;
+    createPlaylist?: boolean;
+    input: string;
+    playlistName?: string;
+}) => {
     return ipcRenderer.invoke('roofy-local-create-import', args);
 };
 

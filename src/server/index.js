@@ -462,13 +462,14 @@ function importerPreview(input, playlist) {
   const data = runJsonCommand("yt-dlp", args, 45000);
   const entries = Array.isArray(data.entries) ? data.entries.filter(Boolean) : [data];
   const first = entries[0] || data;
+  const isPlaylistResult = Boolean(data.entries);
 
   return {
     input,
     normalizedInput: normalized,
-    isPlaylist: Boolean(data.entries),
+    isPlaylist: isPlaylistResult,
     count: entries.length,
-    title: first.title || data.title || "Untitled",
+    title: (isPlaylistResult ? data.title : first.title) || data.title || "Untitled",
     uploader: first.uploader || first.channel || data.uploader || data.channel || "Unknown",
     duration: first.duration || null,
     thumbnail: first.thumbnail || data.thumbnail || "",

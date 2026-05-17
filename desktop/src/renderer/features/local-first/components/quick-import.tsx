@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Group, Progress, Stack, Text, TextInput } from '@mantine/core';
+import { Alert, Button, Checkbox, Group, Progress, Stack, Text, TextInput } from '@mantine/core';
 
 type ImportJob = {
     error: string;
@@ -14,11 +14,28 @@ type LocalStatus = {
     imports: ImportJob[];
 };
 
+const isPlaylistUrl = (value: string): boolean => {
+    const trimmed = value.trim();
+    if (!/^https?:\/\//i.test(trimmed)) return false;
+    try {
+        const url = new URL(trimmed);
+        const host = url.hostname.replace(/^www\./, '');
+        const list = url.searchParams.get('list');
+        if (!list) return false;
+        if (list.toUpperCase().startsWith('RD')) return false;
+        return host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com' || host === 'youtu.be';
+    } catch {
+        return false;
+    }
+};
+
 export const QuickImport = () => {
     const [input, setInput] = useState('');
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [status, setStatus] = useState<LocalStatus | null>(null);
+    const [createPlaylist, setCreatePlaylist] = useState(false);
+    const [playlistName, setPlaylistName] = useState('');
 
     const refresh = async () => {
         const next = await window.api.localFirst.status();
@@ -31,13 +48,27 @@ export const QuickImport = () => {
         return () => window.clearInterval(timer);
     }, []);
 
+    useEffect(() => {
+        const detected = isPlaylistUrl(input);
+        setCreatePlaylist(detected);
+        if (detected && !playlistName) {
+            setPlaylistName('Imported Playlist');
+        }
+    }, [input]);
+
     const handleImport = async () => {
         if (!input.trim()) return;
         setBusy(true);
         setError('');
         try {
-            await window.api.localFirst.createImport({ input });
+            await window.api.localFirst.createImport({
+                input,
+                createPlaylist: isPlaylistUrl(input) ? createPlaylist : false,
+                playlistName: createPlaylist ? playlistName : undefined,
+            });
             setInput('');
+            setPlaylistName('');
+            setCreatePlaylist(false);
             await refresh();
         } catch (err: any) {
             setError(err?.message || 'Import failed');
@@ -45,6 +76,8 @@ export const QuickImport = () => {
             setBusy(false);
         }
     };
+
+    const showPlaylistOptions = isPlaylistUrl(input);
 
     return (
         <Stack gap="sm">
@@ -64,6 +97,23 @@ export const QuickImport = () => {
                     Import
                 </Button>
             </Group>
+            {showPlaylistOptions && (
+                <Stack gap="xs">
+                    <Checkbox
+                        checked={createPlaylist}
+                        label="Create a playlist with these songs"
+                        onChange={(event) => setCreatePlaylist(event.currentTarget.checked)}
+                    />
+                    {createPlaylist && (
+                        <TextInput
+                            label="Playlist name"
+                            onChange={(event) => setPlaylistName(event.currentTarget.value)}
+                            placeholder="Imported Playlist"
+                            value={playlistName}
+                        />
+                    )}
+                </Stack>
+            )}
             {error && (
                 <Alert color="red">
                     {error}

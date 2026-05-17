@@ -15,12 +15,15 @@ const TRACK_BEGIN_SEC = 5;
 const RESTART_PREVIOUS_MIN_SEC = 10;
 const MAX_LISTEN_DELTA_SEC = 5;
 const FLUSH_LISTEN_MS = 15000;
+const PLAY_COUNT_MIN_MS = 30000;
+const PLAY_COUNT_PERCENTAGE = 0.5;
 
-const meetsPlayThreshold = (listenedMs: number, durationSec: number) => {
-    const durationMs = Math.max(0, durationSec * 1000);
-    const targetDurationMs = Math.min(240000, durationMs || 240000);
-    const targetPercentageMs = durationMs * 0.75;
-    return listenedMs >= targetDurationMs || (targetPercentageMs > 0 && listenedMs >= targetPercentageMs);
+const meetsPlayThreshold = (listenedMs: number, durationMs: number) => {
+    const normalizedDurationMs = Math.max(0, durationMs);
+    const targetMs = normalizedDurationMs > 0
+        ? Math.min(PLAY_COUNT_MIN_MS, normalizedDurationMs * PLAY_COUNT_PERCENTAGE)
+        : PLAY_COUNT_MIN_MS;
+    return listenedMs >= targetMs;
 };
 
 export const useLocalStatsTracker = () => {
@@ -32,10 +35,16 @@ export const useLocalStatsTracker = () => {
     const lastSampleTimeRef = useRef<null | number>(null);
     const previousSongRef = useRef<QueueSong | undefined>(undefined);
 
-    const flush = useCallback((song: QueueSong | undefined, playIncrement = 0) => {
+    const flush = useCallback((song: QueueSong | undefined, forcePlayIncrement = 0) => {
         if (privateMode || !song?.id) {
             pendingListenMsRef.current = 0;
             return;
+        }
+
+        let playIncrement = forcePlayIncrement;
+        if (!countedRef.current && meetsPlayThreshold(listenedMsRef.current, song.duration)) {
+            countedRef.current = true;
+            playIncrement = 1;
         }
 
         const listenedMs = pendingListenMsRef.current;
@@ -124,12 +133,6 @@ export const useLocalStatsTracker = () => {
             const deltaMs = deltaSec * 1000;
             listenedMsRef.current += deltaMs;
             pendingListenMsRef.current += deltaMs;
-
-            if (!countedRef.current && meetsPlayThreshold(listenedMsRef.current, song.duration / 1000)) {
-                countedRef.current = true;
-                flush(song, 1);
-                return;
-            }
 
             if (pendingListenMsRef.current >= FLUSH_LISTEN_MS) {
                 flush(song);
