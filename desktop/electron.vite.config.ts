@@ -15,7 +15,7 @@ const config: UserConfig = {
             rollupOptions: {
                 external: ['source-map-support'],
             },
-            sourcemap: true,
+            sourcemap: false,
         },
         define: {
             'import.meta.env.IS_LINUX': JSON.stringify(currentOSEnv === 'linux'),
@@ -39,7 +39,7 @@ const config: UserConfig = {
     },
     preload: {
         build: {
-            sourcemap: true,
+            sourcemap: false,
         },
         plugins: [externalizeDepsPlugin()],
         resolve: {
@@ -56,7 +56,7 @@ const config: UserConfig = {
             modulePreload: {
                 polyfill: false,
             },
-            sourcemap: true,
+            sourcemap: false,
             target: electronRendererTarget,
         },
         css: {

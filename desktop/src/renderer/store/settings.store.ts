@@ -163,7 +163,7 @@ const BindingActionsSchema = z.enum([
     'listShowPlayingSong',
 ]);
 
-const DiscordDisplayTypeSchema = z.enum(['artist', 'feishin', 'song']);
+const DiscordDisplayTypeSchema = z.enum(['artist', 'roofy', 'song']);
 
 const DiscordLinkTypeSchema = z.enum(['last_fm', 'musicbrainz', 'musicbrainz_last_fm', 'none']);
 
@@ -797,7 +797,7 @@ export enum BindingActions {
 
 export enum DiscordDisplayType {
     ARTIST_NAME = 'artist',
-    FEISHIN = 'feishin',
+    ROOFY = 'roofy',
     SONG_NAME = 'song',
 }
 
@@ -1101,7 +1101,7 @@ const initialState: SettingsState = {
     },
     discord: {
         clientId: '1165957668758900787',
-        displayType: DiscordDisplayType.FEISHIN,
+        displayType: DiscordDisplayType.ROOFY,
         enabled: false,
         linkType: DiscordLinkType.NONE,
         showAsListening: false,
@@ -1859,7 +1859,7 @@ const initialState: SettingsState = {
         enabled: false,
         password: randomString(8),
         port: 4333,
-        username: 'feishin',
+        username: 'roofy',
     },
     tab: 'general',
     visualizer: {
