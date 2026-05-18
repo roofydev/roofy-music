@@ -27,7 +27,7 @@ jobs:
           VERSION="${BASE}.${{ github.run_number }}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
-          npm version $VERSION --no-git-tag-version
+          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); pkg.version = process.argv[1]; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 4) + '\n');" "$VERSION"
 
       - name: Upload bumped package.json
         uses: actions/upload-artifact@v4
