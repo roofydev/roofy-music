@@ -1,11 +1,28 @@
 import { ipcRenderer } from 'electron';
 
-const SEND_CHANNELS = new Set<string>();
+const SEND_CHANNELS = new Set<string>([
+    'app-restart',
+    'set-global-shortcuts',
+    'settings-set',
+    'update-playback',
+    'update-private-mode',
+    'update-repeat',
+    'update-shuffle',
+    'update-sidebar-collapsed',
+]);
 const INVOKE_CHANNELS = new Set<string>([
     'power-save-blocker-start',
     'power-save-blocker-stop',
 ]);
 const LISTEN_CHANNELS = new Set<string>([
+    'custom-font-error',
+    'mpris-request-toggle-repeat',
+    'mpris-request-toggle-shuffle',
+    'renderer-open-command-palette',
+    'renderer-open-manage-servers',
+    'renderer-open-release-notes',
+    'renderer-open-settings',
+    'renderer-player-auto-next',
     'renderer-player-error',
     'renderer-player-next',
     'renderer-player-pause',
@@ -20,6 +37,13 @@ const LISTEN_CHANNELS = new Set<string>([
     'renderer-player-volume-down',
     'renderer-player-volume-mute',
     'renderer-player-volume-up',
+    'renderer-toggle-private-mode',
+    'renderer-toggle-sidebar',
+    'request-favorite',
+    'request-position',
+    'request-rating',
+    'request-seek',
+    'request-volume',
     'update-available',
 ]);
 
