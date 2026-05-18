@@ -61,25 +61,6 @@ export const useRemoteStore = createWithEqualityFn<SettingsSlice>()(
                             }
                         }
 
-                        let authHeader: string | undefined;
-
-                        try {
-                            logFn.debug(logMsg[LogCategory.REMOTE].fetchingCredentials, {
-                                category: LogCategory.REMOTE,
-                            });
-                            const credentials = await fetch('/credentials');
-                            authHeader = await credentials.text();
-                            logFn.debug(logMsg[LogCategory.REMOTE].credentialsFetched, {
-                                category: LogCategory.REMOTE,
-                                meta: { hasAuthHeader: !!authHeader },
-                            });
-                        } catch (error) {
-                            logFn.error(logMsg[LogCategory.REMOTE].failedToGetCredentials, {
-                                category: LogCategory.REMOTE,
-                                meta: { error },
-                            });
-                        }
-
                         set((state) => {
                             const wsUrl = location.href.replace('http', 'ws');
                             logFn.debug(logMsg[LogCategory.REMOTE].creatingWebSocket, {
@@ -261,21 +242,9 @@ export const useRemoteStore = createWithEqualityFn<SettingsSlice>()(
                                 logFn.debug(logMsg[LogCategory.REMOTE].webSocketOpened, {
                                     category: LogCategory.REMOTE,
                                     meta: {
-                                        hasAuthHeader: !!authHeader,
                                         readyState: socket.readyState,
                                     },
                                 });
-                                if (authHeader) {
-                                    logFn.debug(logMsg[LogCategory.REMOTE].sendingAuthentication, {
-                                        category: LogCategory.REMOTE,
-                                    });
-                                    socket.send(
-                                        JSON.stringify({
-                                            event: 'authenticate',
-                                            header: authHeader,
-                                        }),
-                                    );
-                                }
                                 set({ connected: true });
                             });
 

@@ -1,5 +1,6 @@
-import axios from 'axios';
+import { timingSafeEqual } from 'crypto';
 import { app, ipcMain } from 'electron';
+import axios from 'axios';
 import { promises, Stats } from 'fs';
 import { readFile } from 'fs/promises';
 import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
@@ -133,10 +134,26 @@ function authorize(req: IncomingMessage): boolean {
         const authorization = req.headers.authorization?.split(' ')[1] || '';
         const [login, password] = Buffer.from(authorization, 'base64').toString().split(':');
 
-        return login === settings.username && password === settings.password;
+        return safeEqual(login, settings.username) && safeEqual(password, settings.password);
     }
 
     return true;
+}
+
+function safeEqual(left = '', right = ''): boolean {
+    const leftBuffer = Buffer.from(left);
+    const rightBuffer = Buffer.from(right);
+
+    return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function isSafeProxyUrl(value: string): boolean {
+    try {
+        const url = new URL(value);
+        return url.protocol === 'https:' || url.protocol === 'http:';
+    } catch {
+        return false;
+    }
 }
 
 async function serveFile(
@@ -291,12 +308,6 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
                             await serveFile(req, 'index', 'html', res);
                             break;
                         }
-                        case '/credentials': {
-                            res.statusCode = 200;
-                            res.setHeader('Content-Type', 'text/plain');
-                            res.end(req.headers.authorization);
-                            break;
-                        }
                         case '/favicon.ico': {
                             await serveFile(req, 'favicon', 'ico', res);
                             break;
@@ -332,21 +343,16 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
                 }
             });
 
-            server.listen(config.port, resolve);
+            server.listen(config.port, '127.0.0.1', resolve);
             wsServer = new WebSocketServer<typeof StatefulWebSocket>({ server });
 
-            wsServer!.on('connection', (ws: StatefulWebSocket) => {
-                let authFail: number | undefined;
+            wsServer!.on('connection', (ws: StatefulWebSocket, req: IncomingMessage) => {
                 ws.alive = true;
+                ws.auth = authorize(req);
 
-                if (!settings.username && !settings.password) {
-                    ws.auth = true;
-                } else {
-                    authFail = setTimeout(() => {
-                        if (!ws.auth) {
-                            ws.close();
-                        }
-                    }, 10000) as unknown as number;
+                if (!ws.auth) {
+                    ws.close();
+                    return;
                 }
 
                 ws.on('error', console.error);
@@ -355,25 +361,6 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
                     try {
                         const json = JSON.parse(data.toString()) as ClientEvent;
                         const event = json.event;
-
-                        if (!ws.auth) {
-                            if (event === 'authenticate') {
-                                const auth = json.header.split(' ')[1];
-                                const [login, password] = Buffer.from(auth, 'base64')
-                                    .toString()
-                                    .split(':');
-
-                                if (login === settings.username && password === settings.password) {
-                                    ws.auth = true;
-                                } else {
-                                    ws.close();
-                                }
-
-                                clearTimeout(authFail);
-                            } else {
-                                return;
-                            }
-                        }
 
                         switch (event) {
                             case 'favorite': {
@@ -410,6 +397,14 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
                                 );
 
                                 if (!toFetch) return;
+                                if (!isSafeProxyUrl(toFetch)) {
+                                    send({
+                                        client: ws,
+                                        data: 'Blocked unsupported image URL protocol',
+                                        event: 'error',
+                                    });
+                                    return;
+                                }
 
                                 axios
                                     .get(toFetch, { responseType: 'arraybuffer' })

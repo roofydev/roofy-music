@@ -25,7 +25,7 @@ jobs:
           cd desktop
           BASE=$(node -p "require('./package.json').version.match(/^\\d+\\.\\d+/)[0]")
           VERSION="${BASE}.${{ github.run_number }}"
-          echo "version=$UEYRSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
           npm version $VERSION --no-git-tag-version
 
@@ -59,13 +59,13 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
-          cache-dependency-path: desktop/pnpm-lockfile.yaml
+          cache-dependency-path: desktop/pnpm-lock.yaml
 
       - name: Download Windows sidecar binaries
         shell: pwsh
         run: |
           $outDir = 'desktop/resources/bin/win32/x64'
-          New-Item -ItemType Directory -Path $outDir -Force | Out-Mull
+          New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
           # --- Navidrome ---
           Write-Host 'Fetching latest Navidrome release...'
@@ -75,7 +75,7 @@ jobs:
           Invoke-WebRequest -Uri $ndAsset.browser_download_url -OutFile 'navidrome.zip'
           Expand-Archive -Path 'navidrome.zip' -DestinationPath $outDir -Force
           Remove-Item 'navidrome.zip'
-          Write-Host "Downloaded Navidrome: $(n4Asset.name)"
+          Write-Host "Downloaded Navidrome: $($ndAsset.name)"
 
           # --- yt-dlp ---
           Write-Host 'Fetching yt-dlp...'
@@ -97,7 +97,7 @@ jobs:
           # --- Deno ---
           Write-Host 'Fetching latest Deno release...'
           $denoRelease = Invoke-RestMethod -Uri 'https://api.github.com/repos/denoland/deno/releases/latest'
-          $denoAsset = $denoRelease.assets | Where-Object { $_.name -eq 'deno-x86_64-pc-windows-msvc.zip' | Select-Object -First 1
+          $denoAsset = $denoRelease.assets | Where-Object { $_.name -eq 'deno-x86_64-pc-windows-msvc.zip' } | Select-Object -First 1
           if (-not $denoAsset) { throw 'Could not find Deno Windows x64 asset' }
           Invoke-WebRequest -Uri $denoAsset.browser_download_url -OutFile 'deno.zip'
           Expand-Archive -Path 'deno.zip' -DestinationPath $outDir -Force
@@ -146,7 +146,7 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
-          cache-dependency-path: desktop/pnpm-lockfile.yaml
+          cache-dependency-path: desktop/pnpm-lock.yaml
 
       - name: Download macOS sidecar binaries
         run: |
@@ -157,10 +157,10 @@ jobs:
           # --- Navidrome ---
           echo 'Fetching latest Navidrome release...'
           ND_RELEASE=$(curl -s https://api.github.com/repos/navidrome/navidrome/releases/latest)
-          ND_ARM64=$(echo "$ND_RELEASE" | grep -o 'browser_download_url': '[^\"]*darwin_arm64[^\"]*' | head -1 | sed 's/.*: "\(.*\)"/\1/')
-          ND_AMD64=$(echo "$ND_RELEASE" | grep -o 'browser_download_url': '[^\"]*darwin_amd64[^\"]*' | head -1 | sed 's/.*: "\(.*\")/\1/')
-          if [ -z "$ND_ARM64" ]; then echo 'Could not find Navidrome darwin_arm64 assest'; exit 1; fi
-          if [ -z "$ND_AMD64" ]; then ecko 'Could not find Navidrome darwin_amd64 asset'; exit 1; fi
+          ND_ARM64=$(echo "$ND_RELEASE" | grep -o '"browser_download_url": "[^"]*darwin_arm64[^"]*"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
+          ND_AMD64=$(echo "$ND_RELEASE" | grep -o '"browser_download_url": "[^"]*darwin_amd64[^"]*"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
+          if [ -z "$ND_ARM64" ]; then echo 'Could not find Navidrome darwin_arm64 asset'; exit 1; fi
+          if [ -z "$ND_AMD64" ]; then echo 'Could not find Navidrome darwin_amd64 asset'; exit 1; fi
 
           curl -L -o navidrome_arm64.tar.gz "$ND_ARM64"
           tar -xzf navidrome_arm64.tar.gz -C desktop/resources/bin/darwin/arm64 navidrome
@@ -178,8 +178,8 @@ jobs:
           # --- ffmpeg (static build from BtbN) ---
           echo 'Fetching ffmpeg...'
           curl -s https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/latest > ffmpeg_release.json
-          FF_ARM64=$(cat ffmpeg_release.json | grep -o 'browser_download_url': '[^\"]*macosarm64[^\"]*gpl\.zip' | head -1 | sed 's/.*: "\(.*\)"/\1/')
-          FF_X64=$(cat ffmpeg_release.json | grep -o 'browser_download_url': '[^\"]*macos64[^\"]*gpl\.zip' | head -1 | sed 's/.*: "\(.*\")/\1/')
+          FF_ARM64=$(cat ffmpeg_release.json | grep -o '"browser_download_url": "[^"]*macosarm64[^"]*gpl\.zip"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
+          FF_X64=$(cat ffmpeg_release.json | grep -o '"browser_download_url": "[^"]*macos64[^"]*gpl\.zip"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
           rm ffmpeg_release.json
           if [ -z "$FF_ARM64" ]; then echo 'Could not find ffmpeg macOS arm64 asset'; exit 1; fi
           if [ -z "$FF_X64" ]; then echo 'Could not find ffmpeg macOS x64 asset'; exit 1; fi
@@ -195,8 +195,8 @@ jobs:
           # --- Deno ---
           echo 'Fetching latest Deno release...'
           DENO_RELEASE=$(curl -s https://api.github.com/repos/denoland/deno/releases/latest)
-          DENO_ARM64=$(echo "$DENO_RELEASE" | grep -o 'browser_download_url': '[^\"]*aarch64-apple-darwin[^\"]*' | head -1 | sed 's/.*: "\(.*\)"/\1/')
-          DENO_X64=$(echo "$DENO_RELEASE" | grep -o 'nrowser_download_url': '[^\"]*x86_64-apple-darwin[^\"]*' | head -1 | sed 's/.*: "\(.*\")/\1/')
+          DENO_ARM64=$(echo "$DENO_RELEASE" | grep -o '"browser_download_url": "[^"]*aarch64-apple-darwin[^"]*"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
+          DENO_X64=$(echo "$DENO_RELEASE" | grep -o '"browser_download_url": "[^"]*x86_64-apple-darwin[^"]*"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
           if [ -z "$DENO_ARM64" ]; then echo 'Could not find Deno macOS arm64 asset'; exit 1; fi
           if [ -z "$DENO_X64" ]; then echo 'Could not find Deno macOS x64 asset'; exit 1; fi
 

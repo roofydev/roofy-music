@@ -2,7 +2,8 @@
 
 Roofy Music starts a local Navidrome server on `http://127.0.0.1:4533`.
 
-The default generated admin login for this machine is:
+The app generates a local admin login per app profile on first run. Do not
+commit generated passwords or copied profile config files.
 
 ```txt
 Username: admin
@@ -10,7 +11,8 @@ Password: <generated locally>
 Server:   http://127.0.0.1:4533
 ```
 
-For development runs using the `Roofy Music-dev` Electron profile, the current generated admin login is:
+For development runs using the `Roofy Music-dev` Electron profile, the same
+rules apply:
 
 ```txt
 Username: admin
@@ -45,4 +47,3 @@ The `Roofy Local` page in the desktop app also shows the active server URL, user
 Open `Roofy Local` in the desktop app and use the `Create local user` form. It creates a user in the bundled local Navidrome engine through the local admin account.
 
 Non-admin users are for normal playback/library access. Admin users can manage server settings and other users.
-

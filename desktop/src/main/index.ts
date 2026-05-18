@@ -264,10 +264,6 @@ process.on('uncaughtException', (error: any) => {
     console.error('Error in main process', error);
 });
 
-if (store.get('ignore_ssl')) {
-    app.commandLine.appendSwitch('ignore-certificate-errors');
-}
-
 // From https://github.com/tutao/tutanota/commit/92c6ed27625fcf367f0fbcc755d83d7ff8fde94b
 if (isLinux() && !process.argv.some((a) => a.startsWith('--password-store='))) {
     const passwordStore = store.get('password_store', 'gnome-libsecret') as string;
@@ -374,6 +370,33 @@ export const sendToastToRenderer = ({
         message,
         type,
     });
+};
+
+const isSafeExternalUrl = (value: string) => {
+    try {
+        const url = new URL(value);
+        return ['https:', 'http:', 'mailto:'].includes(url.protocol);
+    } catch {
+        return false;
+    }
+};
+
+const openExternalUrl = (value: string) => {
+    if (!isSafeExternalUrl(value)) {
+        log.warn('Blocked external URL', value);
+        return;
+    }
+
+    shell.openExternal(value);
+};
+
+const isSafeDownloadUrl = (value: string) => {
+    try {
+        const url = new URL(value);
+        return ['https:', 'http:'].includes(url.protocol);
+    } catch {
+        return false;
+    }
 };
 
 const createWinThumbarButtons = () => {
@@ -516,14 +539,14 @@ async function createWindow(first = true): Promise<void> {
         minWidth: 480,
         show: false,
         webPreferences: {
-            allowRunningInsecureContent: !!store.get('ignore_ssl'),
+            allowRunningInsecureContent: false,
             backgroundThrottling: false,
             contextIsolation: true,
-            devTools: true,
-            nodeIntegration: true,
+            devTools: isDevelopment,
+            nodeIntegration: false,
             preload: join(__dirname, '../preload/index.js'),
             sandbox: false,
-            webSecurity: !store.get('ignore_cors'),
+            webSecurity: true,
         },
         width: 1440,
         ...(nativeFrame && isLinux() && nativeFrameConfig.linux),
@@ -658,6 +681,11 @@ async function createWindow(first = true): Promise<void> {
     });
 
     ipcMain.on('download-url', (_event, url: string) => {
+        if (!isSafeDownloadUrl(url)) {
+            log.warn('Blocked unsafe download URL', url);
+            return;
+        }
+
         mainWindow?.webContents.downloadURL(url);
     });
 
@@ -731,7 +759,7 @@ async function createWindow(first = true): Promise<void> {
 
     // Open URLs in the user's browser
     mainWindow.webContents.setWindowOpenHandler((edata) => {
-        shell.openExternal(edata.url);
+        openExternalUrl(edata.url);
         return { action: 'deny' };
     });
 
@@ -766,7 +794,7 @@ async function createWindow(first = true): Promise<void> {
     nativeTheme.themeSource = theme || 'dark';
 
     mainWindow.webContents.setWindowOpenHandler((details) => {
-        shell.openExternal(details.url);
+        openExternalUrl(details.url);
         return { action: 'deny' };
     });
 

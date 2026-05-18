@@ -24,6 +24,12 @@ npm run desktop:build
 npm run desktop:package:dir
 ```
 
+## Public Release Hygiene
+
+- Do not commit generated `app-data` contents, local databases, `.env` files, signing keys, certificates, or sidecar build artifacts.
+- Keep release credentials in local environment variables or repository secrets.
+- Report security issues privately through GitHub security advisories; see `SECURITY.md`.
+
 Optional importer requirements:
 
 - `yt-dlp`

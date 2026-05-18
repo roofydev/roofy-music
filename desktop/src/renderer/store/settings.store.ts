@@ -1864,7 +1864,7 @@ const initialState: SettingsState = {
     },
     remote: {
         enabled: false,
-        password: randomString(8),
+        password: randomString(24),
         port: 4333,
         username: 'roofy',
     },
