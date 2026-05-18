@@ -184,17 +184,11 @@ jobs:
 
           # --- Deno ---
           echo 'Fetching latest Deno release...'
-          DENO_RELEASE=$(curl -s https://api.github.com/repos/denoland/deno/releases/latest)
-          DENO_ARM64=$(printf '%s' "$DENO_RELEASE" | node -e "const fs = require('fs'); const data = JSON.parse(fs.readFileSync(0, 'utf8')); const asset = data.assets.find((item) => item.name === 'deno-aarch64-apple-darwin.zip'); if (asset) console.log(asset.browser_download_url);")
-          DENO_X64=$(printf '%s' "$DENO_RELEASE" | node -e "const fs = require('fs'); const data = JSON.parse(fs.readFileSync(0, 'utf8')); const asset = data.assets.find((item) => item.name === 'deno-x86_64-apple-darwin.zip'); if (asset) console.log(asset.browser_download_url);")
-          if [ -z "$DENO_ARM64" ]; then echo 'Could not find Deno macOS arm64 asset'; exit 1; fi
-          if [ -z "$DENO_X64" ]; then echo 'Could not find Deno macOS x64 asset'; exit 1; fi
-
-          curl -L -o deno_arm64.zip "$DENO_ARM64"
+          curl -L -o deno_arm64.zip https://github.com/denoland/deno/releases/latest/download/deno-aarch64-apple-darwin.zip
           unzip -j deno_arm64.zip -d desktop/resources/bin/darwin/arm64/
           rm deno_arm64.zip
 
-          curl -L -o deno_x64.zip "$DENO_X64"
+          curl -L -o deno_x64.zip https://github.com/denoland/deno/releases/latest/download/deno-x86_64-apple-darwin.zip
           unzip -j deno_x64.zip -d desktop/resources/bin/darwin/x64/
           rm deno_x64.zip
 
