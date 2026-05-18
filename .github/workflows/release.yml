@@ -185,8 +185,8 @@ jobs:
           # --- Deno ---
           echo 'Fetching latest Deno release...'
           DENO_RELEASE=$(curl -s https://api.github.com/repos/denoland/deno/releases/latest)
-          DENO_ARM64=$(echo "$DENO_RELEASE" | grep -o '"browser_download_url": "[^"]*aarch64-apple-darwin[^"]*"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
-          DENO_X64=$(echo "$DENO_RELEASE" | grep -o '"browser_download_url": "[^"]*x86_64-apple-darwin[^"]*"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
+          DENO_ARM64=$(echo "$DENO_RELEASE" | grep -o '"browser_download_url": "[^"]*deno-aarch64-apple-darwin\.zip"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
+          DENO_X64=$(echo "$DENO_RELEASE" | grep -o '"browser_download_url": "[^"]*deno-x86_64-apple-darwin\.zip"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
           if [ -z "$DENO_ARM64" ]; then echo 'Could not find Deno macOS arm64 asset'; exit 1; fi
           if [ -z "$DENO_X64" ]; then echo 'Could not find Deno macOS x64 asset'; exit 1; fi
 
