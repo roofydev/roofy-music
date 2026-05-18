@@ -175,22 +175,12 @@ jobs:
           curl -L -o desktop/resources/bin/darwin/arm64/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
           cp desktop/resources/bin/darwin/arm64/yt-dlp desktop/resources/bin/darwin/x64/yt-dlp
 
-          # --- ffmpeg (static build from BtbN) ---
+          # --- ffmpeg ---
           echo 'Fetching ffmpeg...'
-          curl -s https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/latest > ffmpeg_release.json
-          FF_ARM64=$(cat ffmpeg_release.json | grep -o '"browser_download_url": "[^"]*macosarm64[^"]*gpl\.zip"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
-          FF_X64=$(cat ffmpeg_release.json | grep -o '"browser_download_url": "[^"]*macos64[^"]*gpl\.zip"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
-          rm ffmpeg_release.json
-          if [ -z "$FF_ARM64" ]; then echo 'Could not find ffmpeg macOS arm64 asset'; exit 1; fi
-          if [ -z "$FF_X64" ]; then echo 'Could not find ffmpeg macOS x64 asset'; exit 1; fi
-
-          curl -L -o ffmpeg_arm64.zip "$FF_ARM64"
-          unzip -j ffmpeg_arm64.zip "*/ffmpeg" -d desktop/resources/bin/darwin/arm64/
-          rm ffmpeg_arm64.zip
-
-          curl -L -o ffmpeg_x64.zip "$FF_X64"
-          unzip -j ffmpeg_x64.zip "*/ffmpeg" -d desktop/resources/bin/darwin/x64/
-          rm ffmpeg_x64.zip
+          curl -L -o ffmpeg.zip https://evermeet.cx/ffmpeg/getrelease/zip
+          unzip -j ffmpeg.zip ffmpeg -d desktop/resources/bin/darwin/arm64/
+          unzip -j ffmpeg.zip ffmpeg -d desktop/resources/bin/darwin/x64/
+          rm ffmpeg.zip
 
           # --- Deno ---
           echo 'Fetching latest Deno release...'
