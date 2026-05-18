@@ -67,10 +67,6 @@
         "version": "pnpm version --no-git-tag-version",
         "postversion": "node ./scripts/update-app-stream.mjs"
     },
-    "resolutions": {
-        "react-router": "7.14.0",
-        "xml2js": "0.5.0"
-    },
     "dependencies": {
         "@atlaskit/pragmatic-drag-and-drop": "1.7.7",
         "@atlaskit/pragmatic-drag-and-drop-auto-scroll": "^2.1.5",
@@ -191,7 +187,11 @@
         "onlyBuiltDependencies": [
             "electron",
             "esbuild"
-        ]
+        ],
+        "overrides": {
+            "react-router": "7.14.0",
+            "xml2js": "0.5.0"
+        }
     },
     "productName": "Roofy Music"
 }
