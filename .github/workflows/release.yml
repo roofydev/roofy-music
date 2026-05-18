@@ -157,8 +157,8 @@ jobs:
           # --- Navidrome ---
           echo 'Fetching latest Navidrome release...'
           ND_RELEASE=$(curl -s https://api.github.com/repos/navidrome/navidrome/releases/latest)
-          ND_ARM64=$(echo "$ND_RELEASE" | grep -o '"browser_download_url": "[^"]*darwin_arm64[^"]*"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
-          ND_AMD64=$(echo "$ND_RELEASE" | grep -o '"browser_download_url": "[^"]*darwin_amd64[^"]*"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
+          ND_ARM64=$(printf '%s' "$ND_RELEASE" | node -e "const fs = require('fs'); const data = JSON.parse(fs.readFileSync(0, 'utf8')); const asset = data.assets.find((item) => /darwin_arm64/.test(item.name)); if (asset) console.log(asset.browser_download_url);")
+          ND_AMD64=$(printf '%s' "$ND_RELEASE" | node -e "const fs = require('fs'); const data = JSON.parse(fs.readFileSync(0, 'utf8')); const asset = data.assets.find((item) => /darwin_amd64/.test(item.name)); if (asset) console.log(asset.browser_download_url);")
           if [ -z "$ND_ARM64" ]; then echo 'Could not find Navidrome darwin_arm64 asset'; exit 1; fi
           if [ -z "$ND_AMD64" ]; then echo 'Could not find Navidrome darwin_amd64 asset'; exit 1; fi
 
@@ -185,8 +185,8 @@ jobs:
           # --- Deno ---
           echo 'Fetching latest Deno release...'
           DENO_RELEASE=$(curl -s https://api.github.com/repos/denoland/deno/releases/latest)
-          DENO_ARM64=$(echo "$DENO_RELEASE" | grep -o '"browser_download_url": "[^"]*deno-aarch64-apple-darwin\.zip"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
-          DENO_X64=$(echo "$DENO_RELEASE" | grep -o '"browser_download_url": "[^"]*deno-x86_64-apple-darwin\.zip"' | head -1 | sed 's/.*"browser_download_url": "\(.*\)"/\1/')
+          DENO_ARM64=$(printf '%s' "$DENO_RELEASE" | node -e "const fs = require('fs'); const data = JSON.parse(fs.readFileSync(0, 'utf8')); const asset = data.assets.find((item) => item.name === 'deno-aarch64-apple-darwin.zip'); if (asset) console.log(asset.browser_download_url);")
+          DENO_X64=$(printf '%s' "$DENO_RELEASE" | node -e "const fs = require('fs'); const data = JSON.parse(fs.readFileSync(0, 'utf8')); const asset = data.assets.find((item) => item.name === 'deno-x86_64-apple-darwin.zip'); if (asset) console.log(asset.browser_download_url);")
           if [ -z "$DENO_ARM64" ]; then echo 'Could not find Deno macOS arm64 asset'; exit 1; fi
           if [ -z "$DENO_X64" ]; then echo 'Could not find Deno macOS x64 asset'; exit 1; fi
 
