@@ -82,3 +82,33 @@
 .accordion-content:last-child {
     padding-bottom: var(--theme-spacing-md);
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .container {
+    background: var(--retro-bg-2, #080808) !important;
+    gap: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .scroll-area {
+    padding: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .accordion-control {
+    border-radius: 0;
+    color: var(--retro-text-soft, #a0a0a0);
+    text-transform: uppercase;
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+}
+
+:global([data-theme="retroMonochrome"]) .accordion-control:hover {
+    background: var(--retro-panel-2, #101010);
+    color: var(--retro-text, #d0d0d0);
+}
+
+:global([data-theme="retroMonochrome"]) .accordion-content {
+    background: var(--retro-bg-2, #080808) !important;
+}
+
+:global([data-theme="retroMonochrome"]) .sidebar-image {
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+}

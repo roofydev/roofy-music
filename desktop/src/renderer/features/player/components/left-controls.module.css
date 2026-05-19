@@ -84,3 +84,21 @@
         }
     }
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .image {
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+}
+
+:global([data-theme="retroMonochrome"]) .radio-image {
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    border-radius: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .line-item.secondary {
+    color: var(--retro-text-muted, #707070);
+}
+
+:global([data-theme="retroMonochrome"]) .line-item.secondary a {
+    color: var(--retro-text-muted, #707070);
+}

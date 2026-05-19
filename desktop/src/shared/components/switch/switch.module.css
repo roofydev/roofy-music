@@ -14,3 +14,24 @@
         }
     }
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .track {
+    background-color: var(--retro-bg, #050505);
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    border-radius: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .track input:checked + & {
+    background-color: var(--retro-panel-2, #101010);
+    border-color: var(--retro-border-bright, #b8b8b8);
+}
+
+:global([data-theme="retroMonochrome"]) .thumb {
+    background: var(--retro-border, #7a7a7a);
+    border-radius: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .track input:checked + & > .thumb {
+    background: var(--retro-text-hot, #f1f1f1);
+}

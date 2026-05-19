@@ -70,3 +70,17 @@
     background: var(--theme-overlay-header);
     backdrop-filter: blur(var(--image-blur));
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .container {
+    background: var(--retro-bg, #050505) !important;
+}
+
+:global([data-theme="retroMonochrome"]) .background-image-overlay {
+    background: var(--retro-bg, #050505) !important;
+    backdrop-filter: none !important;
+}
+
+:global([data-theme="retroMonochrome"]) .background-image {
+    display: none;
+}

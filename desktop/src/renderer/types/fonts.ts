@@ -8,6 +8,7 @@ export type Font = {
 export const FONT_OPTIONS: Font[] = [
     { label: 'Inter', value: 'Inter' },
     { label: 'Poppins', value: 'Poppins' },
+    { label: 'IBM Plex Mono', value: 'IBM Plex Mono' },
 ];
 
 export const FontValueSchema = z.enum(

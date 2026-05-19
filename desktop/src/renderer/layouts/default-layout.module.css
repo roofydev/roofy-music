@@ -21,3 +21,20 @@
     grid-template-rows: 30px calc(100vh - 120px) 90px;
     grid-template-rows: 30px calc(100dvh - 120px) 90px;
 }
+
+.retro {
+    grid-template-areas:
+        'window-bar'
+        'top-bar'
+        'main-content'
+        'player'
+        'status-bar';
+    grid-template-rows: 30px 64px calc(100vh - 212px) 90px 28px;
+    grid-template-rows: 30px 64px calc(100dvh - 212px) 90px 28px;
+}
+
+.retro.windows,
+.retro.macos {
+    grid-template-rows: 30px 64px calc(100vh - 212px) 90px 28px;
+    grid-template-rows: 30px 64px calc(100dvh - 212px) 90px 28px;
+}

@@ -16,3 +16,17 @@
     color: var(--theme-colors-foreground);
     background: var(--theme-colors-surface);
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .root {
+    background: var(--retro-panel, #0b0b0b);
+    color: var(--retro-text-soft, #a0a0a0);
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    text-transform: uppercase;
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='filled'] {
+    background: var(--retro-panel, #0b0b0b);
+    color: var(--retro-text-soft, #a0a0a0);
+}

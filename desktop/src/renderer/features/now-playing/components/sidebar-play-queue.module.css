@@ -106,3 +106,18 @@
     content: '';
     -webkit-app-region: no-drag;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .lyrics-section {
+    background: var(--retro-bg, #050505);
+    background-color: var(--retro-bg, #050505);
+}
+
+:global([data-theme="retroMonochrome"]) .visualizer-section {
+    background: var(--retro-bg, #050505);
+    background-color: var(--retro-bg, #050505);
+}
+
+:global([data-theme="retroMonochrome"]) .resize-handle::before {
+    background: var(--retro-border-muted, #3f3f3f);
+}

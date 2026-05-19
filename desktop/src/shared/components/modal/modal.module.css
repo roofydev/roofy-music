@@ -27,3 +27,22 @@
     position: absolute;
     right: var(--theme-spacing-md);
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .content {
+    background: var(--retro-panel, #0b0b0b);
+    border: 1px solid var(--retro-border-bright, #b8b8b8);
+    box-shadow: none;
+    filter: none;
+}
+
+:global([data-theme="retroMonochrome"]) .header {
+    background: var(--retro-panel, #0b0b0b);
+    border-bottom: 1px solid var(--retro-border, #7a7a7a);
+}
+
+:global([data-theme="retroMonochrome"]) .header h2 {
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    text-transform: uppercase;
+    font-size: var(--theme-font-size-xl, 18px);
+}

@@ -74,3 +74,12 @@
 .lyrics-container:hover .settings-icon {
     opacity: 1;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .scroll-container {
+    mask-image: none;
+}
+
+:global([data-theme="retroMonochrome"]) .actions-container {
+    transition: none;
+}

@@ -58,3 +58,8 @@
     min-height: 0;
     overflow: auto;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .main-content-container {
+    background: var(--retro-bg, #050505) !important;
+}

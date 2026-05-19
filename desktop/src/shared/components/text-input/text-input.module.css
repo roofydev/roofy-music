@@ -37,3 +37,36 @@
 .disabled {
     opacity: 0.6;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .root {
+    transition: none;
+}
+
+:global([data-theme="retroMonochrome"]) .input {
+    background: var(--retro-bg, #050505);
+    color: var(--retro-text, #d0d0d0);
+    border: 1px solid var(--retro-border, #7a7a7a);
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+}
+
+:global([data-theme="retroMonochrome"]) .input:focus,
+:global([data-theme="retroMonochrome"]) .input:focus-visible {
+    border-color: var(--retro-border-bright, #b8b8b8);
+    outline: none;
+    box-shadow: inset 0 0 0 1px var(--retro-border-muted, #3f3f3f);
+}
+
+:global([data-theme="retroMonochrome"]) .label {
+    color: var(--retro-text-soft, #a0a0a0);
+    text-transform: uppercase;
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+}
+
+:global([data-theme="retroMonochrome"]) .section {
+    color: var(--retro-text-muted, #707070);
+}
+
+:global([data-theme="retroMonochrome"]) .required {
+    color: var(--retro-text-muted, #707070);
+}

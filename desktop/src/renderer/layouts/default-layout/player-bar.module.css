@@ -18,3 +18,16 @@
         background: darken(var(--theme-colors-background), 20%);
     }
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .container {
+    background: var(--retro-bg, #050505) !important;
+    border-top: 1px solid var(--retro-border, #7a7a7a);
+    transition: none;
+}
+
+:global([data-theme="retroMonochrome"]) .open-drawer {
+    &:hover {
+        background: var(--retro-panel-2, #101010);
+    }
+}

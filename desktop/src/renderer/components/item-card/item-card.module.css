@@ -16,6 +16,27 @@
     outline-offset: var(--card-gap, var(--theme-spacing-md));
 }
 
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .container {
+    background-color: var(--retro-panel, #0b0b0b) !important;
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    padding: 10px;
+}
+
+:global([data-theme="retroMonochrome"]) .container.selected {
+    outline: 1px solid var(--retro-border-bright, #b8b8b8);
+    outline-offset: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .image-container {
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+}
+
+:global([data-theme="retroMonochrome"]) .favorite-badge {
+    background-color: var(--retro-border, #7a7a7a);
+    box-shadow: none;
+}
+
 .container.dragging {
     opacity: 0.5;
 }

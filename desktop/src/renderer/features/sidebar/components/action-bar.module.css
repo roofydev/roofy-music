@@ -9,3 +9,9 @@
         -webkit-app-region: no-drag;
     }
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .container {
+    background: var(--retro-bg-2, #080808);
+    border-bottom: 1px solid var(--retro-border-dark, #222222);
+}

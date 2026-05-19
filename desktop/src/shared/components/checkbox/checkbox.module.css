@@ -15,3 +15,16 @@
     border: 1px solid var(--theme-colors-border);
     opacity: 0.6;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .input {
+    background: var(--retro-bg, #050505);
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    border-radius: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .input[data-checked='true'] {
+    background: var(--retro-panel-2, #101010);
+    border-color: var(--retro-border-bright, #b8b8b8);
+    color: var(--retro-text-hot, #f1f1f1);
+}

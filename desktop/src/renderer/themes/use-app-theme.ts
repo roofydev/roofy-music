@@ -47,6 +47,7 @@ export const THEME_DATA = [
     { label: 'Rosé Pine', type: 'dark', value: AppTheme.ROSE_PINE },
     { label: 'Rosé Pine Moon', type: 'dark', value: AppTheme.ROSE_PINE_MOON },
     { label: 'Rosé Pine Dawn', type: 'light', value: AppTheme.ROSE_PINE_DAWN },
+    { label: 'Retro Monochrome', type: 'dark', value: AppTheme.RETRO_MONOCHROME },
 ];
 
 export const useAppTheme = (overrideTheme?: AppTheme) => {
@@ -264,6 +265,7 @@ export const useAppTheme = (overrideTheme?: AppTheme) => {
 
     return {
         mode: appTheme?.mode || 'dark',
+        selectedTheme,
         theme: mantineTheme,
     };
 };

@@ -42,3 +42,19 @@
 .items button:focus-visible {
     outline: 2px solid var(--theme-colors-primary);
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .heading {
+    color: var(--retro-text-soft, #a0a0a0);
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    text-transform: uppercase;
+}
+
+:global([data-theme="retroMonochrome"]) .heading:focus-visible {
+    outline: 1px solid var(--retro-border-bright, #b8b8b8);
+    outline-offset: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .items button:focus-visible {
+    outline: 1px solid var(--retro-border-bright, #b8b8b8);
+}

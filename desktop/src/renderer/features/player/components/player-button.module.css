@@ -60,3 +60,36 @@
         display: flex;
     }
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .player-button {
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    color: var(--retro-text-soft, #a0a0a0);
+}
+
+:global([data-theme="retroMonochrome"]) .player-button:focus-visible {
+    outline: 1px solid var(--retro-border-bright, #b8b8b8);
+}
+
+:global([data-theme="retroMonochrome"]) .player-button.active svg {
+    fill: var(--retro-border-bright, #b8b8b8);
+}
+
+:global([data-theme="retroMonochrome"]) .main {
+    background: var(--retro-text, #d0d0d0) !important;
+    border-radius: 0 !important;
+    border: 1px solid var(--retro-border-bright, #b8b8b8);
+}
+
+:global([data-theme="retroMonochrome"]) .main svg {
+    color: var(--retro-bg, #050505);
+    fill: var(--retro-bg, #050505);
+}
+
+:global([data-theme="retroMonochrome"]) .secondary {
+    color: var(--retro-text-soft, #a0a0a0);
+}
+
+:global([data-theme="retroMonochrome"]) .secondary svg {
+    color: var(--retro-text-soft, #a0a0a0);
+}

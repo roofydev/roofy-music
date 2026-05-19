@@ -103,3 +103,18 @@
 .title-wrapper.hidden {
     display: none;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .container {
+    background: var(--retro-bg, #050505) !important;
+    border-bottom: 1px solid var(--retro-border, #7a7a7a);
+}
+
+:global([data-theme="retroMonochrome"]) .background-image {
+    background: var(--retro-bg, #050505) !important;
+}
+
+:global([data-theme="retroMonochrome"]) .background-image-overlay.light,
+:global([data-theme="retroMonochrome"]) .background-image-overlay.dark {
+    background: none;
+}
