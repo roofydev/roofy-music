@@ -69,7 +69,7 @@ jobs:
 
           # --- Navidrome ---
           Write-Host 'Fetching latest Navidrome release...'
-          $ndRelease = Invoke-RestMethod -Uri 'https://api.github.com/repos/navidrome/navidrome/releases/latest'
+          $ndRelease = Invoke-RestMethod -Uri 'https://api.github.com/repos/navidrome/navidrome/releases/latest' -Headers @{ Authorization = 'Bearer ${{ secrets.GITHUB_TOKEN }}' }
           $ndAsset = $ndRelease.assets | Where-Object { $_.name -like '*windows_amd64.zip' } | Select-Object -First 1
           if (-not $ndAsset) { throw 'Could not find Navidrome Windows amd64 asset' }
           Invoke-WebRequest -Uri $ndAsset.browser_download_url -OutFile 'navidrome.zip'
@@ -96,7 +96,7 @@ jobs:
 
           # --- Deno ---
           Write-Host 'Fetching latest Deno release...'
-          $denoRelease = Invoke-RestMethod -Uri 'https://api.github.com/repos/denoland/deno/releases/latest'
+          $denoRelease = Invoke-RestMethod -Uri 'https://api.github.com/repos/denoland/deno/releases/latest' -Headers @{ Authorization = 'Bearer ${{ secrets.GITHUB_TOKEN }}' }
           $denoAsset = $denoRelease.assets | Where-Object { $_.name -eq 'deno-x86_64-pc-windows-msvc.zip' } | Select-Object -First 1
           if (-not $denoAsset) { throw 'Could not find Deno Windows x64 asset' }
           Invoke-WebRequest -Uri $denoAsset.browser_download_url -OutFile 'deno.zip'
@@ -156,7 +156,7 @@ jobs:
 
           # --- Navidrome ---
           echo 'Fetching latest Navidrome release...'
-          ND_RELEASE=$(curl -s https://api.github.com/repos/navidrome/navidrome/releases/latest)
+          ND_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/navidrome/navidrome/releases/latest)
 
           # Defensive: print raw response if assets are missing (helps debug rate limits / API errors)
           HAS_ASSETS=$(printf '%s' "$ND_RELEASE" | node -e "const fs = require('fs'); const data = JSON.parse(fs.readFileSync(0, 'utf8')); console.log(Array.isArray(data.assets) ? 'yes' : 'no');")
