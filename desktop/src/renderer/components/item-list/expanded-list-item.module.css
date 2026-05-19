@@ -10,3 +10,9 @@
     background-color: var(--theme-colors-surface);
     border-radius: var(--theme-radius-md);
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .inner {
+    background-color: var(--retro-panel, #0b0b0b);
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+}

@@ -1,3 +1,8 @@
 .root {
     --divider-color: var(--theme-colors-border);
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .root {
+    --divider-color: var(--retro-border-dark, #222222);
+}

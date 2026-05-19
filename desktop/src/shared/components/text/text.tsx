@@ -17,7 +17,7 @@ export interface TextProps extends MantineTextDivProps {
     weight?: number;
 }
 
-type Font = 'Epilogue' | 'Gotham' | 'Inter' | 'Poppins';
+type Font = 'Epilogue' | 'Gotham' | 'IBM Plex Mono' | 'Inter' | 'Poppins';
 
 type MantineTextDivProps = ComponentPropsWithoutRef<'div'> & MantineTextProps;
 

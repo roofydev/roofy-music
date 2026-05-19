@@ -72,3 +72,11 @@
 .skeleton-wrapper.rtl {
     direction: rtl;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .skeleton {
+    --base-color: var(--retro-panel, #0b0b0b) !important;
+    --highlight-color: var(--retro-panel-2, #101010) !important;
+    border: 1px solid var(--retro-border-dark, #222222);
+    border-radius: 0 !important;
+}

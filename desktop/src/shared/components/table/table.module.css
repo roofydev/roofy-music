@@ -6,3 +6,22 @@
     padding: var(--theme-spacing-xs) var(--theme-spacing-sm);
     background-color: initial;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .th {
+    background: var(--retro-panel-2, #101010);
+    color: var(--retro-text-hot, #f1f1f1);
+    text-transform: uppercase;
+    font-size: 12px;
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    border-bottom: 1px solid var(--retro-border-dark, #222222);
+    border-right: 1px solid var(--retro-border-dark, #222222);
+}
+
+:global([data-theme="retroMonochrome"]) .td {
+    color: var(--retro-text, #d0d0d0);
+    font-size: 13px;
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    border-bottom: 1px solid var(--retro-border-dark, #222222);
+    border-right: 1px solid var(--retro-border-dark, #222222);
+}

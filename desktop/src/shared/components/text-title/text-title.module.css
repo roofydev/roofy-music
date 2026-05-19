@@ -25,3 +25,15 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .root {
+    color: var(--retro-text-hot, #f1f1f1);
+    transition: none;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+:global([data-theme="retroMonochrome"]) .muted {
+    color: var(--retro-text-muted, #707070);
+}

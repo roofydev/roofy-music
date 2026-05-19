@@ -60,3 +60,33 @@
 .menu-item-section svg {
     font-size: var(--theme-font-size-sm);
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .menu-dropdown {
+    background: var(--retro-panel, #0b0b0b);
+    color: var(--retro-text, #d0d0d0);
+    border: 1px solid var(--retro-border, #7a7a7a);
+    filter: none;
+}
+
+:global([data-theme="retroMonochrome"]) .menu-item {
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+}
+
+:global([data-theme="retroMonochrome"]) .menu-item:hover {
+    background: var(--retro-panel-2, #101010);
+    color: var(--retro-text-hot, #f1f1f1);
+}
+
+:global([data-theme="retroMonochrome"]) .selected::before {
+    background-color: var(--retro-border-bright, #b8b8b8);
+    border-radius: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .menu-item-label-danger {
+    color: var(--retro-text-muted, #707070);
+}
+
+:global([data-theme="retroMonochrome"]) .menu-divider {
+    border-color: var(--retro-border-dark, #222222);
+}

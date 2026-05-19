@@ -86,3 +86,9 @@
 .indicator-track:active {
     cursor: grabbing;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .indicator-track {
+    background-color: var(--retro-border-muted, #3f3f3f);
+    border-radius: 0;
+}

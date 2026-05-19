@@ -38,3 +38,9 @@
     height: 100%;
     overflow: hidden;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .container {
+    background: var(--retro-bg, #050505) !important;
+    border-top: 1px solid var(--retro-border, #7a7a7a) !important;
+}

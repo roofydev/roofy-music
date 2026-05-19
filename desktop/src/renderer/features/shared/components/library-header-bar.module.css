@@ -15,3 +15,8 @@
     align-items: center;
     justify-content: center;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .header-container {
+    border-bottom: 1px solid var(--retro-border-dark, #222222);
+}

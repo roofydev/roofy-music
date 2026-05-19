@@ -2,3 +2,10 @@
     color: var(--theme-colors-surface-foreground);
     background: var(--theme-colors-surface);
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .root {
+    background: var(--retro-panel, #0b0b0b);
+    color: var(--retro-text, #d0d0d0);
+    border: 1px solid var(--retro-border, #7a7a7a);
+}

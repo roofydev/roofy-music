@@ -89,3 +89,33 @@
     line-height: 1.2;
     color: var(--theme-colors-foreground-muted);
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .divider {
+    border-top: 1px solid var(--retro-border-dark, #222222);
+}
+
+:global([data-theme="retroMonochrome"]) .preview {
+    background: var(--retro-panel, #0b0b0b);
+}
+
+:global([data-theme="retroMonochrome"]) .image-container {
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    box-shadow: none;
+}
+
+:global([data-theme="retroMonochrome"]) .icon-container {
+    background: var(--retro-panel, #0b0b0b);
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    box-shadow: none;
+}
+
+:global([data-theme="retroMonochrome"]) .name {
+    color: var(--retro-text, #d0d0d0);
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+}
+
+:global([data-theme="retroMonochrome"]) .count {
+    color: var(--retro-text-muted, #707070);
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+}

@@ -1,0 +1,71 @@
+import retroOverridesCss from './retro_overrides.css?inline';
+
+import { AppThemeConfiguration } from '/@/shared/themes/app-theme-types';
+
+export const retroMonochrome: AppThemeConfiguration = {
+    app: {
+        'content-max-width': '1800px',
+        'overlay-header': 'none',
+        'overlay-subheader': 'none',
+        'root-font-size': '14px',
+        'scrollbar-handle-active-background': 'var(--retro-border)',
+        'scrollbar-handle-background': 'var(--retro-border-muted)',
+        'scrollbar-handle-border-radius': '0',
+        'scrollbar-handle-hover-background': 'var(--retro-border)',
+        'scrollbar-size': '10px',
+        'scrollbar-track-active-background': 'var(--retro-bg)',
+        'scrollbar-track-background': 'var(--retro-bg)',
+        'scrollbar-track-border-radius': '0',
+        'scrollbar-track-hover-background': 'var(--retro-bg)',
+    },
+    colors: {
+        background: '#050505',
+        'background-alternate': '#080808',
+        black: '#000000',
+        foreground: '#D0D0D0',
+        'foreground-muted': '#A0A0A0',
+        primary: '#B8B8B8',
+        'state-error': '#707070',
+        'state-info': '#A0A0A0',
+        'state-success': '#C8C8C8',
+        'state-warning': '#707070',
+        surface: '#0B0B0B',
+        'surface-foreground': '#D0D0D0',
+        white: '#F1F1F1',
+    },
+    mantineOverride: {
+        defaultRadius: 0,
+        fontFamily: '"IBM Plex Mono", "Courier New", monospace',
+        headings: {
+            fontFamily: '"IBM Plex Mono", "Courier New", monospace',
+            fontWeight: '700',
+            sizes: {
+                h1: { fontSize: '2rem', fontWeight: '700', lineHeight: '1.2' },
+                h2: { fontSize: '1.75rem', fontWeight: '700', lineHeight: '1.2' },
+                h3: { fontSize: '1.5rem', fontWeight: '700', lineHeight: '1.2' },
+                h4: { fontSize: '1.25rem', fontWeight: '700', lineHeight: '1.2' },
+                h5: { fontSize: '1rem', fontWeight: '700', lineHeight: '1.2' },
+                h6: { fontSize: '0.875rem', fontWeight: '700', lineHeight: '1.2' },
+            },
+        },
+        primaryColor: 'dark',
+        primaryShade: { dark: 5, light: 9 },
+        radius: {
+            lg: '0px',
+            md: '0px',
+            sm: '0px',
+            xl: '0px',
+            xs: '0px',
+        },
+        shadows: {
+            lg: 'none',
+            md: 'none',
+            sm: 'none',
+            xl: 'none',
+            xs: 'none',
+            xxl: 'none',
+        },
+    },
+    mode: 'dark',
+    stylesheets: [retroOverridesCss],
+};

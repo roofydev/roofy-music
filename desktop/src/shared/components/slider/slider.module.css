@@ -15,3 +15,25 @@
     background: var(--theme-colors-surface);
     box-shadow: 4px 4px 10px 0 rgb(0 0 0 / 20%);
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .track {
+    background: var(--retro-bg, #050505);
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    height: 16px;
+}
+
+:global([data-theme="retroMonochrome"]) .thumb {
+    background: var(--retro-border-bright, #b8b8b8);
+    border-radius: 0;
+    width: 4px;
+    height: 14px;
+}
+
+:global([data-theme="retroMonochrome"]) .label {
+    background: var(--retro-panel, #0b0b0b);
+    color: var(--retro-text, #d0d0d0);
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    box-shadow: none;
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+}

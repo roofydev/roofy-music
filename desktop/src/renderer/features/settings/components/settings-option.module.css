@@ -7,3 +7,8 @@
     margin-left: var(--theme-spacing-md);
     border-left: 2px solid var(--theme-colors-surface);
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .row-indented {
+    border-left: 1px solid var(--retro-border-muted, #3f3f3f);
+}

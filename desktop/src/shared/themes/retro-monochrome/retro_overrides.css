@@ -1,0 +1,453 @@
+/* stylelint-disable selector-class-pattern */
+
+/* ============================================================
+   Retro Monochrome Theme — Global Overrides
+   Forces zero radius, monochrome palette, and terminal styling
+   across all Mantine and app components.
+   ============================================================ */
+
+/* --- Global resets when retro theme is active --- */
+[data-theme="retroMonochrome"] {
+    --retro-bg: #050505;
+    --retro-bg-2: #080808;
+    --retro-bg-3: #0d0d0d;
+    --retro-panel: #0b0b0b;
+    --retro-panel-2: #101010;
+    --retro-panel-3: #151515;
+    --retro-border-bright: #b8b8b8;
+    --retro-border: #7a7a7a;
+    --retro-border-muted: #3f3f3f;
+    --retro-border-dark: #222222;
+    --retro-text-hot: #f1f1f1;
+    --retro-text: #d0d0d0;
+    --retro-text-soft: #a0a0a0;
+    --retro-text-muted: #707070;
+    --retro-text-dim: #4a4a4a;
+    --retro-active: #d8d8a0;
+    --retro-active-muted: #9a9a72;
+
+    --theme-content-font-family: "IBM Plex Mono", "Courier New", monospace !important;
+
+    scrollbar-width: thin;
+    scrollbar-color: var(--retro-border-muted) var(--retro-bg);
+}
+
+/* WebKit scrollbars */
+[data-theme="retroMonochrome"] ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+[data-theme="retroMonochrome"] ::-webkit-scrollbar-track {
+    background: var(--retro-bg);
+}
+
+[data-theme="retroMonochrome"] ::-webkit-scrollbar-thumb {
+    background: var(--retro-border-muted);
+    border: 1px solid var(--retro-border);
+}
+
+[data-theme="retroMonochrome"] ::-webkit-scrollbar-thumb:hover {
+    background: var(--retro-border);
+}
+
+/* --- Kill all rounded corners globally --- */
+[data-theme="retroMonochrome"] *,
+[data-theme="retroMonochrome"] *::before,
+[data-theme="retroMonochrome"] *::after {
+    border-radius: 0 !important;
+}
+
+/* --- Kill all box shadows globally --- */
+[data-theme="retroMonochrome"] * {
+    box-shadow: none !important;
+}
+
+/* --- Kill all backdrop-filter blur globally --- */
+[data-theme="retroMonochrome"] * {
+    backdrop-filter: none !important;
+}
+
+/* --- Kill drop-shadow filters on images/cards --- */
+[data-theme="retroMonochrome"] .fs-feature-carousel-module-album-image-container,
+[data-theme="retroMonochrome"] .fs-item-card-module-image-container img,
+[data-theme="retroMonochrome"] .fs-image-module-image {
+    filter: none !important;
+}
+
+/* --- Body / root background --- */
+[data-theme="retroMonochrome"] body,
+[data-theme="retroMonochrome"] html {
+    background: var(--retro-bg) !important;
+    color: var(--retro-text) !important;
+    font-family: "IBM Plex Mono", "Courier New", monospace !important;
+    -webkit-font-smoothing: none;
+    text-rendering: geometricPrecision;
+    letter-spacing: 0.025em;
+}
+
+/* --- Mantine component overrides --- */
+
+/* Buttons */
+[data-theme="retroMonochrome"] .mantine-Button-root {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 1px solid var(--retro-border) !important;
+    background: var(--retro-panel) !important;
+    color: var(--retro-text) !important;
+    font-family: var(--theme-content-font-family) !important;
+    transition: none !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Button-root:hover {
+    background: var(--retro-panel-2) !important;
+    border-color: var(--retro-border-bright) !important;
+    color: var(--retro-text-hot) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Button-root:active {
+    transform: translateY(1px) !important;
+    background: var(--retro-panel-3) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Button-root[data-disabled="true"] {
+    color: var(--retro-text-dim) !important;
+    border-color: var(--retro-border-dark) !important;
+}
+
+/* Inputs */
+[data-theme="retroMonochrome"] .mantine-Input-input,
+[data-theme="retroMonochrome"] .mantine-TextInput-input,
+[data-theme="retroMonochrome"] .mantine-Textarea-input,
+[data-theme="retroMonochrome"] .mantine-Select-input,
+[data-theme="retroMonochrome"] .mantine-MultiSelect-input {
+    background: var(--retro-bg) !important;
+    color: var(--retro-text) !important;
+    border: 1px solid var(--retro-border) !important;
+    font-family: var(--theme-content-font-family) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Input-input:focus,
+[data-theme="retroMonochrome"] .mantine-TextInput-input:focus,
+[data-theme="retroMonochrome"] .mantine-Textarea-input:focus {
+    border-color: var(--retro-border-bright) !important;
+    outline: none !important;
+    box-shadow: inset 0 0 0 1px var(--retro-border-muted) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Input-input::placeholder {
+    color: var(--retro-text-dim) !important;
+}
+
+/* Modals */
+[data-theme="retroMonochrome"] .mantine-Modal-content {
+    background: var(--retro-panel) !important;
+    border: 1px solid var(--retro-border-bright) !important;
+    color: var(--retro-text) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Modal-header {
+    background: var(--retro-panel) !important;
+    border-bottom: 1px solid var(--retro-border) !important;
+    text-transform: uppercase;
+    font-family: var(--theme-content-font-family) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Modal-overlay {
+    background: rgba(0, 0, 0, 0.85) !important;
+    backdrop-filter: none !important;
+}
+
+/* Checkbox / Switch */
+[data-theme="retroMonochrome"] .mantine-Checkbox-input {
+    background: var(--retro-bg) !important;
+    border: 1px solid var(--retro-border-muted) !important;
+    width: 24px;
+    height: 24px;
+}
+
+[data-theme="retroMonochrome"] .mantine-Checkbox-input:checked {
+    background: var(--retro-panel-2) !important;
+    border-color: var(--retro-border-bright) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Checkbox-icon {
+    color: var(--retro-text-hot) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Switch-track {
+    background: var(--retro-bg) !important;
+    border: 1px solid var(--retro-border-muted) !important;
+    width: 40px;
+    height: 24px;
+}
+
+[data-theme="retroMonochrome"] .mantine-Switch-track[data-checked="true"] {
+    background: var(--retro-panel-2) !important;
+    border-color: var(--retro-border-bright) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Switch-thumb {
+    background: var(--retro-border) !important;
+    border: 1px solid var(--retro-border-bright) !important;
+    width: 18px;
+    height: 18px;
+}
+
+/* Slider */
+[data-theme="retroMonochrome"] .mantine-Slider-track {
+    background: var(--retro-bg) !important;
+    border: 1px solid var(--retro-border-muted) !important;
+    height: 16px;
+}
+
+[data-theme="retroMonochrome"] .mantine-Slider-bar {
+    background: var(--retro-border) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Slider-thumb {
+    background: var(--retro-border-bright) !important;
+    border: 1px solid var(--retro-border-bright) !important;
+    width: 4px;
+    height: 14px;
+    border-radius: 0 !important;
+}
+
+/* Table */
+[data-theme="retroMonochrome"] .mantine-Table-table {
+    border-collapse: collapse;
+    background: var(--retro-panel);
+    border: 1px solid var(--retro-border);
+}
+
+[data-theme="retroMonochrome"] .mantine-Table-th {
+    background: var(--retro-panel-2) !important;
+    color: var(--retro-text-hot) !important;
+    text-transform: uppercase;
+    font-size: 12px;
+    border-bottom: 1px solid var(--retro-border-dark) !important;
+    border-right: 1px solid var(--retro-border-dark) !important;
+    font-family: var(--theme-content-font-family) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Table-td {
+    color: var(--retro-text) !important;
+    font-size: 13px;
+    border-bottom: 1px solid var(--retro-border-dark) !important;
+    border-right: 1px solid var(--retro-border-dark) !important;
+}
+
+/* Tabs */
+[data-theme="retroMonochrome"] .mantine-Tabs-tab {
+    background: var(--retro-panel) !important;
+    color: var(--retro-text-soft) !important;
+    border: 1px solid var(--retro-border) !important;
+    border-right: 1px solid var(--retro-border-muted) !important;
+    text-transform: uppercase;
+    font-family: var(--theme-content-font-family) !important;
+    transition: none !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Tabs-tab[data-active="true"] {
+    color: var(--retro-active) !important;
+    background: rgba(216, 216, 160, 0.08) !important;
+}
+
+/* Tooltip */
+[data-theme="retroMonochrome"] .mantine-Tooltip-tooltip {
+    background: var(--retro-panel-2) !important;
+    border: 1px solid var(--retro-border-muted) !important;
+    color: var(--retro-text) !important;
+    font-family: var(--theme-content-font-family) !important;
+}
+
+/* Badge */
+[data-theme="retroMonochrome"] .mantine-Badge-root {
+    background: var(--retro-panel) !important;
+    border: 1px solid var(--retro-border-muted) !important;
+    color: var(--retro-text-soft) !important;
+    text-transform: uppercase;
+    font-family: var(--theme-content-font-family) !important;
+}
+
+/* Paper / Card surfaces */
+[data-theme="retroMonochrome"] .mantine-Paper-root {
+    background: var(--retro-panel) !important;
+    border: 1px solid var(--retro-border) !important;
+    color: var(--retro-text) !important;
+}
+
+/* Popover / Dropdown */
+[data-theme="retroMonochrome"] .mantine-Popover-dropdown,
+[data-theme="retroMonochrome"] .mantine-Menu-dropdown {
+    background: var(--retro-panel) !important;
+    border: 1px solid var(--retro-border) !important;
+    color: var(--retro-text) !important;
+}
+
+/* Divider */
+[data-theme="retroMonochrome"] .mantine-Divider-root {
+    border-color: var(--retro-border-muted) !important;
+}
+
+/* Notifications */
+[data-theme="retroMonochrome"] .mantine-Notification-root {
+    background: var(--retro-panel) !important;
+    border: 1px solid var(--retro-border) !important;
+    color: var(--retro-text) !important;
+}
+
+/* SegmentedControl */
+[data-theme="retroMonochrome"] .mantine-SegmentedControl-root {
+    background: var(--retro-bg) !important;
+    border: 1px solid var(--retro-border) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-SegmentedControl-indicator {
+    background: var(--retro-panel-2) !important;
+    border: 1px solid var(--retro-border-bright) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-SegmentedControl-label {
+    color: var(--retro-text-soft) !important;
+    font-family: var(--theme-content-font-family) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-SegmentedControl-label[data-active="true"] {
+    color: var(--retro-text-hot) !important;
+}
+
+/* Accordion */
+[data-theme="retroMonochrome"] .mantine-Accordion-item {
+    background: var(--retro-panel) !important;
+    border: 1px solid var(--retro-border) !important;
+    border-bottom: 0 !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Accordion-item:last-child {
+    border-bottom: 1px solid var(--retro-border) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Accordion-control {
+    color: var(--retro-text) !important;
+    font-family: var(--theme-content-font-family) !important;
+}
+
+/* Progress bar */
+[data-theme="retroMonochrome"] .mantine-Progress-section {
+    background: var(--retro-border) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Progress-track {
+    background: var(--retro-bg) !important;
+    border: 1px solid var(--retro-border-muted) !important;
+}
+
+/* Skeleton loader */
+[data-theme="retroMonochrome"] .mantine-Skeleton-root {
+    background: var(--retro-panel) !important;
+    border: 1px solid var(--retro-border-dark) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Skeleton-root::after {
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--retro-panel-2),
+        transparent
+    ) !important;
+}
+
+/* --- App-specific overrides --- */
+
+/* Sidebar */
+[data-theme="retroMonochrome"] .fs-sidebar-module-container {
+    background: var(--retro-bg-2) !important;
+    border-right: 1px solid var(--retro-border) !important;
+}
+
+[data-theme="retroMonochrome"] .fs-sidebar-module-accordion-content a {
+    color: var(--retro-text-soft) !important;
+    border-bottom: 1px solid var(--retro-border-dark) !important;
+    text-transform: uppercase;
+    font-family: var(--theme-content-font-family) !important;
+}
+
+[data-theme="retroMonochrome"] .fs-sidebar-module-accordion-content a[data-active="true"] {
+    color: var(--retro-active) !important;
+    background: rgba(216, 216, 160, 0.08) !important;
+    box-shadow: inset 3px 0 0 var(--retro-active-muted) !important;
+}
+
+/* Player bar */
+[data-theme="retroMonochrome"] .fs-player-bar-module-container {
+    background: var(--retro-bg) !important;
+    border-top: 1px solid var(--retro-border) !important;
+}
+
+/* Main content */
+[data-theme="retroMonochrome"] .fs-main-content-module-main-content-container {
+    background: var(--retro-bg) !important;
+}
+
+/* Item cards / images */
+[data-theme="retroMonochrome"] .fs-item-card-module-image-container img,
+[data-theme="retroMonochrome"] .fs-image-module-image,
+[data-theme="retroMonochrome"] .mantine-Center-root img {
+    border: 1px solid var(--retro-border-muted) !important;
+    background: var(--retro-bg) !important;
+}
+
+/* Window bar */
+[data-theme="retroMonochrome"] .fs-window-bar-module-window-bar {
+    background: var(--retro-bg-2) !important;
+    border-bottom: 1px solid var(--retro-border) !important;
+}
+
+/* Page headers / overlays */
+[data-theme="retroMonochrome"] .fs-page-header-module-container {
+    background: var(--retro-bg) !important;
+}
+
+/* Context menu */
+[data-theme="retroMonochrome"] .fs-context-menu-module-content {
+    background: var(--retro-panel) !important;
+    border: 1px solid var(--retro-border) !important;
+}
+
+/* Command palette / search */
+[data-theme="retroMonochrome"] [cmdk-item][data-selected] {
+    background: var(--retro-panel-2) !important;
+    color: var(--retro-text-hot) !important;
+}
+
+[data-theme="retroMonochrome"] [cmdk-list] {
+    background: var(--retro-panel) !important;
+}
+
+/* Expanded list item */
+[data-theme="retroMonochrome"] .fs-expanded-list-item-module-container {
+    background: var(--retro-panel) !important;
+    border: 1px solid var(--retro-border) !important;
+}
+
+/* Action bar */
+[data-theme="retroMonochrome"] .fs-action-bar-module-container {
+    background: var(--retro-panel) !important;
+    border: 1px solid var(--retro-border) !important;
+}
+
+/* Full-screen player */
+[data-theme="retroMonochrome"] .fs-full-screen-player-module-container {
+    background: var(--retro-bg) !important;
+}
+
+[data-theme="retroMonochrome"] .fs-full-screen-player-image-module-image {
+    border: 1px solid var(--retro-border-muted) !important;
+}
+
+/* Drawer / side panels */
+[data-theme="retroMonochrome"] .mantine-Drawer-content {
+    background: var(--retro-panel) !important;
+    border-left: 1px solid var(--retro-border) !important;
+}

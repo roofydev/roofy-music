@@ -33,3 +33,9 @@
     width: 100%;
     height: 100%;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .scroll-area {
+    scrollbar-width: thin;
+    scrollbar-color: var(--retro-border-muted, #3f3f3f) var(--retro-bg, #050505);
+}

@@ -25,3 +25,16 @@
 .lyric-line:global(.synchronized) {
     cursor: pointer;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .lyric-line {
+    color: var(--retro-text-muted, #707070);
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    transition: none;
+    transform: none;
+}
+
+:global([data-theme="retroMonochrome"]) .lyric-line:global(.active) {
+    color: var(--retro-text-hot, #f1f1f1);
+    text-shadow: 0 0 8px var(--retro-border-bright, #b8b8b8);
+}

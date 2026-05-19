@@ -16,6 +16,7 @@ import { useNativeMenuSync } from '/@/renderer/hooks/use-native-menu-sync';
 import { useSyncSettingsToMain } from '/@/renderer/hooks/use-sync-settings-to-main';
 import { AppRouter } from '/@/renderer/router/app-router';
 import { useCssSettings, useHotkeySettings, useLanguage } from '/@/renderer/store';
+import { CrtOverlay } from '/@/renderer/components/crt-overlay/crt-overlay';
 import { useAppTheme } from '/@/renderer/themes/use-app-theme';
 import { sanitizeCss } from '/@/renderer/utils/sanitize';
 import { WebAudio } from '/@/shared/types/types';
@@ -37,11 +38,13 @@ export const App = () => {
 };
 
 const ThemedApp = () => {
-    const { mode, theme } = useAppTheme();
+    const { mode, selectedTheme, theme } = useAppTheme();
+    const isRetro = selectedTheme === 'retroMonochrome';
 
     return (
         <MantineProvider forceColorScheme={mode} theme={theme}>
             <AppShell />
+            {isRetro && <CrtOverlay />}
         </MantineProvider>
     );
 };

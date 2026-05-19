@@ -7,3 +7,12 @@
     box-shadow: 2px 2px 10px 2px rgb(0 0 0 / 40%);
     filter: drop-shadow(0 0 5px rgb(0 0 0 / 50%));
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .dropdown {
+    background: var(--retro-panel, #0b0b0b);
+    color: var(--retro-text, #d0d0d0);
+    border: 1px solid var(--retro-border, #7a7a7a);
+    box-shadow: none;
+    filter: none;
+}

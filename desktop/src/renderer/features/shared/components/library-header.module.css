@@ -188,3 +188,23 @@
         justify-content: space-between;
     }
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .image-section {
+    filter: none;
+}
+
+:global([data-theme="retroMonochrome"]) .image {
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    border-radius: 0 !important;
+}
+
+:global([data-theme="retroMonochrome"]) .image-overlay {
+    transition: none;
+}
+
+:global([data-theme="retroMonochrome"]) .title {
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-weight: 700;
+    text-transform: uppercase;
+}

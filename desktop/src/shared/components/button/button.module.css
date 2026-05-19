@@ -165,6 +165,63 @@
     transition-duration: 0;
 }
 
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .root {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    transition: none;
+    border-radius: 0 !important;
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='default'] {
+    color: var(--retro-text, #d0d0d0);
+    background-color: var(--retro-panel, #0b0b0b);
+    border: 1px solid var(--retro-border, #7a7a7a);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='default']:hover {
+    background: var(--retro-panel-2, #101010);
+    color: var(--retro-text-hot, #f1f1f1);
+    border-color: var(--retro-border-bright, #b8b8b8);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='filled'] {
+    background: var(--retro-border, #7a7a7a);
+    color: var(--retro-bg, #050505);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='filled']:hover {
+    background: var(--retro-border-bright, #b8b8b8);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='outline'] {
+    color: var(--retro-text, #d0d0d0);
+    border: 1px solid var(--retro-border, #7a7a7a);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='subtle'] {
+    color: var(--retro-text, #d0d0d0);
+    background: transparent;
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='subtle']:hover {
+    background: var(--retro-panel-2, #101010);
+    color: var(--retro-text-hot, #f1f1f1);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='transparent'] {
+    color: var(--retro-text-soft, #a0a0a0);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='state-error'] {
+    background: var(--retro-text-muted, #707070);
+    color: var(--retro-bg, #050505);
+}
+
+:global([data-theme="retroMonochrome"]) .label {
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+}
+
 .section {
     display: flex;
     margin-inline-end: var(--theme-spacing-sm);
