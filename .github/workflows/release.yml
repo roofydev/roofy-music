@@ -157,6 +157,16 @@ jobs:
           # --- Navidrome ---
           echo 'Fetching latest Navidrome release...'
           ND_RELEASE=$(curl -s https://api.github.com/repos/navidrome/navidrome/releases/latest)
+
+          # Defensive: print raw response if assets are missing (helps debug rate limits / API errors)
+          HAS_ASSETS=$(printf '%s' "$ND_RELEASE" | node -e "const fs = require('fs'); const data = JSON.parse(fs.readFileSync(0, 'utf8')); console.log(Array.isArray(data.assets) ? 'yes' : 'no');")
+          if [ "$HAS_ASSETS" != "yes" ]; then
+            echo 'ERROR: Navidrome release API did not return assets. Raw response:'
+            printf '%s' "$ND_RELEASE" | head -c 2000
+            echo ''
+            exit 1
+          fi
+
           ND_ARM64=$(printf '%s' "$ND_RELEASE" | node -e "const fs = require('fs'); const data = JSON.parse(fs.readFileSync(0, 'utf8')); const asset = data.assets.find((item) => /darwin_arm64/.test(item.name)); if (asset) console.log(asset.browser_download_url);")
           ND_AMD64=$(printf '%s' "$ND_RELEASE" | node -e "const fs = require('fs'); const data = JSON.parse(fs.readFileSync(0, 'utf8')); const asset = data.assets.find((item) => /darwin_amd64/.test(item.name)); if (asset) console.log(asset.browser_download_url);")
           if [ -z "$ND_ARM64" ]; then echo 'Could not find Navidrome darwin_arm64 asset'; exit 1; fi
