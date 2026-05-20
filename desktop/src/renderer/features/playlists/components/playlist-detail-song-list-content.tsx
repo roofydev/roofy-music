@@ -23,6 +23,7 @@ import {
     ListPaginationType,
     TableColumn,
 } from '/@/shared/types/types';
+import { YOUTUBE_MUSIC_SOURCE_ID } from '/@/shared/types/youtube-music-types';
 
 const PlaylistDetailSongListTable = lazy(() =>
     import('/@/renderer/features/playlists/components/playlist-detail-song-list-table').then(
@@ -52,13 +53,16 @@ export const PlaylistDetailSongListContent = () => {
     const { playlistId } = useParams() as { playlistId: string };
     const server = useCurrentServer();
     const queryClient = useQueryClient();
+    const playlistServerId = playlistId.startsWith('ytm-playlist:')
+        ? YOUTUBE_MUSIC_SOURCE_ID
+        : server?.id;
 
     const playlistSongsQuery = useSuspenseQuery(
         playlistsQueries.songList({
             query: {
                 id: playlistId,
             },
-            serverId: server?.id,
+            serverId: playlistServerId,
         }),
     );
 
@@ -75,7 +79,7 @@ export const PlaylistDetailSongListContent = () => {
                 query: {
                     id: playlistId,
                 },
-                serverId: server?.id,
+                serverId: playlistServerId,
             }).queryKey;
 
             await queryClient.invalidateQueries({ queryKey });
@@ -87,7 +91,7 @@ export const PlaylistDetailSongListContent = () => {
         return () => {
             eventEmitter.off('ITEM_LIST_REFRESH', handleRefresh);
         };
-    }, [playlistId, queryClient, server?.id]);
+    }, [playlistId, playlistServerId, queryClient]);
 
     return (
         <Suspense fallback={<Spinner container />}>

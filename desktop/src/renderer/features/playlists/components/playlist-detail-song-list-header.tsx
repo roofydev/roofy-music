@@ -33,6 +33,7 @@ import { useLocalStorage } from '/@/shared/hooks/use-local-storage';
 import { LibraryItem, Playlist, Song } from '/@/shared/types/domain-types';
 import { ServerFeature } from '/@/shared/types/features-types';
 import { Play } from '/@/shared/types/types';
+import { YOUTUBE_MUSIC_SOURCE_ID } from '/@/shared/types/youtube-music-types';
 
 interface PlaylistDetailSongListHeaderProps {
     isSmartPlaylist?: boolean;
@@ -104,9 +105,12 @@ export const PlaylistDetailSongListHeader = ({
     const { itemCount, listData } = useListContext();
     const server = useCurrentServer();
     const location = useLocation();
+    const playlistServerId = playlistId.startsWith('ytm-playlist:')
+        ? YOUTUBE_MUSIC_SOURCE_ID
+        : server?.id;
 
     const detailQuery = useQuery({
-        ...playlistsQueries.detail({ query: { id: playlistId }, serverId: server?.id }),
+        ...playlistsQueries.detail({ query: { id: playlistId }, serverId: playlistServerId }),
         placeholderData: location.state?.item,
     });
 

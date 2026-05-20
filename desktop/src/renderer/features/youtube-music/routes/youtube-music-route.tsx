@@ -67,11 +67,17 @@ const YoutubeMusicRoute = () => {
     };
 
     const handleDownload = async (song: Song) => {
-        const input = song.youtubeMusic?.watchUrl;
-        if (!input || !window.api?.localFirst) return;
+        const videoId = song.youtubeMusic?.videoId;
+        if (!videoId || !window.api?.youtubeMusic?.downloadTrack) return;
         try {
-            await window.api.localFirst.createImport({ input });
-            toast.success({ message: 'Added to import queue' });
+            await window.api.youtubeMusic.downloadTrack({
+                album: song.album || undefined,
+                artist: song.artistName || song.albumArtistName || 'Unknown Artist',
+                sourceTrackId: song.id,
+                title: song.name,
+                videoId,
+            });
+            toast.success({ message: 'Queued local import' });
         } catch (error) {
             toast.error({ message: (error as Error).message });
         }
@@ -88,9 +94,11 @@ const YoutubeMusicRoute = () => {
                                     YouTube Music
                                 </Text>
                                 <Badge>{status?.connected ? 'Connected' : 'Disconnected'}</Badge>
+                                <Badge>Remote preview</Badge>
                             </Group>
                             <Text isMuted size="sm">
-                                Native streaming source rendered in the Roofy Music interface.
+                                Stream tracks before importing them into your local Navidrome
+                                library.
                             </Text>
                         </Stack>
                         {!status?.connected && (

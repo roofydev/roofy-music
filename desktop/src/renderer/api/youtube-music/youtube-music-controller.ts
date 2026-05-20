@@ -42,6 +42,7 @@ export const YoutubeMusicController: Partial<InternalControllerEndpoint> = {
     },
     getPlaylistList: async () => ({ items: [], startIndex: 0, totalRecordCount: 0 }),
     getPlaylistListCount: async () => 0,
+    getPlaylistDetail: async ({ query }) => window.api.youtubeMusic.getPlaylistDetail(query.id),
     getPlaylistSongList: async ({ query }) => {
         const songs = await window.api.youtubeMusic.getPlaylistSongs(query.id);
         return { items: songs, startIndex: 0, totalRecordCount: songs.length };

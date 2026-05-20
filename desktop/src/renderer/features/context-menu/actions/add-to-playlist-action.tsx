@@ -1,6 +1,7 @@
 import { openContextModal } from '@mantine/modals';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Fuse from 'fuse.js';
+import isElectron from 'is-electron';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -25,14 +26,15 @@ import { TextInput } from '/@/shared/components/text-input/text-input';
 import { toast } from '/@/shared/components/toast/toast';
 import { Tooltip } from '/@/shared/components/tooltip/tooltip';
 import { useLocalStorage } from '/@/shared/hooks/use-local-storage';
-import { LibraryItem, PlaylistListSort, SortOrder } from '/@/shared/types/domain-types';
+import { LibraryItem, PlaylistListSort, ServerType, Song, SortOrder } from '/@/shared/types/domain-types';
 
 interface AddToPlaylistActionProps {
     items: string[];
     itemType: LibraryItem;
+    songs?: Song[];
 }
 
-export const AddToPlaylistAction = ({ items, itemType }: AddToPlaylistActionProps) => {
+export const AddToPlaylistAction = ({ items, itemType, songs = [] }: AddToPlaylistActionProps) => {
     const { t } = useTranslation();
     const server = useCurrentServer();
     const serverId = useCurrentServerId();
@@ -169,6 +171,48 @@ export const AddToPlaylistAction = ({ items, itemType }: AddToPlaylistActionProp
             if (items.length === 0 || !serverId) return;
 
             try {
+                const youtubeSongs = songs.filter(
+                    (song) =>
+                        song._serverType === ServerType.YOUTUBE_MUSIC &&
+                        Boolean(song.youtubeMusic?.videoId),
+                );
+                const isYoutubeOnlySelection =
+                    youtubeSongs.length > 0 &&
+                    youtubeSongs.length === items.length &&
+                    (itemType === LibraryItem.SONG ||
+                        itemType === LibraryItem.PLAYLIST_SONG ||
+                        itemType === LibraryItem.QUEUE_SONG);
+
+                if (isYoutubeOnlySelection) {
+                    if (!isElectron() || !window.api?.localFirst?.createImport) {
+                        toast.error({
+                            message: 'Import to playlist is only available in the desktop app.',
+                            title: t('error.genericError'),
+                        });
+                        return;
+                    }
+
+                    for (const song of youtubeSongs) {
+                        await window.api.localFirst.createImport({
+                            createPlaylist: true,
+                            input:
+                                song.youtubeMusic?.watchUrl ||
+                                `https://music.youtube.com/watch?v=${song.youtubeMusic?.videoId}`,
+                            playlistName,
+                            source: 'youtube_music',
+                            sourceTrackId: song.id,
+                            videoId: song.youtubeMusic!.videoId!,
+                        });
+                    }
+
+                    toast.success({
+                        message: `Queued ${youtubeSongs.length} import${
+                            youtubeSongs.length === 1 ? '' : 's'
+                        } for ${playlistName}`,
+                    });
+                    return;
+                }
+
                 let allSongIds: string[] = [];
 
                 if (itemType === LibraryItem.SONG || itemType === LibraryItem.PLAYLIST_SONG) {
@@ -293,6 +337,7 @@ export const AddToPlaylistAction = ({ items, itemType }: AddToPlaylistActionProp
             queryClient,
             serverId,
             skipDuplicates,
+            songs,
             t,
         ],
     );
@@ -385,7 +430,9 @@ export const AddToPlaylistAction = ({ items, itemType }: AddToPlaylistActionProp
                     onSelect={handleOpenModal}
                     rightIcon="arrowRightS"
                 >
-                    {t('page.contextMenu.addToPlaylist')}
+                    {songs.some((song) => song._serverType === ServerType.YOUTUBE_MUSIC)
+                        ? 'Import to playlist'
+                        : t('page.contextMenu.addToPlaylist')}
                 </ContextMenu.Item>
             </ContextMenu.SubmenuTarget>
             <ContextMenu.SubmenuContent stickyContent={searchInput}>

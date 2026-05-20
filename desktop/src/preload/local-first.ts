@@ -24,6 +24,9 @@ const createImport = (args: {
     createPlaylist?: boolean;
     input: string;
     playlistName?: string;
+    source?: 'youtube_music';
+    sourceTrackId?: string;
+    videoId?: string;
 }) => {
     return ipcRenderer.invoke('roofy-local-create-import', args);
 };

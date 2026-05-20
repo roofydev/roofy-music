@@ -44,8 +44,17 @@ type ImportJob = {
     playlist: boolean;
     playlistName?: string;
     progress: number;
+    source?: 'youtube_music';
+    sourceTrackId?: string;
     status: 'cancelled' | 'completed' | 'failed' | 'queued' | 'running';
     updatedAt: string;
+    videoId?: string;
+};
+
+type SourceImportMetadata = {
+    source?: 'youtube_music';
+    sourceTrackId?: string;
+    videoId?: string;
 };
 
 type CreateLocalUserArgs = {
@@ -859,13 +868,14 @@ const previewImport = async (input: string, playlist?: boolean, cookieBrowser?: 
     throw new Error(formatYtDlpError(lastError || 'yt-dlp preview failed', effectiveBrowser, attemptedBrowsers));
 };
 
-const createImportJob = async (
+export const createImportJob = async (
     input: string,
     playlist?: boolean,
     audioFormat = DEFAULT_IMPORT_FORMAT,
     cookieBrowser?: string,
     createPlaylist?: boolean,
     playlistName?: string,
+    sourceMetadata?: SourceImportMetadata,
 ) => {
     if (!input.trim()) {
         throw new Error('Enter a URL or search query.');
@@ -892,26 +902,43 @@ const createImportJob = async (
         }
     }
 
+    const singleTrackPlaylistName = !isPlaylist && playlistName?.trim() ? playlistName.trim() : '';
+    const jobPlaylistName = isPlaylist ? name || undefined : singleTrackPlaylistName || undefined;
+
     const job: ImportJob = {
         audioFormat,
         cookieBrowser: effectiveBrowser,
-        createPlaylist: isPlaylist ? (typeof createPlaylist === 'boolean' ? createPlaylist : true) : false,
+        createPlaylist:
+            typeof createPlaylist === 'boolean' ? createPlaylist : isPlaylist || Boolean(jobPlaylistName),
         createdAt: now(),
         error: '',
         id: randomUUID(),
         input: input.trim(),
         message: 'Queued',
-        name,
+        name: name || singleTrackPlaylistName,
         playlist: isPlaylist,
-        playlistName: name || undefined,
+        playlistName: jobPlaylistName,
         progress: 0,
+        source: sourceMetadata?.source,
+        sourceTrackId: sourceMetadata?.sourceTrackId,
         status: 'queued',
         updatedAt: now(),
+        videoId: sourceMetadata?.videoId,
     };
 
     importJobs.unshift(job);
     processImportQueue();
     return job;
+};
+
+export const getImportJobForSourceTrack = (sourceTrackId: string) => {
+    return (
+        importJobs.find(
+            (job) =>
+                job.sourceTrackId === sourceTrackId &&
+                ['queued', 'running', 'completed'].includes(job.status),
+        ) || null
+    );
 };
 
 
@@ -1110,6 +1137,9 @@ ipcMain.handle(
             input: string;
             playlist?: boolean;
             playlistName?: string;
+            source?: 'youtube_music';
+            sourceTrackId?: string;
+            videoId?: string;
         },
     ) => {
         return createImportJob(
@@ -1119,6 +1149,11 @@ ipcMain.handle(
             args.cookieBrowser,
             args.createPlaylist,
             args.playlistName,
+            {
+                source: args.source,
+                sourceTrackId: args.sourceTrackId,
+                videoId: args.videoId,
+            },
         );
     },
 );
