@@ -25,7 +25,7 @@
     <name>jeffvli</name>
   </developer>
   <launchable type="desktop-id">org.roofy.music.desktop</launchable>
-  <url type="homepage">https://github.com/roofy/roofy-music</url>
+  <url type="homepage">https://github.com/IvanLuqueSoft/roofy-music</url>
   <screenshots>
     <screenshot type="default">
       <caption>The main menu</caption>

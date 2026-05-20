@@ -248,23 +248,20 @@ jobs:
           body: |
             ## Downloads
 
-            Choose the file for your operating system and architecture.
-
-            ### Windows (x64)
-            | File | Description |
-            | -------------------------------------------------------------------------------------------------------------- |
-            | `Roofy Music-*-win-x64.exe` | **Installer** -- recommended for most users |
-            | `Roofy Music-*-win-x64.zip` | **Portable** -- run without installing |
-
-            ### macOS
-            | File | Description |
-            | -------------------------------------------------------------------------------------------------------------- |
-            | `Roofy Music-*-mac-arm64.dmg` | **Apple Silicon** (M1/M2/M3) -- drag-to-install |
-            | `Roofy Music-*-mac-arm64.zip` | **Apple Silicon** (M1/M2/M3) -- portable |
-            | `Roofy Music-*-mac-x64.dmg` | **Intel Mac** -- drag-to-install |
-            | `Roofy Music-*-mac-x64.zip` | **Intel Mac** -- portable |
+            | File | OS | Description |
+            | --- | --- | --- |
+            | `roofy-music-win.exe` | Windows | **Installer** -- recommended for most users |
+            | `roofy-music-win.zip` | Windows | **Portable** -- run without installing |
+            | `roofy-music-mac.dmg` | macOS | **Installer** -- drag-to-install |
+            | `roofy-music-mac.zip` | macOS | **Portable** -- run without installing |
           draft: false
           prerelease: false
-          files: dist/*
+          files: |
+            dist/roofy-music-win.exe
+            dist/roofy-music-win.zip
+            dist/roofy-music-mac.dmg
+            dist/roofy-music-mac.zip
+            dist/latest.yml
+            dist/latest-mac.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -63,7 +63,7 @@ export const UpdateAvailableDialog = () => {
                     </Button>
                     <Button
                         component="a"
-                        href="https://github.com/roofy/roofy-music/releases/latest"
+                        href="https://github.com/IvanLuqueSoft/roofy-music/releases/latest"
                         onClick={handleDismiss}
                         rightSection={<Icon icon="externalLink" size="sm" />}
                         size="xs"

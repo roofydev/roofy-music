@@ -9,9 +9,9 @@
         "react",
         "electron"
     ],
-    "homepage": "https://github.com/roofy/roofy-music",
+    "homepage": "https://github.com/IvanLuqueSoft/roofy-music",
     "bugs": {
-        "url": "https://github.com/roofy/roofy-music/issues"
+        "url": "https://github.com/IvanLuqueSoft/roofy-music/issues"
     },
     "license": "GPL-3.0",
     "author": "Roofy Music contributors",

@@ -221,6 +221,7 @@ function configureAndGetUpdater(): UpdaterInstance {
     } else {
         autoUpdater.channel = 'latest';
         autoUpdater.allowPrerelease = false;
+        autoUpdater.disableDifferentialDownload = true;
     }
 
     return autoUpdater;
@@ -243,6 +244,7 @@ function configureAutoUpdaterForChannel(channel: 'beta' | 'latest'): void {
     } else {
         autoUpdater.channel = 'latest';
         autoUpdater.allowPrerelease = false;
+        autoUpdater.disableDifferentialDownload = true;
     }
 }
 
@@ -817,7 +819,7 @@ const shouldDisableMediaFeatures =
     isLinux() || !enableMediaSession || playbackType !== PlayerType.WEB;
 
 const chromiumDisabledFeatures: string[] = [];
-// Fractional scaling on Wayland: https://github.com/roofy/roofy-music/issues
+// Fractional scaling on Wayland: https://github.com/IvanLuqueSoft/roofy-music/issues
 if (isLinux()) {
     chromiumDisabledFeatures.push('WaylandFractionalScaleV1');
 }

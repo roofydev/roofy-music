@@ -3,15 +3,15 @@
 # Roofy Music
 
   <p align="center">
-    <a href="https://github.com/roofy/roofy-music/blob/main/LICENSE">
+    <a href="https://github.com/IvanLuqueSoft/roofy-music/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/roofy/roofy-music?style=flat-square&color=brightgreen"
       alt="License">
     </a>
-      <a href="https://github.com/roofy/roofy-music/releases">
+      <a href="https://github.com/IvanLuqueSoft/roofy-music/releases">
       <img src="https://img.shields.io/github/v/release/roofy/roofy-music?style=flat-square&color=blue"
       alt="Release">
     </a>
-    <a href="https://github.com/roofy/roofy-music/releases">
+    <a href="https://github.com/IvanLuqueSoft/roofy-music/releases">
       <img src="https://img.shields.io/github/downloads/roofy/roofy-music/total?style=flat-square&color=orange"
       alt="Downloads">
     </a>
@@ -39,7 +39,7 @@ Rewrite of [Sonixd](https://github.com/jeffvli/sonixd).
 - [x] Scrobble playback to your server
 - [x] Smart playlist editor (Navidrome)
 - [x] Synchronized and unsynchronized lyrics support
-- [ ] [Request a feature](https://github.com/roofy/roofy-music/issues) or [view taskboard](https://github.com/users/jeffvli/projects/5/views/1)
+- [ ] [Request a feature](https://github.com/IvanLuqueSoft/roofy-music/issues) or [view taskboard](https://github.com/users/jeffvli/projects/5/views/1)
 
 ## Screenshots
 
@@ -49,11 +49,11 @@ Rewrite of [Sonixd](https://github.com/jeffvli/sonixd).
 
 ### Desktop (recommended)
 
-Download the [latest desktop client](https://github.com/roofy/roofy-music/releases). The desktop client is the recommended way to use Roofy Music. It supports both the MPV and web player backends, as well as includes built-in fetching for lyrics.
+Download the [latest desktop client](https://github.com/IvanLuqueSoft/roofy-music/releases). The desktop client is the recommended way to use Roofy Music. It supports both the MPV and web player backends, as well as includes built-in fetching for lyrics.
 
 #### macOS Notes
 
-If you're using a device running macOS 12 (Monterey) or higher, [check here](https://github.com/roofy/roofy-music/issues/104#issuecomment-1553914730) for instructions on how to remove the app from quarantine.
+If you're using a device running macOS 12 (Monterey) or higher, [check here](https://github.com/IvanLuqueSoft/roofy-music/issues/104#issuecomment-1553914730) for instructions on how to remove the app from quarantine.
 
 For media keys to work, you will be prompted to allow Roofy Music to be a Trusted Accessibility Client. After allowing, you will need to restart Roofy Music for the privacy settings to take effect.
 
@@ -92,7 +92,7 @@ The entry should show up in your Application Launcher immediately. If it does no
 
 Visit [https://feishin.vercel.app](https://feishin.vercel.app) to use the hosted web version of Roofy Music. The web client only supports the web player backend.
 
-Roofy Music is also available as a Docker image. The images are hosted via `ghcr.io` and are available to view [here](https://github.com/roofy/roofy-music/pkgs/container/roofy-music). You can run the container using the following commands:
+Roofy Music is also available as a Docker image. The images are hosted via `ghcr.io` and are available to view [here](https://github.com/IvanLuqueSoft/roofy-music/pkgs/container/roofy-music). You can run the container using the following commands:
 
 ```bash
 # Run the latest version
@@ -223,4 +223,4 @@ This project uses [Weblate](https://hosted.weblate.org/projects/roofy-music/) fo
 
 ## License
 
-[GNU General Public License v3.0 ©](https://github.com/roofy/roofy-music/blob/dev/LICENSE)
+[GNU General Public License v3.0 ©](https://github.com/IvanLuqueSoft/roofy-music/blob/dev/LICENSE)
