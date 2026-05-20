@@ -12,6 +12,7 @@ import { mpris } from './mpris';
 import { mpvPlayer, mpvPlayerListener } from './mpv-player';
 import { remote } from './remote';
 import { utils } from './utils';
+import { youtubeMusic } from './youtube-music';
 
 // Custom APIs for renderer
 const api = {
@@ -27,6 +28,7 @@ const api = {
     mpvPlayerListener,
     remote,
     utils,
+    youtubeMusic,
 };
 
 export type PreloadApi = typeof api;

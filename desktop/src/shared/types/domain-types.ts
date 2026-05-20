@@ -37,6 +37,7 @@ export enum ServerType {
     JELLYFIN = 'jellyfin',
     NAVIDROME = 'navidrome',
     SUBSONIC = 'subsonic',
+    YOUTUBE_MUSIC = 'youtube_music',
 }
 
 export enum SortOrder {
@@ -346,8 +347,13 @@ export type Playlist = {
     rules?: null | PlaylistRules;
     size: null | number;
     songCount: null | number;
+    sourceReadOnly?: boolean;
     sync?: boolean | null;
     uploadedImage?: string;
+    youtubeMusic?: {
+        browseId?: string;
+        playlistId?: string;
+    };
 };
 
 export type RelatedAlbumArtist = {
@@ -412,6 +418,13 @@ export type Song = {
     updatedAt: string;
     userFavorite: boolean;
     userRating: null | number;
+    youtubeMusic?: {
+        albumBrowseId?: string;
+        mediaType?: 'song' | 'unknown' | 'video';
+        playlistId?: string;
+        videoId: string;
+        watchUrl: string;
+    };
 };
 
 type ApiContext = {

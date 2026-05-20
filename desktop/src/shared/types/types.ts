@@ -57,6 +57,7 @@ export enum ServerType {
     JELLYFIN = 'jellyfin',
     NAVIDROME = 'navidrome',
     SUBSONIC = 'subsonic',
+    YOUTUBE_MUSIC = 'youtube_music',
 }
 
 export type CardRoute = {
@@ -91,6 +92,8 @@ export const toServerType = (value?: string): null | ServerType => {
             return ServerType.NAVIDROME;
         case ServerType.SUBSONIC:
             return ServerType.SUBSONIC;
+        case ServerType.YOUTUBE_MUSIC:
+            return ServerType.YOUTUBE_MUSIC;
         default:
             return null;
     }

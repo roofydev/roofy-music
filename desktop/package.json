@@ -135,6 +135,7 @@
         "string-to-color": "^2.2.2",
         "wavesurfer.js": "^7.12.5",
         "ws": "^8.20.0",
+        "youtubei.js": "17.0.1",
         "zod": "^3.25.76",
         "zustand": "^5.0.12"
     },

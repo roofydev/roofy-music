@@ -43,6 +43,12 @@ const LocalTab = lazy(() =>
     })),
 );
 
+const StreamingTab = lazy(() =>
+    import('/@/renderer/features/settings/components/streaming/streaming-tab').then((module) => ({
+        default: module.StreamingTab,
+    })),
+);
+
 export const SettingsContent = () => {
     const { t } = useTranslation();
     const currentTab = useSettingsStore((state) => state.tab);
@@ -67,6 +73,7 @@ export const SettingsContent = () => {
                         )}
                         <Tabs.Tab value="advanced">{t('page.setting.advanced')}</Tabs.Tab>
                         {isElectron() && <Tabs.Tab value="local">Local</Tabs.Tab>}
+                        {isElectron() && <Tabs.Tab value="streaming">Streaming</Tabs.Tab>}
                     </Tabs.List>
                     <Tabs.Panel value="general">
                         <Suspense fallback={<Spinner container />}>
@@ -99,6 +106,13 @@ export const SettingsContent = () => {
                         <Tabs.Panel value="local">
                             <Suspense fallback={<Spinner container />}>
                                 <LocalTab />
+                            </Suspense>
+                        </Tabs.Panel>
+                    )}
+                    {isElectron() && (
+                        <Tabs.Panel value="streaming">
+                            <Suspense fallback={<Spinner container />}>
+                                <StreamingTab />
                             </Suspense>
                         </Tabs.Panel>
                     )}

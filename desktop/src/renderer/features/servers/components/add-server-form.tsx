@@ -33,6 +33,8 @@ import { DiscoveredServerItem, ServerType, toServerType } from '/@/shared/types/
 const autodiscover = isElectron() ? window.api.autodiscover : null;
 const localSettings = isElectron() ? window.api.localSettings : null;
 
+type AddableServerType = Exclude<ServerType, ServerType.YOUTUBE_MUSIC>;
+
 interface AddServerFormProps {
     onCancel: (() => void) | null;
 }
@@ -70,7 +72,7 @@ function useAutodiscovery() {
     return { isDone, servers };
 }
 
-const SERVER_TYPES: Record<ServerType, ServerDetails> = {
+const SERVER_TYPES: Record<AddableServerType, ServerDetails> = {
     [ServerType.JELLYFIN]: {
         icon: JellyfinIcon,
         name: 'Jellyfin',

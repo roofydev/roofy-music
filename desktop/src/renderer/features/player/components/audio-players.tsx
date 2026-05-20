@@ -27,6 +27,7 @@ import {
 import { RemoteHook } from '/@/renderer/features/remote/hooks/use-remote';
 import { LocalStatsTrackerHook } from '/@/renderer/features/stats/hooks/use-local-stats-tracker';
 import { VisualizerSystemAudioBridgeHook } from '/@/renderer/features/visualizer/components/visualizer-system-audio-bridge';
+import { YoutubeMusicSponsorBlockHook } from '/@/renderer/features/youtube-music/hooks/use-youtube-music-sponsorblock';
 import {
     updateQueueFavorites,
     updateQueueRatings,
@@ -140,6 +141,7 @@ export const AudioPlayers = () => {
             <RadioAudioInstanceHook />
             <RadioMetadataHook />
             <VisualizerSystemAudioBridgeHook />
+            <YoutubeMusicSponsorBlockHook />
             <AutosaveHook />
             <AudioPlayersContent
                 audioContext={audioContext}

@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import isElectron from 'is-electron';
 import { AnimatePresence, motion } from 'motion/react';
 import { MouseEvent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -100,6 +101,7 @@ export const Sidebar = () => {
 
     const isCustomWindowBar =
         windowBarStyle === Platform.WINDOWS || windowBarStyle === Platform.MACOS;
+    const showYoutubeMusic = isElectron();
 
     return (
         <div
@@ -119,7 +121,7 @@ export const Sidebar = () => {
                         item: styles.accordionItem,
                         root: styles.accordionRoot,
                     }}
-                    defaultValue={['library', 'collections', 'playlists']}
+                    defaultValue={['library', 'youtube-music', 'collections', 'playlists']}
                     multiple
                 >
                     <Accordion.Item value="library">
@@ -141,6 +143,23 @@ export const Sidebar = () => {
                             })}
                         </Accordion.Panel>
                     </Accordion.Item>
+                    {showYoutubeMusic && (
+                        <Accordion.Item value="youtube-music">
+                            <Accordion.Control>
+                                <Text fw={500} variant="secondary">
+                                    YouTube Music
+                                </Text>
+                            </Accordion.Control>
+                            <Accordion.Panel>
+                                <SidebarItem to={AppRoute.YOUTUBE_MUSIC}>
+                                    <Group gap="md">
+                                        <SidebarIcon route={AppRoute.YOUTUBE_MUSIC} />
+                                        Browse
+                                    </Group>
+                                </SidebarItem>
+                            </Accordion.Panel>
+                        </Accordion.Item>
+                    )}
                     <SidebarCollectionList />
                     {sidebarPlaylistList && (
                         <>

@@ -1,6 +1,8 @@
 import {
     RiAlbumFill,
     RiAlbumLine,
+    RiDownloadCloud2Fill,
+    RiDownloadCloud2Line,
     RiFlag2Fill,
     RiFlag2Line,
     RiFolder3Fill,
@@ -11,8 +13,6 @@ import {
     RiHome6Line,
     RiMusic2Fill,
     RiMusic2Line,
-    RiDownloadCloud2Fill,
-    RiDownloadCloud2Line,
     RiPlayFill,
     RiPlayLine,
     RiPlayListFill,
@@ -25,6 +25,8 @@ import {
     RiSettings2Line,
     RiUserVoiceFill,
     RiUserVoiceLine,
+    RiYoutubeFill,
+    RiYoutubeLine,
 } from 'react-icons/ri';
 import { generatePath, useLocation } from 'react-router';
 
@@ -83,6 +85,9 @@ export const SidebarIcon = ({ active, route, size }: SidebarIconProps) => {
             case AppRoute.STATS:
                 if (isActive) return <RiPlayListFill size={size} />;
                 return <RiPlayListLine size={size} />;
+            case AppRoute.YOUTUBE_MUSIC:
+                if (isActive) return <RiYoutubeFill size={size} />;
+                return <RiYoutubeLine size={size} />;
             case generatePath(AppRoute.SEARCH, { itemType: LibraryItem.SONG }):
                 if (isActive) return <RiSearchFill size={size} />;
                 return <RiSearchLine size={size} />;

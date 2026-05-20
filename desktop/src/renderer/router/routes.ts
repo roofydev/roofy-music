@@ -34,4 +34,5 @@ export enum AppRoute {
     SERVERS = '/servers',
     SETTINGS = '/settings',
     STATS = '/stats',
+    YOUTUBE_MUSIC = '/youtube-music',
 }

@@ -13,6 +13,7 @@ import { LibraryContainer } from '/@/renderer/features/shared/components/library
 import { LibraryHeaderBar } from '/@/renderer/features/shared/components/library-header-bar';
 import { PageErrorBoundary } from '/@/renderer/features/shared/components/page-error-boundary';
 import { SongInfiniteCarousel } from '/@/renderer/features/songs/components/song-infinite-carousel';
+import { YoutubeMusicHomeCarousels } from '/@/renderer/features/youtube-music/components/youtube-music-home-carousels';
 import {
     HomeFeatureStyle,
     HomeItem,
@@ -24,6 +25,7 @@ import {
 } from '/@/renderer/store';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Stack } from '/@/shared/components/stack/stack';
+import { TextTitle } from '/@/shared/components/text-title/text-title';
 import {
     AlbumListSort,
     LibraryItem,
@@ -115,6 +117,8 @@ const HomeRoute = () => {
                         ref={containerQuery.ref}
                     >
                         <QuickImport />
+                        <YoutubeMusicHomeCarousels containerQuery={containerQuery} />
+                        <TextTitle fw={700}>Local Library</TextTitle>
                         {homeFeature && homeFeatureStyle === HomeFeatureStyle.SINGLE && (
                             <AlbumInfiniteSingleFeatureCarousel />
                         )}

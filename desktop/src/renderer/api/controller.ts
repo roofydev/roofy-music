@@ -3,6 +3,7 @@ import { JellyfinController } from '/@/renderer/api/jellyfin/jellyfin-controller
 import { NavidromeController } from '/@/renderer/api/navidrome/navidrome-controller';
 import { SubsonicController } from '/@/renderer/api/subsonic/subsonic-controller';
 import { mergeMusicFolderId } from '/@/renderer/api/utils-music-folder';
+import { YoutubeMusicController } from '/@/renderer/api/youtube-music/youtube-music-controller';
 import { getServerById, useAuthStore, useSettingsStore } from '/@/renderer/store';
 import { toast } from '/@/shared/components/toast/toast';
 import {
@@ -13,17 +14,20 @@ import {
     SetPlaylistSongsArgs,
     SetPlaylistSongsResponse,
 } from '/@/shared/types/domain-types';
+import { YOUTUBE_MUSIC_SOURCE_ID } from '/@/shared/types/youtube-music-types';
 
 type ApiController = {
-    jellyfin: InternalControllerEndpoint;
-    navidrome: InternalControllerEndpoint;
-    subsonic: InternalControllerEndpoint;
+    jellyfin: Partial<InternalControllerEndpoint>;
+    navidrome: Partial<InternalControllerEndpoint>;
+    subsonic: Partial<InternalControllerEndpoint>;
+    youtube_music: Partial<InternalControllerEndpoint>;
 };
 
 const endpoints: ApiController = {
     jellyfin: JellyfinController,
     navidrome: NavidromeController,
     subsonic: SubsonicController,
+    youtube_music: YoutubeMusicController,
 };
 
 const apiController = <K extends keyof ControllerEndpoint>(
@@ -57,7 +61,24 @@ const apiController = <K extends keyof ControllerEndpoint>(
         );
     }
 
-    return controllerFn;
+    return controllerFn as NonNullable<InternalControllerEndpoint[K]>;
+};
+
+const getControllerServerById = (id?: string) => {
+    const server = getServerById(id);
+    if (server) return server;
+    if (id === YOUTUBE_MUSIC_SOURCE_ID) {
+        return {
+            credential: YOUTUBE_MUSIC_SOURCE_ID,
+            id: YOUTUBE_MUSIC_SOURCE_ID,
+            name: 'YouTube Music',
+            type: ServerType.YOUTUBE_MUSIC,
+            url: 'https://music.youtube.com',
+            userId: YOUTUBE_MUSIC_SOURCE_ID,
+            username: 'YouTube Music',
+        };
+    }
+    return null;
 };
 
 const getPathReplaceSettings = () => {
@@ -87,7 +108,7 @@ export interface GeneralController extends Omit<Required<ControllerEndpoint>, 'a
 
 export const controller: GeneralController = {
     addToPlaylist(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: addToPlaylist`);
@@ -102,7 +123,7 @@ export const controller: GeneralController = {
         return apiController('authenticate', type)(url, body);
     },
     createFavorite(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: createFavorite`);
@@ -114,7 +135,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     createInternetRadioStation(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: createInternetRadioStation`);
@@ -126,7 +147,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     createPlaylist(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: createPlaylist`);
@@ -138,7 +159,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     deleteArtistImage(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: deleteArtistImage`);
@@ -150,7 +171,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     deleteFavorite(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: deleteFavorite`);
@@ -162,7 +183,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     deleteInternetRadioStation(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: deleteInternetRadioStation`);
@@ -174,7 +195,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     deleteInternetRadioStationImage(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: deleteInternetRadioStationImage`);
@@ -186,7 +207,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     deletePlaylist(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: deletePlaylist`);
@@ -198,7 +219,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     deletePlaylistImage(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: deletePlaylistImage`);
@@ -210,7 +231,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getAlbumArtistDetail(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getAlbumArtistDetail`);
@@ -222,7 +243,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getAlbumArtistInfo(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             return Promise.resolve(null);
@@ -234,7 +255,7 @@ export const controller: GeneralController = {
             : Promise.resolve(null);
     },
     getAlbumArtistList(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getAlbumArtistList`);
@@ -252,7 +273,7 @@ export const controller: GeneralController = {
         );
     },
     getAlbumArtistListCount(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getAlbumArtistListCount`);
@@ -270,7 +291,7 @@ export const controller: GeneralController = {
         );
     },
     getAlbumDetail(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getAlbumDetail`);
@@ -282,7 +303,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getAlbumInfo(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getAlbumInfo`);
@@ -294,7 +315,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getAlbumList(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getAlbumList`);
@@ -312,7 +333,7 @@ export const controller: GeneralController = {
         );
     },
     getAlbumListCount(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getAlbumListCount`);
@@ -330,7 +351,7 @@ export const controller: GeneralController = {
         );
     },
     getAlbumRadio(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getAlbumRadio`);
@@ -342,7 +363,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getArtistList(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getArtistList`);
@@ -360,7 +381,7 @@ export const controller: GeneralController = {
         );
     },
     getArtistListCount(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getArtistListCount`);
@@ -378,7 +399,7 @@ export const controller: GeneralController = {
         );
     },
     getArtistRadio(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getArtistRadio`);
@@ -390,7 +411,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getDownloadUrl(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getDownloadUrl`);
@@ -402,7 +423,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getFolder(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getFolder`);
@@ -420,7 +441,7 @@ export const controller: GeneralController = {
         );
     },
     getGenreList(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getGenreList`);
@@ -438,7 +459,7 @@ export const controller: GeneralController = {
         );
     },
     getImageRequest(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             return null;
@@ -457,7 +478,7 @@ export const controller: GeneralController = {
         );
     },
     getImageUrl(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             return null;
@@ -476,7 +497,7 @@ export const controller: GeneralController = {
         );
     },
     getInternetRadioStations(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getInternetRadioStations`);
@@ -487,7 +508,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getLyrics(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getLyrics`);
@@ -499,7 +520,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getMusicFolderList(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getMusicFolderList`);
@@ -511,7 +532,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getPlaylistDetail(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getPlaylistDetail`);
@@ -523,7 +544,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getPlaylistList(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getPlaylistList`);
@@ -535,7 +556,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getPlaylistListCount(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getPlaylistListCount`);
@@ -547,7 +568,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getPlaylistSongList(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getPlaylistSongList`);
@@ -559,7 +580,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getPlayQueue(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getPlayQueue`);
@@ -571,7 +592,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getRandomSongList(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getRandomSongList`);
@@ -589,7 +610,7 @@ export const controller: GeneralController = {
         );
     },
     getRoles(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getRoles`);
@@ -601,7 +622,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getServerInfo(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getServerInfo`);
@@ -613,7 +634,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getSimilarSongs(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getSimilarSongs`);
@@ -631,7 +652,7 @@ export const controller: GeneralController = {
         );
     },
     getSongDetail(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getSongDetail`);
@@ -643,7 +664,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getSongList(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getSongList`);
@@ -661,7 +682,7 @@ export const controller: GeneralController = {
         );
     },
     getSongListCount(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getSongListCount`);
@@ -679,7 +700,7 @@ export const controller: GeneralController = {
         );
     },
     getStreamUrl(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getStreamUrl`);
@@ -691,7 +712,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getStructuredLyrics(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getStructuredLyrics`);
@@ -703,7 +724,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getTagList(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getTags`);
@@ -715,7 +736,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getTopSongs(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getTopSongs`);
@@ -727,7 +748,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getUserInfo(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getUserInfo`);
@@ -739,7 +760,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     getUserList(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: getUserList`);
@@ -751,7 +772,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     movePlaylistItem(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: movePlaylistItem`);
@@ -763,7 +784,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     removeFromPlaylist(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: removeFromPlaylist`);
@@ -775,7 +796,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     replacePlaylist(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: replacePlaylist`);
@@ -787,7 +808,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     savePlayQueue(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: savePlayQueue`);
@@ -799,7 +820,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     scrobble(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: scrobble`);
@@ -811,7 +832,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     search(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: search`);
@@ -829,7 +850,7 @@ export const controller: GeneralController = {
         );
     },
     setPlaylistSongs: function (args: SetPlaylistSongsArgs): Promise<SetPlaylistSongsResponse> {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: setPlaylistSongs`);
@@ -841,7 +862,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     setRating(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: setRating`);
@@ -853,7 +874,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     shareItem(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: shareItem`);
@@ -865,7 +886,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     updateInternetRadioStation(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: updateInternetRadioStation`);
@@ -877,7 +898,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     updatePlaylist(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: updatePlaylist`);
@@ -889,7 +910,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     uploadArtistImage(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: uploadArtistImage`);
@@ -901,7 +922,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     uploadInternetRadioStationImage(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: uploadInternetRadioStationImage`);
@@ -913,7 +934,7 @@ export const controller: GeneralController = {
         )?.(addContext({ ...args, apiClientProps: { ...args.apiClientProps, server } }));
     },
     uploadPlaylistImage(args) {
-        const server = getServerById(args.apiClientProps.serverId);
+        const server = getControllerServerById(args.apiClientProps.serverId);
 
         if (!server) {
             throw new Error(`${i18n.t('error.apiRouteError')}: uploadPlaylistImage`);
