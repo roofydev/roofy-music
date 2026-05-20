@@ -38,6 +38,7 @@ nsis:
     createDesktopShortcut: always
 
 mac:
+    x64ArchFiles: '**/bin/darwin/**'
     target:
         - target: dmg
           arch: [universal]

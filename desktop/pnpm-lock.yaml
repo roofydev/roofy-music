@@ -4,10 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  react-router: 7.14.0
-  xml2js: 0.5.0
-
 importers:
 
   .:
@@ -187,7 +183,7 @@ importers:
         specifier: ^2.16.1
         version: 2.16.1(react@19.2.6)
       react-router:
-        specifier: 7.14.0
+        specifier: ^7.14.0
         version: 7.14.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       react-split-pane:
         specifier: ^3.2.0
@@ -3038,6 +3034,7 @@ packages:
 
   dompurify@3.4.4:
     resolution: {integrity: sha512-r8K7KGKEcztXfA/nfabSYB2hg9tDphORJTdf8xprN/luSLGmNhOBN8dm1/SYjqLLet6YUFEXOcrdTuwryp/Bew==}
+    deprecated: Fixed a security issue introduced in 3.4.4
 
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
@@ -5863,8 +5860,8 @@ packages:
     resolution: {integrity: sha512-k8KO9hrMyNk6tUWqUfkTEZbezRRpONVOzUTnc97VnCvyj6Tf9lyUR9EDAIeiVLv56jsMcoXEwjW8Kv5yPY52lw==}
     engines: {node: '>=16.0.0'}
 
-  xml2js@0.5.0:
-    resolution: {integrity: sha512-drPFnkQJik/O+uPKpqSgr22mpuFHqKdbS835iAQrUC73L2F5WkboIRd63ai/2Yg6I1jzifPFKH2NTK+cfglkIA==}
+  xml2js@0.4.23:
+    resolution: {integrity: sha512-ySPiMjM0+pLDftHgXY4By0uswI3SPKLDw/i3UXbnO8M/p28zqexCUoPmQFrYD+/1BzhGJSs2i1ERWKJAtiLrug==}
     engines: {node: '>=4.0.0'}
 
   xmlbuilder@11.0.1:
@@ -8647,7 +8644,7 @@ snapshots:
       jsbi: 2.0.5
       long: 4.0.0
       safe-buffer: 5.2.1
-      xml2js: 0.5.0
+      xml2js: 0.4.23
     optionalDependencies:
       abstract-socket: 2.1.1
 
@@ -12044,7 +12041,7 @@ snapshots:
 
   xml-naming@0.1.0: {}
 
-  xml2js@0.5.0:
+  xml2js@0.4.23:
     dependencies:
       sax: 1.6.0
       xmlbuilder: 11.0.1
