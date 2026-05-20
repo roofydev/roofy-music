@@ -110,7 +110,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: desktop
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build Windows package
         working-directory: desktop
@@ -211,7 +211,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: desktop
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build macOS package
         working-directory: desktop
