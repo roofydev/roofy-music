@@ -98,7 +98,7 @@ export async function query(
     try {
         result = await axios.get<LrcLibTrackResponse>(FETCH_URL, {
             headers: {
-                'User-Agent': 'Roofy Music (https://github.com/roofy/roofy-music)',
+                'User-Agent': 'Roofy Music (https://github.com/IvanLuqueSoft/roofy-music)',
             },
             params: {
                 album_name: params.album,

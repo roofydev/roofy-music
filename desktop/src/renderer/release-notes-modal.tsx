@@ -215,8 +215,8 @@ const ReleaseNotesContent = ({ onDismiss, version }: ReleaseNotesContentProps) =
                         component="a"
                         href={
                             showCompareError
-                                ? `https://github.com/roofy/roofy-music/compare/${latestStableRelease.tag_name}...${toTag(selectedVersion)}`
-                                : `https://github.com/roofy/roofy-music/releases/tag/${toTag(selectedVersion)}`
+                                ? `https://github.com/IvanLuqueSoft/roofy-music/compare/${latestStableRelease.tag_name}...${toTag(selectedVersion)}`
+                                : `https://github.com/IvanLuqueSoft/roofy-music/releases/tag/${toTag(selectedVersion)}`
                         }
                         onClick={onDismiss}
                         rightSection={<Icon icon="externalLink" />}
@@ -249,7 +249,7 @@ const ReleaseNotesContent = ({ onDismiss, version }: ReleaseNotesContentProps) =
                 <Group justify="flex-end">
                     <Button
                         component="a"
-                        href={`https://github.com/roofy/roofy-music/releases/tag/${toTag(selectedVersion)}`}
+                        href={`https://github.com/IvanLuqueSoft/roofy-music/releases/tag/${toTag(selectedVersion)}`}
                         onClick={onDismiss}
                         rightSection={<Icon icon="externalLink" />}
                         target="_blank"
@@ -267,7 +267,7 @@ const ReleaseNotesContent = ({ onDismiss, version }: ReleaseNotesContentProps) =
 
     if (isAlpha && compareData) {
         const commits = compareData.commits ?? [];
-        const compareUrl = `https://github.com/roofy/roofy-music/compare/${latestStableRelease?.tag_name}...development`;
+        const compareUrl = `https://github.com/IvanLuqueSoft/roofy-music/compare/${latestStableRelease?.tag_name}...development`;
         return (
             <Stack gap="md">
                 {releaseOptions.length > 1 && (
@@ -374,7 +374,7 @@ const ReleaseNotesContent = ({ onDismiss, version }: ReleaseNotesContentProps) =
             <Group justify="flex-end">
                 <Button
                     component="a"
-                    href={`https://github.com/roofy/roofy-music/releases/tag/${toTag(selectedVersion)}`}
+                    href={`https://github.com/IvanLuqueSoft/roofy-music/releases/tag/${toTag(selectedVersion)}`}
                     onClick={onDismiss}
                     rightSection={<Icon icon="externalLink" />}
                     target="_blank"

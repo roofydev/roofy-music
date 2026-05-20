@@ -2449,10 +2449,16 @@ export const useSettingsStore = createWithEqualityFn<SettingsSlice>()(
                     }
                 }
 
+                if (version <= 29) {
+                    state.general.theme = AppTheme.RETRO_MONOCHROME;
+                    state.general.themeDark = AppTheme.RETRO_MONOCHROME;
+                    state.general.themeLight = AppTheme.DEFAULT_LIGHT;
+                }
+
                 return persistedState;
             },
             name: 'store_settings',
-            version: 28,
+            version: 29,
         },
     ),
 );

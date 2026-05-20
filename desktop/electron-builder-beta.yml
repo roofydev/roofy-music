@@ -79,7 +79,7 @@ toolsets:
 npmRebuild: false
 publish:
     provider: github
-    owner: roofy
+    owner: IvanLuqueSoft
     repo: roofy-music
     channel: beta
     releaseType: draft

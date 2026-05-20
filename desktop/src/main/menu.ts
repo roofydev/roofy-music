@@ -289,27 +289,27 @@ export default class MenuBuilder {
             submenu: [
                 {
                     click() {
-                        shell.openExternal('https://github.com/roofy/roofy-music');
+                        shell.openExternal('https://github.com/IvanLuqueSoft/roofy-music');
                     },
                     label: 'Learn More',
                 },
                 {
                     click() {
                         shell.openExternal(
-                            'https://github.com/roofy/roofy-music#getting-started',
+                            'https://github.com/IvanLuqueSoft/roofy-music#getting-started',
                         );
                     },
                     label: 'Documentation',
                 },
                 {
                     click() {
-                        shell.openExternal('https://github.com/roofy/roofy-music/discussions');
+                        shell.openExternal('https://github.com/IvanLuqueSoft/roofy-music/discussions');
                     },
                     label: 'Community Discussions',
                 },
                 {
                     click() {
-                        shell.openExternal('https://github.com/roofy/roofy-music/issues');
+                        shell.openExternal('https://github.com/IvanLuqueSoft/roofy-music/issues');
                     },
                     label: 'Search Issues',
                 },
@@ -410,27 +410,27 @@ export default class MenuBuilder {
                 submenu: [
                     {
                         click() {
-                            shell.openExternal('https://github.com/roofy/roofy-music');
+                            shell.openExternal('https://github.com/IvanLuqueSoft/roofy-music');
                         },
                         label: 'Learn More',
                     },
                     {
                         click() {
                             shell.openExternal(
-                                'https://github.com/roofy/roofy-music#getting-started',
+                                'https://github.com/IvanLuqueSoft/roofy-music#getting-started',
                             );
                         },
                         label: 'Documentation',
                     },
                     {
                         click() {
-                            shell.openExternal('https://github.com/roofy/roofy-music/discussions');
+                            shell.openExternal('https://github.com/IvanLuqueSoft/roofy-music/discussions');
                         },
                         label: 'Community Discussions',
                     },
                     {
                         click() {
-                            shell.openExternal('https://github.com/roofy/roofy-music/issues');
+                            shell.openExternal('https://github.com/IvanLuqueSoft/roofy-music/issues');
                         },
                         label: 'Search Issues',
                     },
