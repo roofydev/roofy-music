@@ -20,8 +20,8 @@ const previewImport = (args: { cookieBrowser?: string; input: string; playlist?:
 
 const createImport = (args: {
     album?: string;
-    audioFormat?: string;
     artist?: string;
+    audioFormat?: string;
     cookieBrowser?: string;
     createPlaylist?: boolean;
     imageUrl?: string;
@@ -39,6 +39,12 @@ const createImport = (args: {
 const cancelImport = (id: string) => {
     return ipcRenderer.invoke('roofy-local-cancel-import', id);
 };
+const removeImport = (id: string) => {
+    return ipcRenderer.invoke('roofy-local-remove-import', id);
+};
+const clearImports = (status: 'completed' | 'failed') => {
+    return ipcRenderer.invoke('roofy-local-clear-imports', status);
+};
 
 const onPlaylistImported = (cb: () => void) => {
     ipcRenderer.on('roofy-local-playlist-imported', cb);
@@ -49,12 +55,14 @@ const onPlaylistImported = (cb: () => void) => {
 
 export const localFirst = {
     cancelImport,
+    clearImports,
     createImport,
     createUser,
     credentials,
     onPlaylistImported,
     openLibraryFolder,
     previewImport,
+    removeImport,
     selectLibrary,
     start,
     status,

@@ -5,9 +5,18 @@ import { useSearchParams } from 'react-router';
 
 import styles from './youtube-music-route.module.css';
 
+import { PageHeader } from '/@/renderer/components/page-header/page-header';
 import { AnimatedPage } from '/@/renderer/features/shared/components/animated-page';
+import { FilterBar } from '/@/renderer/features/shared/components/filter-bar';
 import { LibraryContainer } from '/@/renderer/features/shared/components/library-container';
+import { LibraryHeaderBar } from '/@/renderer/features/shared/components/library-header-bar';
+import { ListWithSidebarContainer } from '/@/renderer/features/shared/components/list-with-sidebar-container';
 import { youtubeMusicAuthStatusQueryKey } from '/@/renderer/features/youtube-music/components/youtube-music-account-button';
+import { YoutubeMusicHomeCarousels } from '/@/renderer/features/youtube-music/components/youtube-music-home-carousels';
+import { YoutubeMusicIcon } from '/@/renderer/features/youtube-music/components/youtube-music-icon';
+import { YoutubeMusicPlaylistDetail } from '/@/renderer/features/youtube-music/components/youtube-music-playlist-detail';
+import { YoutubeMusicPlaylistGrid } from '/@/renderer/features/youtube-music/components/youtube-music-playlist-grid';
+import { YoutubeMusicSongsTable } from '/@/renderer/features/youtube-music/components/youtube-music-songs-table';
 import { queryClient } from '/@/renderer/lib/react-query';
 import { addToQueueByData, useImportJobActions } from '/@/renderer/store';
 import { Badge } from '/@/shared/components/badge/badge';
@@ -40,6 +49,9 @@ const YoutubeMusicRoute = () => {
     const activePlaylistId = searchParams.get('playlist');
     const activeView: YtmView = viewParam && VALID_VIEWS.has(viewParam) ? viewParam : 'browse';
 
+    const [playlistSearchTerm, setPlaylistSearchTerm] = useState('');
+    const [songsSearchTerm, setSongsSearchTerm] = useState('');
+
     useEffect(() => {
         if (!isElectron() || !window.api?.youtubeMusic) return;
         window.api.youtubeMusic
@@ -52,12 +64,6 @@ const YoutubeMusicRoute = () => {
     }, []);
 
     const isConnected = Boolean(status?.connected);
-
-    const homeQuery = useQuery({
-        enabled: isConnected && activeView === 'browse',
-        queryFn: () => window.api.youtubeMusic.home(),
-        queryKey: ['youtube-music', 'home'],
-    });
 
     const searchQuery = useQuery({
         enabled: isConnected && Boolean(debouncedQuery) && activeView === 'search',
@@ -95,13 +101,24 @@ const YoutubeMusicRoute = () => {
         retry: 1,
     });
 
-    const recommendedSongs = useMemo(
-        () =>
-            homeQuery.data?.sections
-                .filter((section) => section.itemType === LibraryItem.SONG)
-                .flatMap((section) => section.items as Song[]) || [],
-        [homeQuery.data?.sections],
-    );
+    const filteredSongs = useMemo(() => {
+        const songs = accountSongsQuery.data || [];
+        if (!songsSearchTerm) return songs;
+        const term = songsSearchTerm.toLowerCase();
+        return songs.filter(
+            (s) =>
+                s.name.toLowerCase().includes(term) ||
+                s.artistName?.toLowerCase().includes(term) ||
+                s.album?.toLowerCase().includes(term),
+        );
+    }, [accountSongsQuery.data, songsSearchTerm]);
+
+    const filteredPlaylists = useMemo(() => {
+        const playlists = accountPlaylistsQuery.data || [];
+        if (!playlistSearchTerm) return playlists;
+        const term = playlistSearchTerm.toLowerCase();
+        return playlists.filter((p) => p.name.toLowerCase().includes(term));
+    }, [accountPlaylistsQuery.data, playlistSearchTerm]);
 
     const handlePlay = (song: Song) => {
         addToQueueByData(Play.NOW, [song]);
@@ -232,479 +249,364 @@ const YoutubeMusicRoute = () => {
         <AnimatedPage>
             <LibraryContainer>
                 <div className={styles.container}>
-                    <Group justify="space-between">
-                        <Stack gap="xs">
-                            <Group>
-                                <Text fw={700} size="lg">
-                                    YouTube Music
-                                </Text>
-                                <Badge>{isConnected ? 'Connected' : 'Disconnected'}</Badge>
-                                <Badge>Remote source</Badge>
-                            </Group>
-                            <Text isMuted size="sm">
-                                Browse your YouTube Music account, preview remote tracks, and import
-                                selected music into your local Roofy library.
-                            </Text>
-                        </Stack>
-                        {!isConnected ? (
-                            <Button
-                                disabled={status?.dependencyAvailable === false}
-                                onClick={handleConnect}
-                                variant="state-info"
-                            >
-                                Login
-                            </Button>
-                        ) : (
-                            <Group gap="xs">
-                                {status?.avatarUrl && (
-                                    <Image
-                                        className={styles.accountImage}
-                                        containerClassName={styles.accountAvatar}
-                                        includeLoader={false}
-                                        src={status.avatarUrl}
-                                        unloaderIcon="user"
-                                    />
-                                )}
-                                <Text isMuted size="sm">
-                                    {status?.displayName || 'Account'}
-                                </Text>
-                                <Button
-                                    onClick={handleDisconnect}
-                                    size="compact-sm"
-                                    variant="subtle"
-                                >
-                                    Logout
-                                </Button>
-                            </Group>
-                        )}
-                    </Group>
-
                     {activeView === 'browse' && (
-                        <div className={styles.remotePanel}>
-                            {!isConnected ? (
-                                <Text isMuted>
-                                    Login to enable recommendations, search, account songs, and
-                                    playlists.
-                                </Text>
-                            ) : (
-                                <SongTable
-                                    error={homeQuery.error}
-                                    loading={homeQuery.isLoading}
-                                    onImport={handleImportSong}
-                                    onPlay={handlePlay}
-                                    onQueue={handleQueue}
-                                    songs={recommendedSongs}
-                                    title="Browse"
-                                />
-                            )}
-                        </div>
+                        <Stack gap={0} style={{ flex: 1, minHeight: 0 }}>
+                            <PageHeader>
+                                <LibraryHeaderBar ignoreMaxWidth>
+                                    <LibraryHeaderBar.Title>Browse</LibraryHeaderBar.Title>
+                                    <YoutubeMusicIcon size="2rem" />
+                                </LibraryHeaderBar>
+                            </PageHeader>
+                            <ListWithSidebarContainer>
+                                <div className={styles.contentPanel}>
+                                    {!isConnected ? (
+                                        <Text isMuted>
+                                            Login to enable recommendations, search, account songs,
+                                            and playlists.
+                                        </Text>
+                                    ) : (
+                                        <YoutubeMusicHomeCarousels maxHeight="calc(100vh - 12rem)" />
+                                    )}
+                                </div>
+                            </ListWithSidebarContainer>
+                        </Stack>
                     )}
 
                     {activeView === 'search' && (
-                        <div className={styles.remotePanel}>
-                            {isConnected ? (
-                                <Stack gap="md">
+                        <Stack gap={0} style={{ flex: 1, minHeight: 0 }}>
+                            <PageHeader>
+                                <LibraryHeaderBar ignoreMaxWidth>
+                                    <LibraryHeaderBar.Title>
+                                        {debouncedQuery || 'Search'}
+                                    </LibraryHeaderBar.Title>
+                                    <LibraryHeaderBar.Badge>
+                                        {searchQuery.data?.songs?.length || 0}
+                                    </LibraryHeaderBar.Badge>
+                                    <YoutubeMusicIcon size="2rem" />
+                                </LibraryHeaderBar>
+                                <Group>
                                     <TextInput
                                         leftSection={<Icon icon="search" />}
-                                        onChange={(event) => setQuery(event.currentTarget.value)}
+                                        onChange={(event) =>
+                                            setQuery(event.currentTarget.value)
+                                        }
                                         placeholder="Search YouTube Music"
                                         value={query}
-                                        width="100%"
+                                        width={200}
                                     />
-                                    <SongTable
-                                        error={searchQuery.error}
-                                        loading={searchQuery.isLoading || searchQuery.isFetching}
-                                        onImport={handleImportSong}
-                                        onPlay={handlePlay}
-                                        onQueue={handleQueue}
-                                        songs={searchQuery.data?.songs || []}
-                                        title={
-                                            debouncedQuery
-                                                ? `Search: ${debouncedQuery}`
-                                                : 'Search results'
-                                        }
-                                    />
-                                </Stack>
-                            ) : (
-                                <Text isMuted>Login to search YouTube Music.</Text>
-                            )}
-                        </div>
+                                </Group>
+                            </PageHeader>
+                            <FilterBar />
+                            <ListWithSidebarContainer>
+                                {isConnected ? (
+                                    <div className={styles.contentPanel}>
+                                        {searchQuery.isLoading || searchQuery.isFetching ? (
+                                            <LoadingState label="Loading search results" />
+                                        ) : searchQuery.error ? (
+                                            <ErrorState error={searchQuery.error} />
+                                        ) : (
+                                            <>
+                                                {searchQuery.data?.songs &&
+                                                searchQuery.data.songs.length > 0 ? (
+                                                    <Table>
+                                                        <Table.Thead>
+                                                            <Table.Tr>
+                                                                <Table.Th />
+                                                                <Table.Th>Track</Table.Th>
+                                                                <Table.Th>Artist</Table.Th>
+                                                                <Table.Th>Album</Table.Th>
+                                                                <Table.Th />
+                                                            </Table.Tr>
+                                                        </Table.Thead>
+                                                        <Table.Tbody>
+                                                            {searchQuery.data.songs.map(
+                                                                (song) => (
+                                                                    <Table.Tr
+                                                                        className={
+                                                                            styles.songRow
+                                                                        }
+                                                                        key={song.id}
+                                                                    >
+                                                                        <Table.Td>
+                                                                            <Image
+                                                                                className={
+                                                                                    styles.artImage
+                                                                                }
+                                                                                containerClassName={
+                                                                                    styles.art
+                                                                                }
+                                                                                includeLoader={
+                                                                                    false
+                                                                                }
+                                                                                src={
+                                                                                    song.imageUrl ||
+                                                                                    undefined
+                                                                                }
+                                                                                unloaderIcon="emptySongImage"
+                                                                            />
+                                                                        </Table.Td>
+                                                                        <Table.Td>
+                                                                            {song.name}
+                                                                        </Table.Td>
+                                                                        <Table.Td>
+                                                                            {song.artistName}
+                                                                        </Table.Td>
+                                                                        <Table.Td>
+                                                                            {song.album || '-'}
+                                                                        </Table.Td>
+                                                                        <Table.Td>
+                                                                            <Group
+                                                                                justify="flex-end"
+                                                                                wrap="nowrap"
+                                                                            >
+                                                                                <Button
+                                                                                    onClick={() =>
+                                                                                        handleImportSong(
+                                                                                            song,
+                                                                                        )
+                                                                                    }
+                                                                                    size="compact-sm"
+                                                                                >
+                                                                                    Import
+                                                                                </Button>
+                                                                                <Button
+                                                                                    onClick={() =>
+                                                                                        handlePlay(
+                                                                                            song,
+                                                                                        )
+                                                                                    }
+                                                                                    size="compact-sm"
+                                                                                >
+                                                                                    Play
+                                                                                </Button>
+                                                                                <Button
+                                                                                    onClick={() =>
+                                                                                        handleQueue(
+                                                                                            song,
+                                                                                        )
+                                                                                    }
+                                                                                    size="compact-sm"
+                                                                                >
+                                                                                    Queue
+                                                                                </Button>
+                                                                            </Group>
+                                                                        </Table.Td>
+                                                                    </Table.Tr>
+                                                                ),
+                                                            )}
+                                                        </Table.Tbody>
+                                                    </Table>
+                                                ) : (
+                                                    <Text isMuted>
+                                                        {debouncedQuery
+                                                            ? 'No tracks found.'
+                                                            : 'Type a query to search YouTube Music.'}
+                                                    </Text>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className={styles.contentPanel}>
+                                        <Text isMuted>Login to search YouTube Music.</Text>
+                                    </div>
+                                )}
+                            </ListWithSidebarContainer>
+                        </Stack>
                     )}
 
                     {activeView === 'songs' && (
-                        <div className={styles.remotePanel}>
-                            {isConnected ? (
-                                <SongTable
-                                    error={accountSongsQuery.error}
-                                    loading={accountSongsQuery.isLoading}
-                                    onImport={handleImportSong}
-                                    onPlay={handlePlay}
-                                    onQueue={handleQueue}
-                                    songs={accountSongsQuery.data || []}
-                                    title="My Songs"
-                                />
-                            ) : (
-                                <Text isMuted>Login to load your YouTube Music songs.</Text>
-                            )}
-                        </div>
+                        <Stack gap={0} style={{ flex: 1, minHeight: 0 }}>
+                            <PageHeader>
+                                <LibraryHeaderBar ignoreMaxWidth>
+                                    <LibraryHeaderBar.PlayButton
+                                        itemType={LibraryItem.SONG}
+                                        songs={filteredSongs}
+                                    />
+                                    <LibraryHeaderBar.Title>My Songs</LibraryHeaderBar.Title>
+                                    <LibraryHeaderBar.Badge>
+                                        {filteredSongs.length}
+                                    </LibraryHeaderBar.Badge>
+                                    <YoutubeMusicIcon size="2rem" />
+                                </LibraryHeaderBar>
+                                <Group>
+                                    <TextInput
+                                        leftSection={<Icon icon="search" />}
+                                        onChange={(event) =>
+                                            setSongsSearchTerm(event.currentTarget.value)
+                                        }
+                                        placeholder="Filter songs"
+                                        value={songsSearchTerm}
+                                        width={200}
+                                    />
+                                </Group>
+                            </PageHeader>
+                            <FilterBar />
+                            <ListWithSidebarContainer>
+                                {isConnected ? (
+                                    <div className={styles.contentPanel}>
+                                        {accountSongsQuery.isLoading ? (
+                                            <LoadingState label="Loading YouTube Music songs" />
+                                        ) : accountSongsQuery.error ? (
+                                            <ErrorState error={accountSongsQuery.error} />
+                                        ) : (
+                                            <>
+                                                {filteredSongs.length > 0 ? (
+                                                    <YoutubeMusicSongsTable songs={filteredSongs} />
+                                                ) : (
+                                                    <Text isMuted>No tracks found.</Text>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className={styles.contentPanel}>
+                                        <Text isMuted>Login to load your YouTube Music songs.</Text>
+                                    </div>
+                                )}
+                            </ListWithSidebarContainer>
+                        </Stack>
                     )}
 
                     {activeView === 'playlists' && (
-                        <div className={styles.remotePanel}>
-                            {isConnected ? (
-                                activePlaylistId ? (
-                                    <PlaylistDetail
-                                        fallbackPlaylist={accountPlaylistsQuery.data?.find(
-                                            (playlist) =>
-                                                playlist.id ===
-                                                    `ytm-playlist:${activePlaylistId}` ||
-                                                playlist.id === activePlaylistId ||
-                                                playlist.youtubeMusic?.playlistId ===
-                                                    activePlaylistId,
-                                        )}
-                                        loading={
-                                            accountPlaylistDetailQuery.isLoading ||
-                                            accountPlaylistSongsQuery.isLoading
-                                        }
-                                        onBack={handleClosePlaylist}
-                                        onImportPlaylist={handlePlaylistImport}
-                                        onImportSong={handleImportSong}
-                                        onImportTracks={handlePlaylistImportTracks}
-                                        onPlay={handlePlay}
-                                        onPlayPlaylist={handlePlaylistPlay}
-                                        onQueue={handleQueue}
-                                        playlist={accountPlaylistDetailQuery.data}
-                                        playlistError={accountPlaylistDetailQuery.error}
-                                        songs={accountPlaylistSongsQuery.data || []}
-                                        songsError={accountPlaylistSongsQuery.error}
-                                    />
-                                ) : (
-                                    <PlaylistTable
-                                        error={accountPlaylistsQuery.error}
-                                        loading={accountPlaylistsQuery.isLoading}
-                                        onImportPlaylist={handlePlaylistImport}
-                                        onImportTracks={handlePlaylistImportTracks}
-                                        onOpen={handleOpenPlaylist}
-                                        onPlayPlaylist={handlePlaylistPlay}
-                                        playlists={accountPlaylistsQuery.data || []}
-                                    />
-                                )
+                        <Stack gap={0} style={{ flex: 1, minHeight: 0 }}>
+                            {activePlaylistId ? (
+                                <ListWithSidebarContainer>
+                                    {isConnected ? (
+                                        <div className={styles.contentPanel}>
+                                            {accountPlaylistDetailQuery.isLoading ||
+                                            accountPlaylistSongsQuery.isLoading ? (
+                                                <LoadingState label="Loading playlist" />
+                                            ) : accountPlaylistDetailQuery.error ? (
+                                                <ErrorState
+                                                    error={accountPlaylistDetailQuery.error}
+                                                />
+                                            ) : (
+                                                <YoutubeMusicPlaylistDetail
+                                                    onBack={handleClosePlaylist}
+                                                    onImportPlaylist={handlePlaylistImport}
+                                                    onImportTracks={handlePlaylistImportTracks}
+                                                    onPlayPlaylist={handlePlaylistPlay}
+                                                    playlist={accountPlaylistDetailQuery.data}
+                                                    songs={accountPlaylistSongsQuery.data || []}
+                                                />
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className={styles.contentPanel}>
+                                            <Text isMuted>
+                                                Login to load your YouTube Music playlists.
+                                            </Text>
+                                        </div>
+                                    )}
+                                </ListWithSidebarContainer>
                             ) : (
-                                <Text isMuted>Login to load your YouTube Music playlists.</Text>
+                                <>
+                                    <PageHeader>
+                                        <LibraryHeaderBar ignoreMaxWidth>
+                                            <LibraryHeaderBar.Title>
+                                                My Playlists
+                                            </LibraryHeaderBar.Title>
+                                            <LibraryHeaderBar.Badge>
+                                                {filteredPlaylists.length}
+                                            </LibraryHeaderBar.Badge>
+                                            <YoutubeMusicIcon size="2rem" />
+                                        </LibraryHeaderBar>
+                                        <Group>
+                                            <TextInput
+                                                leftSection={<Icon icon="search" />}
+                                                onChange={(event) =>
+                                                    setPlaylistSearchTerm(event.currentTarget.value)
+                                                }
+                                                placeholder="Filter playlists"
+                                                value={playlistSearchTerm}
+                                                width={200}
+                                            />
+                                        </Group>
+                                    </PageHeader>
+                                    <FilterBar />
+                                    <ListWithSidebarContainer>
+                                        {isConnected ? (
+                                            <div className={styles.contentPanel}>
+                                                {accountPlaylistsQuery.isLoading ? (
+                                                    <LoadingState label="Loading YouTube Music playlists" />
+                                                ) : accountPlaylistsQuery.error ? (
+                                                    <ErrorState
+                                                        error={accountPlaylistsQuery.error}
+                                                    />
+                                                ) : (
+                                                    <>
+                                                        {filteredPlaylists.length > 0 ? (
+                                                            <YoutubeMusicPlaylistGrid
+                                                                onOpenPlaylist={handleOpenPlaylist}
+                                                                onPlayPlaylist={handlePlaylistPlay}
+                                                                playlists={filteredPlaylists}
+                                                            />
+                                                        ) : (
+                                                            <Text isMuted>No playlists found.</Text>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className={styles.contentPanel}>
+                                                <Text isMuted>
+                                                    Login to load your YouTube Music playlists.
+                                                </Text>
+                                            </div>
+                                        )}
+                                    </ListWithSidebarContainer>
+                                </>
                             )}
-                        </div>
+                        </Stack>
                     )}
 
                     {activeView === 'login' && (
-                        <Stack className={styles.remotePanel} gap="md">
-                            <Text fw={600}>YouTube Music account</Text>
-                            <Text isMuted size="sm">
-                                Login enables your signed-in YouTube Music library inside Roofy.
-                            </Text>
-                            {!isConnected ? (
-                                <Button
-                                    disabled={status?.dependencyAvailable === false}
-                                    onClick={handleConnect}
-                                    variant="state-info"
-                                >
-                                    Login
-                                </Button>
-                            ) : (
-                                <Group gap="xs">
-                                    <Badge>Connected</Badge>
+                        <Stack gap={0} style={{ flex: 1, minHeight: 0 }}>
+                            <PageHeader>
+                                <LibraryHeaderBar ignoreMaxWidth>
+                                    <LibraryHeaderBar.Title>
+                                        YouTube Music account
+                                    </LibraryHeaderBar.Title>
+                                    <YoutubeMusicIcon size="2rem" />
+                                </LibraryHeaderBar>
+                            </PageHeader>
+                            <div className={styles.remotePanel}>
+                                <Stack gap="md">
                                     <Text isMuted size="sm">
-                                        {status?.displayName || 'Account'}
+                                        Login enables your signed-in YouTube Music library inside
+                                        Roofy.
                                     </Text>
-                                    <Button
-                                        onClick={handleDisconnect}
-                                        size="compact-sm"
-                                        variant="subtle"
-                                    >
-                                        Logout
-                                    </Button>
-                                </Group>
-                            )}
+                                    {!isConnected ? (
+                                        <Button
+                                            disabled={status?.dependencyAvailable === false}
+                                            onClick={handleConnect}
+                                            variant="state-info"
+                                        >
+                                            Login
+                                        </Button>
+                                    ) : (
+                                        <Group gap="xs">
+                                            <Badge>Connected</Badge>
+                                            <Text isMuted size="sm">
+                                                {status?.displayName || 'Account'}
+                                            </Text>
+                                            <Button
+                                                onClick={handleDisconnect}
+                                                size="compact-sm"
+                                                variant="subtle"
+                                            >
+                                                Logout
+                                            </Button>
+                                        </Group>
+                                    )}
+                                </Stack>
+                            </div>
                         </Stack>
                     )}
                 </div>
             </LibraryContainer>
         </AnimatedPage>
-    );
-};
-
-const SongTable = ({
-    error,
-    loading,
-    onImport,
-    onPlay,
-    onQueue,
-    songs,
-    title,
-}: {
-    error?: Error | null;
-    loading: boolean;
-    onImport: (song: Song) => void;
-    onPlay: (song: Song) => void;
-    onQueue: (song: Song) => void;
-    songs: Song[];
-    title: string;
-}) => (
-    <section className={styles.section}>
-        <Group justify="space-between">
-            <Text fw={600}>{title}</Text>
-            <Text isMuted size="sm">
-                {loading ? 'Loading tracks' : `${songs.length} tracks`}
-            </Text>
-        </Group>
-        {loading ? (
-            <LoadingState label="Loading YouTube Music tracks" />
-        ) : error ? (
-            <ErrorState error={error} />
-        ) : (
-            <>
-                <Table>
-                    <Table.Thead>
-                        <Table.Tr>
-                            <Table.Th />
-                            <Table.Th>Track</Table.Th>
-                            <Table.Th>Artist</Table.Th>
-                            <Table.Th>Album</Table.Th>
-                            <Table.Th />
-                        </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                        {songs.map((song) => (
-                            <Table.Tr className={styles.songRow} key={song.id}>
-                                <Table.Td>
-                                    <Image
-                                        className={styles.artImage}
-                                        containerClassName={styles.art}
-                                        includeLoader={false}
-                                        src={song.imageUrl || undefined}
-                                        unloaderIcon="emptySongImage"
-                                    />
-                                </Table.Td>
-                                <Table.Td>{song.name}</Table.Td>
-                                <Table.Td>{song.artistName}</Table.Td>
-                                <Table.Td>{song.album || '-'}</Table.Td>
-                                <Table.Td>
-                                    <Group justify="flex-end" wrap="nowrap">
-                                        <Button onClick={() => onImport(song)} size="compact-sm">
-                                            Import
-                                        </Button>
-                                        <Button onClick={() => onPlay(song)} size="compact-sm">
-                                            Play
-                                        </Button>
-                                        <Button onClick={() => onQueue(song)} size="compact-sm">
-                                            Queue
-                                        </Button>
-                                    </Group>
-                                </Table.Td>
-                            </Table.Tr>
-                        ))}
-                    </Table.Tbody>
-                </Table>
-                {songs.length === 0 && <Text isMuted>No YouTube Music tracks found.</Text>}
-            </>
-        )}
-    </section>
-);
-
-const PlaylistTable = ({
-    error,
-    loading,
-    onImportPlaylist,
-    onImportTracks,
-    onOpen,
-    onPlayPlaylist,
-    playlists,
-}: {
-    error?: Error | null;
-    loading: boolean;
-    onImportPlaylist: (playlist: Playlist) => void;
-    onImportTracks: (playlist: Playlist) => void;
-    onOpen: (playlist: Playlist) => void;
-    onPlayPlaylist: (playlist: Playlist, playType: Play) => void;
-    playlists: Playlist[];
-}) => {
-    return (
-        <section className={styles.section}>
-            <Group justify="space-between">
-                <Text fw={600}>My Playlists</Text>
-                <Text isMuted size="sm">
-                    {loading ? 'Loading playlists' : `${playlists.length} playlists`}
-                </Text>
-            </Group>
-            {loading ? (
-                <LoadingState label="Loading YouTube Music playlists" />
-            ) : error ? (
-                <ErrorState error={error} />
-            ) : (
-                <>
-                    <Table>
-                        <Table.Thead>
-                            <Table.Tr>
-                                <Table.Th />
-                                <Table.Th>Playlist</Table.Th>
-                                <Table.Th>Owner</Table.Th>
-                                <Table.Th />
-                            </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                            {playlists.map((playlist) => (
-                                <Table.Tr className={styles.songRow} key={playlist.id}>
-                                    <Table.Td>
-                                        <button
-                                            className={styles.artButton}
-                                            onClick={() => onOpen(playlist)}
-                                            type="button"
-                                        >
-                                            <Image
-                                                className={styles.artImage}
-                                                containerClassName={styles.art}
-                                                includeLoader={false}
-                                                src={playlist.imageUrl || undefined}
-                                                unloaderIcon="emptyPlaylistImage"
-                                            />
-                                        </button>
-                                    </Table.Td>
-                                    <Table.Td>
-                                        <button
-                                            className={styles.playlistTitleButton}
-                                            onClick={() => onOpen(playlist)}
-                                            type="button"
-                                        >
-                                            {playlist.name}
-                                        </button>
-                                    </Table.Td>
-                                    <Table.Td>{playlist.owner || '-'}</Table.Td>
-                                    <Table.Td>
-                                        <Group justify="flex-end" wrap="nowrap">
-                                            <Button
-                                                onClick={() => onImportPlaylist(playlist)}
-                                                size="compact-sm"
-                                            >
-                                                Import playlist
-                                            </Button>
-                                            <Button
-                                                onClick={() => onImportTracks(playlist)}
-                                                size="compact-sm"
-                                                variant="subtle"
-                                            >
-                                                Import tracks
-                                            </Button>
-                                            <Button
-                                                onClick={() => onPlayPlaylist(playlist, Play.NOW)}
-                                                size="compact-sm"
-                                                variant="subtle"
-                                            >
-                                                Play
-                                            </Button>
-                                        </Group>
-                                    </Table.Td>
-                                </Table.Tr>
-                            ))}
-                        </Table.Tbody>
-                    </Table>
-                    {playlists.length === 0 && (
-                        <Text isMuted>No YouTube Music playlists found.</Text>
-                    )}
-                </>
-            )}
-        </section>
-    );
-};
-
-const PlaylistDetail = ({
-    fallbackPlaylist,
-    loading,
-    onBack,
-    onImportPlaylist,
-    onImportSong,
-    onImportTracks,
-    onPlay,
-    onPlayPlaylist,
-    onQueue,
-    playlist,
-    playlistError,
-    songs,
-    songsError,
-}: {
-    fallbackPlaylist?: Playlist;
-    loading: boolean;
-    onBack: () => void;
-    onImportPlaylist: (playlist: Playlist) => void;
-    onImportSong: (song: Song) => void;
-    onImportTracks: (playlist: Playlist) => void;
-    onPlay: (song: Song) => void;
-    onPlayPlaylist: (playlist: Playlist, playType: Play) => void;
-    onQueue: (song: Song) => void;
-    playlist?: Playlist;
-    playlistError?: Error | null;
-    songs: Song[];
-    songsError?: Error | null;
-}) => {
-    const activePlaylist = playlist || fallbackPlaylist;
-
-    return (
-        <Stack gap="lg">
-            <Group justify="space-between">
-                <Group gap="md" wrap="nowrap">
-                    <Button onClick={onBack} size="compact-sm" variant="subtle">
-                        Back
-                    </Button>
-                    {activePlaylist && (
-                        <Image
-                            className={styles.detailImage}
-                            containerClassName={styles.detailArt}
-                            includeLoader={false}
-                            src={activePlaylist.imageUrl || undefined}
-                            unloaderIcon="emptyPlaylistImage"
-                        />
-                    )}
-                    <Stack gap="xs">
-                        <Text fw={700} size="lg">
-                            {activePlaylist?.name || 'YouTube Music playlist'}
-                        </Text>
-                        <Text isMuted size="sm">
-                            {loading ? 'Loading tracks' : `${songs.length} tracks`}
-                            {activePlaylist?.owner ? ` · ${activePlaylist.owner}` : ''}
-                        </Text>
-                    </Stack>
-                </Group>
-                {activePlaylist && (
-                    <Group gap="xs" wrap="nowrap">
-                        <Button onClick={() => onImportPlaylist(activePlaylist)} size="compact-sm">
-                            Import playlist
-                        </Button>
-                        <Button
-                            onClick={() => onImportTracks(activePlaylist)}
-                            size="compact-sm"
-                            variant="subtle"
-                        >
-                            Import tracks
-                        </Button>
-                        <Button
-                            onClick={() => onPlayPlaylist(activePlaylist, Play.NOW)}
-                            size="compact-sm"
-                            variant="subtle"
-                        >
-                            Play
-                        </Button>
-                    </Group>
-                )}
-            </Group>
-            {playlistError && <ErrorState error={playlistError} />}
-            <SongTable
-                error={songsError}
-                loading={loading}
-                onImport={onImportSong}
-                onPlay={onPlay}
-                onQueue={onQueue}
-                songs={songs}
-                title="Tracks"
-            />
-        </Stack>
     );
 };
 

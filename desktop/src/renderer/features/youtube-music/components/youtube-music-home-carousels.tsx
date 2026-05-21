@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import isElectron from 'is-electron';
 import { useMemo } from 'react';
 
+import styles from './youtube-music-home-carousels.module.css';
+
 import {
     GridCarousel,
     useGridCarouselContainerQuery,
@@ -10,9 +12,12 @@ import { DataRow, MemoizedItemCard } from '/@/renderer/components/item-card/item
 import { useDefaultItemListControls } from '/@/renderer/components/item-list/helpers/item-list-controls';
 import { useGridRows } from '/@/renderer/components/item-list/helpers/use-grid-rows';
 import { ItemControls } from '/@/renderer/components/item-list/types';
+import { QuickImport } from '/@/renderer/features/local-first/components/quick-import';
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
+import { youtubeMusicAuthStatusQueryKey } from '/@/renderer/features/youtube-music/components/youtube-music-account-button';
 import { Badge } from '/@/shared/components/badge/badge';
 import { Group } from '/@/shared/components/group/group';
+import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Stack } from '/@/shared/components/stack/stack';
 import { TextTitle } from '/@/shared/components/text-title/text-title';
 import { Album, LibraryItem, Playlist, Song } from '/@/shared/types/domain-types';
@@ -21,6 +26,8 @@ import { YoutubeMusicHomeSection } from '/@/shared/types/youtube-music-types';
 
 type YoutubeMusicHomeCarouselsProps = {
     containerQuery?: ReturnType<typeof useGridCarouselContainerQuery>;
+    maxHeight?: string;
+    title?: string;
 };
 
 const rowsByType = (
@@ -50,15 +57,39 @@ const sectionTitle = (section: YoutubeMusicHomeSection) => (
     </Group>
 );
 
-export const YoutubeMusicHomeCarousels = ({ containerQuery }: YoutubeMusicHomeCarouselsProps) => {
+const YoutubeMusicSectionHeader = ({ title }: { title?: string }) => {
+    if (!title) return null;
+
+    return (
+        <Group align="center" className={styles.header} gap="lg" wrap="nowrap">
+            <TextTitle className={styles.title} fw={700}>
+                {title}
+            </TextTitle>
+            <QuickImport className={styles.quickImport} variant="inline" />
+        </Group>
+    );
+};
+
+export const YoutubeMusicHomeCarousels = ({
+    containerQuery,
+    maxHeight,
+    title,
+}: YoutubeMusicHomeCarouselsProps) => {
     const player = usePlayer();
     const baseControls = useDefaultItemListControls();
     const songRows = useGridRows(LibraryItem.SONG, ItemListKey.SONG);
     const albumRows = useGridRows(LibraryItem.ALBUM, ItemListKey.ALBUM);
     const playlistRows = useGridRows(LibraryItem.PLAYLIST, ItemListKey.PLAYLIST);
 
-    const homeQuery = useQuery({
+    const statusQuery = useQuery({
         enabled: isElectron() && Boolean(window.api?.youtubeMusic),
+        queryFn: () => window.api.youtubeMusic.status(),
+        queryKey: youtubeMusicAuthStatusQueryKey,
+        staleTime: 1000 * 60,
+    });
+
+    const homeQuery = useQuery({
+        enabled: Boolean(statusQuery.data?.connected),
         queryFn: () => window.api.youtubeMusic.home(),
         queryKey: ['youtube-music', 'home', 'main-feed'],
         staleTime: 1000 * 60 * 10,
@@ -90,47 +121,56 @@ export const YoutubeMusicHomeCarousels = ({ containerQuery }: YoutubeMusicHomeCa
     );
 
     const sections = homeQuery.data?.sections || [];
+
+    if (homeQuery.isLoading) {
+        return (
+            <Stack className={styles.container} gap="lg" style={{ maxHeight }}>
+                <YoutubeMusicSectionHeader title={title} />
+                <Spinner container size={32} />
+            </Stack>
+        );
+    }
+
     if (sections.length === 0) return null;
 
     return (
-        <Stack gap="xl">
-            <Group gap="sm">
-                <TextTitle fw={700}>YouTube Music</TextTitle>
-                <Badge>Stream</Badge>
-            </Group>
-            {sections.map((section) => {
-                const cardRows = rowsByType(section.itemType, rows);
-                const cards = section.items.map((item) => ({
-                    content: (
-                        <MemoizedItemCard
-                            controls={controls}
-                            data={item as Album | Playlist | Song}
-                            imageFetchPriority="low"
-                            itemType={section.itemType}
-                            rows={cardRows}
-                            type="poster"
-                            withControls
+        <Stack className={styles.container} gap="lg" style={{ maxHeight }}>
+            <YoutubeMusicSectionHeader title={title} />
+            <div className={styles.sections}>
+                {sections.map((section) => {
+                    const cardRows = rowsByType(section.itemType, rows);
+                    const cards = section.items.map((item) => ({
+                        content: (
+                            <MemoizedItemCard
+                                controls={controls}
+                                data={item as Album | Playlist | Song}
+                                imageFetchPriority="low"
+                                itemType={section.itemType}
+                                rows={cardRows}
+                                type="poster"
+                                withControls
+                            />
+                        ),
+                        id: `${section.id}-${item.id}`,
+                    }));
+
+                    if (cards.length === 0) return null;
+
+                    return (
+                        <GridCarousel
+                            cards={cards}
+                            containerQuery={containerQuery}
+                            key={section.id}
+                            onNextPage={() => {}}
+                            onPrevPage={() => {}}
+                            placeholderItemType={section.itemType}
+                            placeholderRows={cardRows}
+                            rowCount={1}
+                            title={sectionTitle(section)}
                         />
-                    ),
-                    id: `${section.id}-${item.id}`,
-                }));
-
-                if (cards.length === 0) return null;
-
-                return (
-                    <GridCarousel
-                        cards={cards}
-                        containerQuery={containerQuery}
-                        key={section.id}
-                        onNextPage={() => {}}
-                        onPrevPage={() => {}}
-                        placeholderItemType={section.itemType}
-                        placeholderRows={cardRows}
-                        rowCount={1}
-                        title={sectionTitle(section)}
-                    />
-                );
-            })}
+                    );
+                })}
+            </div>
         </Stack>
     );
 };

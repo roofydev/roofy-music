@@ -48,7 +48,7 @@
 .wide-text-button {
     padding-right: var(--theme-spacing-xl);
     padding-left: var(--theme-spacing-xl);
-    background: white;
+    background: transparent;
     border-radius: var(--theme-radius-xl);
     transition: background-color 0.2s ease-in-out !important;
 
@@ -264,11 +264,13 @@
     border-radius: 0 !important;
 }
 
-:global([data-theme="retroMonochrome"]) .wide-text-button-label {
+:global([data-theme="retroMonochrome"]) .wide-text-button-label,
+:global([data-theme="retroMonochrome"]) .wide-text-button.unthemed .wide-text-button-label {
     color: var(--retro-text, #d0d0d0);
 }
 
-:global([data-theme="retroMonochrome"]) .wide-text-button svg {
+:global([data-theme="retroMonochrome"]) .wide-text-button svg,
+:global([data-theme="retroMonochrome"]) .wide-text-button.unthemed .wide-text-button-label svg {
     color: var(--retro-text, #d0d0d0);
     fill: var(--retro-text, #d0d0d0);
 }

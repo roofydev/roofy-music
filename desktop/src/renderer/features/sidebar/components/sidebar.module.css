@@ -4,18 +4,20 @@
     gap: var(--mantine-spacing-xs);
     width: 100%;
     height: 100%;
-    max-height: calc(100vh - 90px);
+    min-height: 0;
+    overflow: hidden;
     background: var(--theme-colors-background-alternate);
 }
 
 .container.custom-bar {
-    max-height: calc(100vh - 120px);
+    height: 100%;
 }
 
 .scroll-area {
     flex: 1;
     min-height: 0;
     padding: 0 var(--theme-spacing-md) var(--theme-spacing-md) var(--theme-spacing-md);
+    overflow-y: auto;
 }
 
 @keyframes fade-in {
@@ -32,6 +34,7 @@
     position: relative;
     flex-shrink: 0;
     min-height: 0;
+    max-height: min(38vh, 18rem);
     padding: var(--theme-spacing-md);
     cursor: pointer;
     animation: fade-in 0.2s ease-in-out;
@@ -57,7 +60,8 @@
 }
 
 .accordion-root {
-    height: 100%;
+    height: auto;
+    min-height: min-content;
 }
 
 .accordion-item {
@@ -85,24 +89,30 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .container {
-    background: var(--retro-bg-2, #080808) !important;
     gap: 0;
+    background: var(--retro-bg-2, #080808) !important;
 }
 
 :global([data-theme="retroMonochrome"]) .scroll-area {
     padding: 0;
+    scrollbar-color: var(--retro-border-muted, #3f3f3f) var(--retro-bg-2, #080808);
+    scrollbar-width: thin;
+}
+
+:global([data-theme="retroMonochrome"]) .scroll-area :global(.os-scrollbar-vertical) {
+    --os-size: 8px;
 }
 
 :global([data-theme="retroMonochrome"]) .accordion-control {
-    border-radius: 0;
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
     color: var(--retro-text-soft, #a0a0a0);
     text-transform: uppercase;
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    border-radius: 0;
 }
 
 :global([data-theme="retroMonochrome"]) .accordion-control:hover {
-    background: var(--retro-panel-2, #101010);
     color: var(--retro-text, #d0d0d0);
+    background: var(--retro-panel-2, #101010);
 }
 
 :global([data-theme="retroMonochrome"]) .accordion-content {

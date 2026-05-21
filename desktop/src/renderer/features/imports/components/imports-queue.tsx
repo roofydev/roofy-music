@@ -16,10 +16,10 @@ import { Text } from '/@/shared/components/text/text';
 type ImportFilter = 'active' | 'all' | 'completed' | 'failed';
 
 const statusOrder: Record<string, number> = {
-    failed: 0,
-    running: 1,
-    queued: 2,
     completed: 3,
+    failed: 0,
+    queued: 2,
+    running: 1,
 };
 
 const getStatusCopy = (status: string, progress: number) => {
@@ -32,14 +32,14 @@ const getStatusCopy = (status: string, progress: number) => {
 
 const getStatusBadge = (status: string) => {
     switch (status) {
-        case 'queued':
-            return <Badge variant="light">Queued</Badge>;
-        case 'running':
-            return <Badge color="blue">Running</Badge>;
         case 'completed':
             return <Badge color="green">Completed</Badge>;
         case 'failed':
             return <Badge color="red">Failed</Badge>;
+        case 'queued':
+            return <Badge variant="light">Queued</Badge>;
+        case 'running':
+            return <Badge color="blue">Running</Badge>;
         default:
             return <Badge>{status}</Badge>;
     }
@@ -49,6 +49,21 @@ export const ImportsQueue = () => {
     const jobs = useImportJobs();
     const { clearCompleted, clearFailed, removeJob } = useImportJobActions();
     const [filter, setFilter] = useState<ImportFilter>('all');
+
+    const handleClearCompleted = () => {
+        window.api?.localFirst?.clearImports?.('completed');
+        clearCompleted();
+    };
+
+    const handleClearFailed = () => {
+        window.api?.localFirst?.clearImports?.('failed');
+        clearFailed();
+    };
+
+    const handleRemoveJob = (id: string) => {
+        window.api?.localFirst?.removeImport?.(id);
+        removeJob(id);
+    };
 
     const allJobs = useMemo(() => {
         return Object.values(jobs).sort((a, b) => {
@@ -87,18 +102,15 @@ export const ImportsQueue = () => {
     }, [allJobs, filter]);
 
     return (
-        <Stack gap="lg">
+        <Stack className={styles.container} gap="md">
             <Group justify="space-between" wrap="nowrap">
-                <Stack gap={2}>
-                    <Text fw={700}>Imports / Downloads</Text>
-                    <Text isMuted size="sm">
-                        Track YouTube Music imports into your local Roofy library.
-                    </Text>
-                </Stack>
+                <Text isMuted size="sm">
+                    Imported songs, imported playlists, and YouTube Music download jobs.
+                </Text>
                 <Group gap="xs" wrap="nowrap">
                     <Button
                         disabled={stats.completed === 0}
-                        onClick={clearCompleted}
+                        onClick={handleClearCompleted}
                         size="compact-sm"
                         variant="subtle"
                     >
@@ -106,7 +118,7 @@ export const ImportsQueue = () => {
                     </Button>
                     <Button
                         disabled={stats.failed === 0}
-                        onClick={clearFailed}
+                        onClick={handleClearFailed}
                         size="compact-sm"
                         variant="subtle"
                     >
@@ -247,7 +259,7 @@ export const ImportsQueue = () => {
                                         <ActionIcon
                                             disabled={!canDismiss}
                                             icon="x"
-                                            onClick={() => removeJob(job.id)}
+                                            onClick={() => handleRemoveJob(job.id)}
                                             size="compact-sm"
                                             tooltip={{
                                                 label: canDismiss

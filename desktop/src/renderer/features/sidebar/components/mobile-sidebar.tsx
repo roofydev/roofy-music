@@ -63,7 +63,11 @@ export const MobileSidebar = () => {
             <Group grow id="global-search-container" style={{ flexShrink: 0 }}>
                 <ActionBar />
             </Group>
-            <ScrollArea allowDragScroll className={styles.scrollArea}>
+            <ScrollArea
+                allowDragScroll
+                className={styles.scrollArea}
+                scrollbarsAutoHide="leave"
+            >
                 <Accordion
                     classNames={{
                         content: styles.accordionContent,

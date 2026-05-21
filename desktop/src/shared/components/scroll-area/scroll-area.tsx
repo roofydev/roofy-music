@@ -9,12 +9,16 @@ import './scroll-area.css';
 import { useMergedRef } from '/@/shared/hooks/use-merged-ref';
 import { DragData, DragTarget } from '/@/shared/types/drag-and-drop';
 
+type ScrollbarsAutoHide = 'leave' | 'move' | 'never' | 'scroll';
+
 interface ScrollAreaProps extends React.ComponentPropsWithoutRef<'div'> {
     allowDragScroll?: boolean;
     debugScrollPosition?: boolean;
     scrollHideDelay?: number;
     scrollX?: boolean;
     scrollY?: boolean;
+    /** Sidebar and other nav panels use `leave` so users can see the scrollbar while hovering. */
+    scrollbarsAutoHide?: ScrollbarsAutoHide;
 }
 
 export const ScrollArea = forwardRef((props: ScrollAreaProps, ref: Ref<HTMLDivElement>) => {
@@ -25,6 +29,7 @@ export const ScrollArea = forwardRef((props: ScrollAreaProps, ref: Ref<HTMLDivEl
         scrollHideDelay,
         scrollX = false,
         scrollY = true,
+        scrollbarsAutoHide = 'scroll',
         ...htmlProps
     } = props;
 
@@ -36,7 +41,7 @@ export const ScrollArea = forwardRef((props: ScrollAreaProps, ref: Ref<HTMLDivEl
         options: {
             overflow: { x: scrollX ? 'scroll' : 'hidden', y: scrollY ? 'scroll' : 'hidden' },
             scrollbars: {
-                autoHide: 'leave',
+                autoHide: scrollbarsAutoHide,
                 autoHideDelay: scrollHideDelay || 500,
                 pointers: ['mouse', 'pen', 'touch'],
                 theme: 'roofy-os-scrollbar',

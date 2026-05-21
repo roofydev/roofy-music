@@ -32,23 +32,29 @@
     scrollbar-color: var(--retro-border-muted) var(--retro-bg);
 }
 
-/* WebKit scrollbars */
+/* WebKit scrollbars — thin, no hover flash */
 [data-theme="retroMonochrome"] ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
 }
 
 [data-theme="retroMonochrome"] ::-webkit-scrollbar-track {
-    background: var(--retro-bg);
+    background: transparent;
 }
 
 [data-theme="retroMonochrome"] ::-webkit-scrollbar-thumb {
     background: var(--retro-border-muted);
-    border: 1px solid var(--retro-border);
+    border: 0;
 }
 
 [data-theme="retroMonochrome"] ::-webkit-scrollbar-thumb:hover {
-    background: var(--retro-border);
+    background: var(--retro-border-muted);
+}
+
+/* OverlayScrollbars — only visible while scrolling, not on pointer hover */
+[data-theme="retroMonochrome"] .os-scrollbar.os-scrollbar-auto-hide-hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
 /* --- Kill all rounded corners globally --- */
@@ -376,7 +382,6 @@
 [data-theme="retroMonochrome"] .fs-sidebar-module-accordion-content a[data-active="true"] {
     color: var(--retro-active) !important;
     background: rgba(216, 216, 160, 0.08) !important;
-    box-shadow: inset 3px 0 0 var(--retro-active-muted) !important;
 }
 
 /* Player bar */

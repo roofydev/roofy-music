@@ -1,11 +1,47 @@
-import { app, dialog, ipcMain, shell } from 'electron';
 import { ChildProcessWithoutNullStreams, spawn, spawnSync } from 'child_process';
+import { randomBytes, randomUUID } from 'crypto';
+import { app, dialog, ipcMain, shell } from 'electron';
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import path from 'path';
-import { randomBytes, randomUUID } from 'crypto';
+
+import { store } from '../settings';
 
 import { getMainWindow } from '/@/main/index';
-import { store } from '../settings';
+
+type CreateLocalUserArgs = {
+    email?: string;
+    isAdmin?: boolean;
+    name?: string;
+    password: string;
+    username: string;
+};
+
+type ImportJob = {
+    album?: string;
+    artist?: string;
+    audioFormat: string;
+    cookieBrowser: string;
+    createdAt: string;
+    createPlaylist: boolean;
+    error: string;
+    expectedFiles?: string[];
+    id: string;
+    imageUrl?: string;
+    input: string;
+    message: string;
+    name?: string;
+    playlist: boolean;
+    playlistName?: string;
+    progress: number;
+    source?: 'youtube_music';
+    sourceTrackId?: string;
+    status: 'cancelled' | 'completed' | 'failed' | 'queued' | 'running';
+    targetPlaylistIds?: string[];
+    targetPlaylistNames?: string[];
+    title?: string;
+    updatedAt: string;
+    videoId?: string;
+};
 
 type LocalFirstStatus = {
     dataPath: string;
@@ -30,33 +66,6 @@ type LocalFirstStatus = {
     };
 };
 
-type ImportJob = {
-    album?: string;
-    artist?: string;
-    audioFormat: string;
-    cookieBrowser: string;
-    createPlaylist: boolean;
-    createdAt: string;
-    error: string;
-    expectedFiles?: string[];
-    id: string;
-    imageUrl?: string;
-    input: string;
-    message: string;
-    name?: string;
-    playlist: boolean;
-    playlistName?: string;
-    progress: number;
-    source?: 'youtube_music';
-    sourceTrackId?: string;
-    status: 'cancelled' | 'completed' | 'failed' | 'queued' | 'running';
-    targetPlaylistIds?: string[];
-    targetPlaylistNames?: string[];
-    title?: string;
-    updatedAt: string;
-    videoId?: string;
-};
-
 type SourceImportMetadata = {
     album?: string;
     artist?: string;
@@ -67,16 +76,9 @@ type SourceImportMetadata = {
     videoId?: string;
 };
 
-type CreateLocalUserArgs = {
-    email?: string;
-    isAdmin?: boolean;
-    name?: string;
-    password: string;
-    username: string;
-};
-
 const LOCAL_SERVER_ID = 'roofy-local-navidrome';
 const LOCAL_SERVER_USERNAME = 'admin';
+const IMPORT_JOBS_KEY = 'roofy.importJobs';
 const DEFAULT_PORT = 4533;
 const DEFAULT_IMPORT_FORMAT = 'best';
 const COOKIE_BROWSER_ALLOWLIST = new Set([
@@ -100,11 +102,32 @@ const COOKIE_BROWSER_AUTO_ATTEMPTS = [
     'opera',
 ];
 
-let navidromeProcess: ChildProcessWithoutNullStreams | null = null;
-let activeImport: { child: ChildProcessWithoutNullStreams; id: string } | null = null;
-const importJobs: ImportJob[] = [];
-
 const now = () => new Date().toISOString();
+
+let navidromeProcess: ChildProcessWithoutNullStreams | null = null;
+let activeImport: null | { child: ChildProcessWithoutNullStreams; id: string } = null;
+
+const loadImportJobs = (): ImportJob[] => {
+    const savedJobs = store.get(IMPORT_JOBS_KEY) as ImportJob[] | undefined;
+    if (!Array.isArray(savedJobs)) return [];
+
+    return savedJobs
+        .filter((job) => job?.id)
+        .map((job) => ({
+            ...job,
+            error: job.error || '',
+            message: job.status === 'running' ? 'Interrupted when Roofy closed' : job.message || '',
+            progress: job.status === 'completed' ? 100 : job.progress || 0,
+            status: job.status === 'running' ? 'failed' : job.status,
+            updatedAt: job.updatedAt || now(),
+        }));
+};
+
+const importJobs: ImportJob[] = loadImportJobs();
+
+const persistImportJobs = () => {
+    store.set(IMPORT_JOBS_KEY, importJobs.slice(0, 500));
+};
 
 const getLocalRoot = () => path.join(app.getPath('userData'), 'local-first');
 const getDataPath = () => path.join(getLocalRoot(), 'navidrome-data');
@@ -200,7 +223,7 @@ const waitForNavidrome = async (timeoutMs = 25000) => {
         try {
             const response = await fetch(`${getUrl()}/app`);
             if (response.ok || response.status < 500) return true;
-        } catch (_error) {
+        } catch {
             // Keep polling until the sidecar binds the port.
         }
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -214,7 +237,7 @@ const parseResponseBody = async (response: Response) => {
 
     try {
         return JSON.parse(text);
-    } catch (_error) {
+    } catch {
         return text;
     }
 };
@@ -334,9 +357,6 @@ export const startLocalFirst = async () => {
         cwd: getDataPath(),
         env: {
             ...process.env,
-            PATH: ffmpegDir
-                ? `${ffmpegDir}${path.delimiter}${process.env.PATH || ''}`
-                : process.env.PATH,
             ND_ADDRESS: '127.0.0.1',
             ND_DATAFOLDER: getDataPath(),
             ND_DEVAUTOCREATEADMINPASSWORD: getPassword(),
@@ -348,6 +368,9 @@ export const startLocalFirst = async () => {
             ND_MUSICFOLDER: getLibraryPath(),
             ND_PORT: String(getPort()),
             ND_SCANNER_SCANONSTARTUP: 'true',
+            PATH: ffmpegDir
+                ? `${ffmpegDir}${path.delimiter}${process.env.PATH || ''}`
+                : process.env.PATH,
         },
         windowsHide: true,
     });
@@ -415,8 +438,27 @@ const updateJob = (id: string, patch: Partial<ImportJob>) => {
     const job = importJobs.find((item) => item.id === id);
     if (!job) return null;
     Object.assign(job, patch, { updatedAt: now() });
+    persistImportJobs();
     sendImportJobEvent(job);
     return job;
+};
+
+const removeImportJob = (id: string) => {
+    const index = importJobs.findIndex((job) => job.id === id);
+    if (index < 0) return getLocalFirstStatus();
+    importJobs.splice(index, 1);
+    persistImportJobs();
+    return getLocalFirstStatus();
+};
+
+const clearImportJobs = (status: 'completed' | 'failed') => {
+    for (let index = importJobs.length - 1; index >= 0; index -= 1) {
+        if (importJobs[index].status === status) {
+            importJobs.splice(index, 1);
+        }
+    }
+    persistImportJobs();
+    return getLocalFirstStatus();
 };
 
 const normalizeImportInput = (input: string) => {
@@ -458,7 +500,7 @@ const normalizeDownloadUrl = (input: string, playlist: boolean) => {
         if (hostname === 'youtu.be') {
             return `https://www.youtube.com/watch?v=${url.pathname.replace(/^\//, '')}`;
         }
-    } catch (_error) {
+    } catch {
         return value;
     }
 
@@ -489,7 +531,7 @@ const inferPlaylistImport = (input: string, explicit?: boolean) => {
         if (listId.toUpperCase().startsWith('RD')) return false;
 
         return true;
-    } catch (_error) {
+    } catch {
         return false;
     }
 };
@@ -747,19 +789,59 @@ const runImport = (
         } else if (code === 0) {
             let message = 'Import complete';
 
-            if (job.createPlaylist && audioFiles.length > 0) {
+            if (audioFiles.length > 0) {
+                const needsScan = job.createPlaylist || Boolean(job.targetPlaylistIds?.length);
+                try {
+                    if (job.createPlaylist) {
+                        writePlaylistM3U(job, audioFiles);
+                        updateJob(job.id, {
+                            error: '',
+                            message: 'Import complete - creating playlist',
+                        });
+                        message = 'Import complete - playlist created';
+                    }
+
+                    if (needsScan) {
+                        updateJob(job.id, {
+                            error: '',
+                            message: job.targetPlaylistIds?.length
+                                ? 'Import complete - adding to playlist'
+                                : 'Import complete - scanning library',
+                        });
+                        await triggerNavidromeScan();
+                    }
+
+                    if (job.targetPlaylistIds?.length) {
+                        await addImportedSongsToTargetPlaylists(job, audioFiles);
+                        message = 'Import complete - added to playlist';
+                    }
+
+                    if (job.createPlaylist) {
+                        getMainWindow()?.webContents.send('roofy-local-playlist-imported');
+                    }
+                } catch (error: any) {
+                    console.error('[local-first] Failed to finish import post-processing:', error);
+                    updateJob(job.id, {
+                        error: error.message || 'Import post-processing failed',
+                        message: 'Import completed - playlist update failed',
+                        status: 'failed',
+                    });
+                    processImportQueue();
+                    return;
+                }
+            } else if (job.targetPlaylistIds?.length) {
+                updateJob(job.id, {
+                    error: 'Import completed, but Roofy could not identify the downloaded audio file to add to the selected playlist.',
+                    message: 'Import completed - playlist update failed',
+                    status: 'failed',
+                });
+                processImportQueue();
+                return;
+            } else if (job.createPlaylist) {
                 try {
                     writePlaylistM3U(job, audioFiles);
-                    updateJob(job.id, {
-                        error: '',
-                        message: 'Import complete - creating playlist',
-                    });
-                    await triggerNavidromeScan();
-                    message = 'Import complete - playlist created';
-                    getMainWindow()?.webContents.send('roofy-local-playlist-imported');
                 } catch (error: any) {
-                    console.error('[local-first] Failed to create playlist:', error);
-                    message = 'Import complete - playlist creation failed';
+                    console.error('[local-first] Failed to create empty playlist:', error);
                 }
             }
 
@@ -839,7 +921,7 @@ const runYtDlpPreview = (
     jsRuntimeArgs: string[],
 ): Promise<{
     count: number;
-    duration: number | null;
+    duration: null | number;
     isPlaylist: boolean;
     thumbnail: string;
     title: string;
@@ -1007,11 +1089,11 @@ export const createImportJob = async (
         artist: sourceMetadata?.artist,
         audioFormat,
         cookieBrowser: effectiveBrowser,
+        createdAt: now(),
         createPlaylist:
             typeof createPlaylist === 'boolean'
                 ? createPlaylist
                 : isPlaylist || Boolean(jobPlaylistName),
-        createdAt: now(),
         error: '',
         id: randomUUID(),
         imageUrl: sourceMetadata?.imageUrl,
@@ -1032,6 +1114,7 @@ export const createImportJob = async (
     };
 
     importJobs.unshift(job);
+    persistImportJobs();
     processImportQueue();
     return job;
 };
@@ -1041,7 +1124,7 @@ export const getImportJobForSourceTrack = (sourceTrackId: string) => {
         importJobs.find(
             (job) =>
                 job.sourceTrackId === sourceTrackId &&
-                ['queued', 'running', 'completed'].includes(job.status),
+                ['completed', 'queued', 'running'].includes(job.status),
         ) || null
     );
 };
@@ -1168,6 +1251,80 @@ const triggerNavidromeScan = async () => {
     }
 };
 
+const getSubsonicParams = () =>
+    `u=${encodeURIComponent(LOCAL_SERVER_USERNAME)}&p=${encodeURIComponent(getPassword())}&v=1.16.1&c=roofy&f=json`;
+
+const findImportedSongIds = async (job: ImportJob, audioFiles: string[]) => {
+    const searches = [
+        job.videoId,
+        job.title,
+        job.name,
+        ...audioFiles.map((file) => path.basename(file, path.extname(file))),
+    ]
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value));
+    const seen = new Set<string>();
+    const matches: string[] = [];
+
+    for (const query of searches) {
+        const response = await fetch(
+            `${getUrl()}/rest/search3?${getSubsonicParams()}&query=${encodeURIComponent(query)}&songCount=25&albumCount=0&artistCount=0`,
+        );
+        const body = await parseResponseBody(response);
+        const songs = body?.['subsonic-response']?.searchResult3?.song || [];
+
+        for (const song of songs) {
+            const id = String(song?.id || '');
+            if (!id || seen.has(id)) continue;
+
+            const haystack = [song.title, song.artist, song.album, song.path, song.suffix]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+            const videoMatch = job.videoId && haystack.includes(job.videoId.toLowerCase());
+            const titleMatch = job.title && haystack.includes(job.title.toLowerCase().slice(0, 40));
+
+            if (videoMatch || titleMatch || searches.length === 1) {
+                seen.add(id);
+                matches.push(id);
+            }
+        }
+
+        if (matches.length > 0) return matches;
+    }
+
+    return matches;
+};
+
+const addImportedSongsToTargetPlaylists = async (job: ImportJob, audioFiles: string[]) => {
+    if (!job.targetPlaylistIds?.length) return;
+
+    const songIds = await findImportedSongIds(job, audioFiles);
+    if (songIds.length === 0) {
+        throw new Error(
+            'Import completed, but the imported track was not found in the local library scan.',
+        );
+    }
+
+    for (const playlistId of job.targetPlaylistIds) {
+        const songParams = songIds.map((id) => `songIdToAdd=${encodeURIComponent(id)}`).join('&');
+        const response = await fetch(
+            `${getUrl()}/rest/updatePlaylist.view?${getSubsonicParams()}&playlistId=${encodeURIComponent(playlistId)}&${songParams}`,
+        );
+        const body = await parseResponseBody(response);
+        const subsonicResponse = body?.['subsonic-response'];
+
+        if (!response.ok || subsonicResponse?.status === 'failed') {
+            throw new Error(
+                summarizeNavidromeError(
+                    subsonicResponse?.error || body,
+                    `Import completed, but the track could not be added to playlist ${playlistId}.`,
+                ),
+            );
+        }
+    }
+};
+
 const getLocalFirstStatus = (message = ''): LocalFirstStatus => {
     const binaryPath = navidromeBinaryPath();
     const running = Boolean(navidromeProcess && !navidromeProcess.killed);
@@ -1236,8 +1393,8 @@ ipcMain.handle(
         _event,
         args: {
             album?: string;
-            audioFormat?: string;
             artist?: string;
+            audioFormat?: string;
             cookieBrowser?: string;
             createPlaylist?: boolean;
             imageUrl?: string;
@@ -1278,6 +1435,11 @@ ipcMain.handle('roofy-local-cancel-import', (_event, id: string) => {
     }
     return getLocalFirstStatus();
 });
+
+ipcMain.handle('roofy-local-remove-import', (_event, id: string) => removeImportJob(id));
+ipcMain.handle('roofy-local-clear-imports', (_event, status: 'completed' | 'failed') =>
+    clearImportJobs(status),
+);
 
 ipcMain.handle('roofy-local-create-user', (_event, args: CreateLocalUserArgs) =>
     createLocalUser(args),

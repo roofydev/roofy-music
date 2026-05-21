@@ -1,0 +1,39 @@
+.container {
+    min-height: 0;
+}
+
+.header {
+    display: flex;
+    flex-shrink: 0;
+    width: 100%;
+    min-width: 0;
+}
+
+.title {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.quick-import {
+    min-width: min(34rem, 100%);
+}
+
+.sections {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--theme-spacing-xl);
+    min-height: 0;
+    padding-right: var(--theme-spacing-xs);
+    overflow-y: auto;
+}
+
+@media (width <= 900px) {
+    .header {
+        flex-wrap: wrap;
+    }
+
+    .quick-import {
+        flex-basis: 100%;
+    }
+}

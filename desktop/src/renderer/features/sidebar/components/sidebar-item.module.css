@@ -70,7 +70,6 @@
 :global([data-theme="retroMonochrome"]) .link.active {
     color: var(--retro-active, #d8d8a0);
     background: rgba(216, 216, 160, 0.08);
-    box-shadow: inset 3px 0 0 var(--retro-active-muted, #9a9a72);
 }
 
 :global([data-theme="retroMonochrome"]) .link:hover {

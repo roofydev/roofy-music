@@ -80,7 +80,6 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
     const player2Ref = useRef<null | ReactPlayer>(null);
     const networkRetryCount1 = useRef(0);
     const networkRetryCount2 = useRef(0);
-    const isSeekingRef = useRef(false);
     const [ReactPlayerComponent, setReactPlayerComponent] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -148,9 +147,8 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
             const target = playerNum === 1 ? player1Ref.current : player2Ref.current;
             if (!target) return;
             const internal = target.getInternalPlayer() as HTMLAudioElement | null;
-            const src = internal?.currentSrc || internal?.src;
             console.debug('[WebPlayer] seekTo requested:', {
-                currentSrc: src,
+                currentSrc: internal?.currentSrc || internal?.src,
                 playerNum,
                 requestedTime: seekTo,
                 seekable: internal?.seekable?.length
@@ -160,18 +158,12 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
                       }))
                     : null,
             });
-            isSeekingRef.current = true;
             try {
-                if (internal && 'fastSeek' in internal && typeof internal.fastSeek === 'function') {
-                    internal.fastSeek(seekTo);
-                } else {
-                    target.seekTo(seekTo, 'seconds');
-                }
-            } catch {
                 target.seekTo(seekTo, 'seconds');
+            } catch (error) {
+                console.error('[WebPlayer] seekTo failed:', error);
             }
             setTimeout(() => {
-                isSeekingRef.current = false;
                 const afterInternal = target.getInternalPlayer() as HTMLAudioElement | null;
                 console.debug('[WebPlayer] seekTo completed:', {
                     actualTime: afterInternal?.currentTime,

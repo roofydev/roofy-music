@@ -1170,9 +1170,9 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                 },
                 mediaStop: (options?: { reset?: boolean }) => {
                     const reset = options?.reset !== false;
+                    setTimestampStore(0);
                     set((state) => {
                         state.player.status = PlayerStatus.PAUSED;
-                        setTimestampStore(0);
                         if (reset) {
                             state.player.seekToTimestamp = uniqueSeekToTimestamp(0);
                         }

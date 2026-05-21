@@ -79,7 +79,7 @@ export const CollapsedSidebar = () => {
                 [styles.web]: windowBarStyle === Platform.WEB,
             })}
         >
-            <ScrollArea>
+            <ScrollArea scrollbarsAutoHide="leave">
                 {sidebarCollapsedNavigation && (
                     <Group gap={0} grow>
                         <CollapsedSidebarButton onClick={() => navigate(-1)}>

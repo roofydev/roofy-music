@@ -15,7 +15,12 @@ import { useCheckForUpdates } from '/@/renderer/hooks/use-check-for-updates';
 import { useNativeMenuSync } from '/@/renderer/hooks/use-native-menu-sync';
 import { useSyncSettingsToMain } from '/@/renderer/hooks/use-sync-settings-to-main';
 import { AppRouter } from '/@/renderer/router/app-router';
-import { useCssSettings, useHotkeySettings, useImportJobActions, useLanguage } from '/@/renderer/store';
+import {
+    useCssSettings,
+    useHotkeySettings,
+    useImportJobActions,
+    useLanguage,
+} from '/@/renderer/store';
 import { CrtOverlay } from '/@/renderer/components/crt-overlay/crt-overlay';
 import { useAppTheme } from '/@/renderer/themes/use-app-theme';
 import { sanitizeCss } from '/@/renderer/utils/sanitize';
@@ -182,6 +187,12 @@ const ImportJobsEffect = () => {
 
     useEffect(() => {
         if (!isElectron() || !window.api?.youtubeMusic?.onImportJobUpdated) return;
+
+        window.api.localFirst?.status?.().then((status) => {
+            for (const job of status.imports || []) {
+                setJob(job);
+            }
+        });
 
         const removeUpdated = window.api.youtubeMusic.onImportJobUpdated((_event, job) => {
             setJob(job);

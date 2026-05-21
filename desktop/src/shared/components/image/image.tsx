@@ -90,9 +90,11 @@ export function BaseImage({
         isInSessionCache || !enableDebounce ? rawImageRequest : debouncedImageRequest;
 
     const [hasLoadedInInstance, setHasLoadedInInstance] = useState(false);
+    const [showSlowLoadFallback, setShowSlowLoadFallback] = useState(false);
 
     useEffect(() => {
         setHasLoadedInInstance(false);
+        setShowSlowLoadFallback(false);
     }, [effectiveImageRequest?.cacheKey]);
 
     const shouldLoadImage = Boolean(
@@ -120,6 +122,21 @@ export function BaseImage({
         setHasLoadedInInstance(true);
     }, [effectiveImageRequest?.cacheKey, nativeImage.isLoaded]);
 
+    useEffect(() => {
+        if (!nativeImage.isLoading) {
+            setShowSlowLoadFallback(false);
+            return;
+        }
+
+        const timeout = window.setTimeout(() => {
+            setShowSlowLoadFallback(true);
+        }, 1200);
+
+        return () => {
+            window.clearTimeout(timeout);
+        };
+    }, [nativeImage.isLoading]);
+
     return (
         <ImageContainer
             className={clsx(containerClassName, containerPropsClassName)}
@@ -141,7 +158,7 @@ export function BaseImage({
                 />
             ) : !src ? (
                 <ImageUnloader className={className} icon={unloaderIcon} />
-            ) : nativeImage.isError ? (
+            ) : nativeImage.isError || showSlowLoadFallback ? (
                 includeUnloader ? (
                     <ImageUnloader className={className} icon={unloaderIcon} />
                 ) : null

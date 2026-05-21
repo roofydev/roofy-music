@@ -57,7 +57,7 @@ const BaseNativeScrollArea = forwardRef(
             options: {
                 overflow: { x: 'hidden', y: 'scroll' },
                 scrollbars: {
-                    autoHide: 'leave',
+                    autoHide: 'scroll',
                     autoHideDelay: scrollHideDelay || 500,
                     pointers: ['mouse', 'pen', 'touch'],
                     theme: 'roofy-os-scrollbar',

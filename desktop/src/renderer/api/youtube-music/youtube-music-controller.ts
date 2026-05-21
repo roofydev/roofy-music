@@ -32,11 +32,17 @@ export const YoutubeMusicController: Partial<InternalControllerEndpoint> = {
         const videoId = query.id.startsWith('ytm:') ? query.id.slice(4) : query.id;
         return `https://music.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
     },
-    getImageRequest: ({ query }) => ({
-        cacheKey: `youtube-music:${query.id}`,
-        url: query.id,
-    }),
-    getImageUrl: ({ query }) => query.id,
+    getImageRequest: ({ query }) => {
+        if (!query.id?.startsWith('http')) return null;
+        return {
+            cacheKey: `youtube-music:${query.id}`,
+            url: query.id,
+        };
+    },
+    getImageUrl: ({ query }) => {
+        if (query.id?.startsWith('http')) return query.id;
+        return null;
+    },
     getLyrics: async ({ query }) => {
         return (await window.api.youtubeMusic.getLyrics(query.songId)) || '';
     },

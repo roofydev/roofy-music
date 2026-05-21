@@ -1,3 +1,9 @@
+.container {
+    width: 100%;
+    min-height: 0;
+    padding: var(--theme-spacing-lg) var(--theme-spacing-xl);
+}
+
 .summary {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));

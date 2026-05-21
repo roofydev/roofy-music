@@ -13,11 +13,15 @@
 }
 
 .remote-panel {
-    padding: var(--theme-spacing-md);
-    background: color-mix(in srgb, #2f7d8c 7%, var(--theme-colors-background));
-    border: 1px solid color-mix(in srgb, #2f7d8c 32%, var(--theme-colors-border));
-    border-left: 3px solid #2f7d8c;
     border-radius: 8px;
+}
+
+.content-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .song-row {
@@ -56,18 +60,11 @@
     border-radius: 6px;
 }
 
-.art-image,
-.account-image {
+.art-image {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 6px;
-}
-
-.account-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 999px;
 }
 
 .detail-art {

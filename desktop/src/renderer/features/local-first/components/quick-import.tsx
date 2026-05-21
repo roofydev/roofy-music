@@ -1,11 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
+import clsx from 'clsx';
 import isElectron from 'is-electron';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import styles from './quick-import.module.css';
 
 import { queryKeys } from '/@/renderer/api/query-keys';
+import { YoutubeMusicPlaylistGrid } from '/@/renderer/features/youtube-music/components/youtube-music-playlist-grid';
+import { YoutubeMusicSongsTable } from '/@/renderer/features/youtube-music/components/youtube-music-songs-table';
 import { queryClient } from '/@/renderer/lib/react-query';
+import { AppRoute } from '/@/renderer/router/routes';
 import { addToQueueByData, useCurrentServer, useImportJobActions } from '/@/renderer/store';
 import { Badge } from '/@/shared/components/badge/badge';
 import { Button } from '/@/shared/components/button/button';
@@ -13,23 +18,27 @@ import { Group } from '/@/shared/components/group/group';
 import { Icon } from '/@/shared/components/icon/icon';
 import { Image } from '/@/shared/components/image/image';
 import { Stack } from '/@/shared/components/stack/stack';
-import { Table } from '/@/shared/components/table/table';
-import { Text } from '/@/shared/components/text/text';
 import { TextInput } from '/@/shared/components/text-input/text-input';
-import { useDebouncedValue } from '/@/shared/hooks/use-debounced-value';
+import { Text } from '/@/shared/components/text/text';
 import { toast } from '/@/shared/components/toast/toast';
-import { Playlist, Song } from '/@/shared/types/domain-types';
+import { useDebouncedValue } from '/@/shared/hooks/use-debounced-value';
+import { Playlist } from '/@/shared/types/domain-types';
 import { Play } from '/@/shared/types/types';
 import { YoutubeMusicAuthStatus } from '/@/shared/types/youtube-music-types';
 
 type ImportPreview = {
     count: number;
-    duration: number | null;
+    duration: null | number;
     isPlaylist: boolean;
     thumbnail: string;
     title: string;
     uploader: string;
     webpageUrl: string;
+};
+
+type QuickImportProps = {
+    className?: string;
+    variant?: 'inline' | 'panel';
 };
 
 const isUrl = (value: string) => /^https?:\/\//i.test(value.trim());
@@ -74,13 +83,14 @@ const getPlaylistId = (value: string) => {
     }
 };
 
-export const QuickImport = () => {
+export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) => {
     const [input, setInput] = useState('');
     const [submittedInput, setSubmittedInput] = useState('');
     const [preview, setPreview] = useState<ImportPreview | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
     const [error, setError] = useState('');
     const [debouncedInput] = useDebouncedValue(input.trim(), 300);
+    const navigate = useNavigate();
     const server = useCurrentServer();
     const { setJob } = useImportJobActions();
 
@@ -91,8 +101,9 @@ export const QuickImport = () => {
     });
 
     const isConnected = Boolean(
-        (statusQuery.data as YoutubeMusicAuthStatus | undefined)?.connected,
+        (statusQuery.data as undefined | YoutubeMusicAuthStatus)?.connected,
     );
+    const isInline = variant === 'inline';
     const submittedIsUrl = isUrl(submittedInput);
     const submittedIsYoutubeUrl = isYoutubeUrl(submittedInput);
     const liveSearchInput = debouncedInput && !isUrl(debouncedInput) ? debouncedInput : '';
@@ -155,6 +166,14 @@ export const QuickImport = () => {
         () => searchQuery.data?.playlists?.slice(0, 4) || [],
         [searchQuery.data],
     );
+    const hasResultsPanel = Boolean(
+        error ||
+        previewLoading ||
+        preview ||
+        (liveSearchInput && !isConnected) ||
+        (liveSearchInput && isConnected) ||
+        (submittedIsUrl && !submittedIsYoutubeUrl),
+    );
 
     const handleSubmit = (event: FormEvent) => {
         event.preventDefault();
@@ -172,52 +191,29 @@ export const QuickImport = () => {
         setSubmittedInput(value);
     };
 
-    const handleImportSong = useCallback(
-        async (song: Song) => {
-            const videoId = song.youtubeMusic?.videoId;
-            if (!videoId || !window.api?.youtubeMusic?.downloadTrack) return;
-
-            try {
-                const job = await window.api.youtubeMusic.downloadTrack({
-                    album: song.album || undefined,
-                    artist: song.artistName || song.albumArtistName || 'Unknown Artist',
-                    imageUrl: song.imageUrl || undefined,
-                    sourceTrackId: song.id,
-                    title: song.name,
-                    videoId,
-                });
-                setJob(job);
-            } catch (err: any) {
-                toast.error({ message: err?.message || 'Import failed' });
-            }
-        },
-        [setJob],
-    );
-
-    const handleImportPlaylist = useCallback(
-        async (playlist: Playlist) => {
+    const handleOpenPlaylist = useCallback(
+        (playlist: Playlist) => {
             const playlistId =
                 playlist.youtubeMusic?.playlistId || playlist.id.replace(/^ytm-playlist:/, '');
-            if (!playlistId) return;
-
-            try {
-                const job = await window.api.localFirst.createImport({
-                    createPlaylist: true,
-                    imageUrl: playlist.imageUrl || undefined,
-                    input: `https://music.youtube.com/playlist?list=${playlistId}`,
-                    playlist: true,
-                    playlistName: playlist.name,
-                    source: 'youtube_music',
-                    sourceTrackId: playlist.id,
-                    title: playlist.name,
-                });
-                setJob(job);
-            } catch (err: any) {
-                toast.error({ message: err?.message || 'Import failed' });
-            }
+            navigate(`${AppRoute.YOUTUBE_MUSIC}?view=playlists&playlist=${playlistId}`);
         },
-        [setJob],
+        [navigate],
     );
+    const handlePlayPlaylist = useCallback(async (playlist: Playlist, playType: Play) => {
+        if (!window.api?.youtubeMusic?.getAccountPlaylistSongs) return;
+
+        try {
+            const songs = await window.api.youtubeMusic.getAccountPlaylistSongs(playlist.id);
+            if (songs.length === 0) {
+                toast.info({ message: `"${playlist.name}" has no playable tracks.` });
+                return;
+            }
+
+            addToQueueByData(playType, songs);
+        } catch (error) {
+            toast.error({ message: (error as Error).message });
+        }
+    }, []);
 
     const handleImportPreview = useCallback(async () => {
         if (!preview || !submittedInput) return;
@@ -242,17 +238,20 @@ export const QuickImport = () => {
     }, [preview, setJob, submittedInput]);
 
     return (
-        <section className={styles.container}>
-            <Stack gap="md">
-                <Stack gap={4}>
-                    <Group gap="xs">
-                        <Icon icon="download" size="md" />
-                        <Text fw={700}>Find or import from YouTube Music</Text>
-                    </Group>
-                    <Text isMuted size="sm">
-                        Search by song, artist, or album, or paste a YouTube video/playlist link.
-                    </Text>
-                </Stack>
+        <section className={clsx(styles.container, isInline && styles.inline, className)}>
+            <Stack gap={isInline ? 'xs' : 'md'}>
+                {!isInline && (
+                    <Stack gap={4}>
+                        <Group gap="xs">
+                            <Icon icon="download" size="md" />
+                            <Text fw={700}>Find or import from YouTube Music</Text>
+                        </Group>
+                        <Text isMuted size="sm">
+                            Search by song, artist, or album, or paste a YouTube video/playlist
+                            link.
+                        </Text>
+                    </Stack>
+                )}
 
                 <form onSubmit={handleSubmit}>
                     <Group className={styles.searchRow} gap="sm" wrap="nowrap">
@@ -260,139 +259,143 @@ export const QuickImport = () => {
                             className={styles.searchInput}
                             leftSection={<Icon icon="search" />}
                             onChange={(event) => setInput(event.currentTarget.value)}
-                            placeholder="Search YouTube Music or paste a link"
+                            placeholder={
+                                isInline
+                                    ? 'Search or paste a YouTube link'
+                                    : 'Search YouTube Music or paste a link'
+                            }
                             value={input}
                         />
                         {isUrl(input) && (
                             <Button disabled={!input.trim()} loading={previewLoading} type="submit">
-                                Preview link
+                                {isInline ? 'Preview' : 'Preview link'}
                             </Button>
                         )}
                     </Group>
                 </form>
 
-                {error && (
-                    <Text color="red" size="sm">
-                        {error}
-                    </Text>
-                )}
+                {(!isInline || hasResultsPanel) && (
+                    <div className={clsx(isInline && styles.inlineDropdown)}>
+                        <Stack gap="md">
+                            {error && (
+                                <Text color="red" size="sm">
+                                    {error}
+                                </Text>
+                            )}
 
-                {!input.trim() && (
-                    <Group gap="xs">
-                        <Badge variant="light">Songs</Badge>
-                        <Badge variant="light">Albums</Badge>
-                        <Badge variant="light">Playlists</Badge>
-                        <Badge variant="light">YouTube links</Badge>
-                    </Group>
-                )}
+                            {!isInline && !input.trim() && (
+                                <Group gap="xs">
+                                    <Badge variant="light">Songs</Badge>
+                                    <Badge variant="light">Albums</Badge>
+                                    <Badge variant="light">Playlists</Badge>
+                                    <Badge variant="light">YouTube links</Badge>
+                                </Group>
+                            )}
 
-                {liveSearchInput && !isConnected && (
-                    <div className={styles.emptyState}>
-                        <Text fw={600}>Login to search YouTube Music</Text>
-                        <Text isMuted size="sm">
-                            Paste a direct YouTube link here, or use the YouTube Music Login tab to
-                            search your account and recommendations.
-                        </Text>
-                    </div>
-                )}
+                            {liveSearchInput && !isConnected && (
+                                <div className={styles.emptyState}>
+                                    <Text fw={600}>Login to search YouTube Music</Text>
+                                    <Text isMuted size="sm">
+                                        Paste a direct YouTube link here, or use the YouTube Music
+                                        Login tab to search your account and recommendations.
+                                    </Text>
+                                </div>
+                            )}
 
-                {previewLoading && (
-                    <div className={styles.emptyState}>
-                        <Text fw={600}>Reading link metadata</Text>
-                        <Text isMuted size="sm">
-                            Fetching title, artwork, and playlist details.
-                        </Text>
-                    </div>
-                )}
+                            {previewLoading && (
+                                <div className={styles.emptyState}>
+                                    <Text fw={600}>Reading link metadata</Text>
+                                    <Text isMuted size="sm">
+                                        Fetching title, artwork, and playlist details.
+                                    </Text>
+                                </div>
+                            )}
 
-                {preview && (
-                    <div className={styles.preview}>
-                        <Image
-                            className={styles.previewImageInner}
-                            containerClassName={styles.previewImage}
-                            includeLoader={false}
-                            src={preview.thumbnail || undefined}
-                            unloaderIcon={
-                                preview.isPlaylist ? 'emptyPlaylistImage' : 'emptySongImage'
-                            }
-                        />
-                        <Stack className={styles.previewBody} gap="xs">
-                            <Group gap="xs">
-                                <Badge variant="light">
-                                    {preview.isPlaylist ? 'Playlist' : 'Video'}
-                                </Badge>
-                                {preview.isPlaylist && <Badge>{preview.count} tracks</Badge>}
-                            </Group>
-                            <Text className={styles.previewTitle} fw={700}>
-                                {preview.title}
-                            </Text>
-                            <Text isMuted size="sm">
-                                {preview.uploader}
-                            </Text>
+                            {preview && (
+                                <div className={styles.preview}>
+                                    <Image
+                                        className={styles.previewImageInner}
+                                        containerClassName={styles.previewImage}
+                                        includeLoader={false}
+                                        src={preview.thumbnail || undefined}
+                                        unloaderIcon={
+                                            preview.isPlaylist
+                                                ? 'emptyPlaylistImage'
+                                                : 'emptySongImage'
+                                        }
+                                    />
+                                    <Stack className={styles.previewBody} gap="xs">
+                                        <Group gap="xs">
+                                            <Badge variant="light">
+                                                {preview.isPlaylist ? 'Playlist' : 'Video'}
+                                            </Badge>
+                                            {preview.isPlaylist && (
+                                                <Badge>{preview.count} tracks</Badge>
+                                            )}
+                                        </Group>
+                                        <Text className={styles.previewTitle} fw={700}>
+                                            {preview.title}
+                                        </Text>
+                                        <Text isMuted size="sm">
+                                            {preview.uploader}
+                                        </Text>
+                                    </Stack>
+                                    <Button onClick={handleImportPreview}>Import</Button>
+                                </div>
+                            )}
+
+                            {liveSearchInput && isConnected && (
+                                <Stack gap="md">
+                                    {searchQuery.isFetching &&
+                                        songs.length === 0 &&
+                                        playlists.length === 0 && (
+                                            <div className={styles.emptyState}>
+                                                <Text fw={600}>Searching YouTube Music</Text>
+                                                <Text isMuted size="sm">
+                                                    Results will update as you type.
+                                                </Text>
+                                            </div>
+                                        )}
+                                    {songs.length > 0 && (
+                                        <div className={styles.songsResultPanel}>
+                                            <YoutubeMusicSongsTable songs={songs} />
+                                        </div>
+                                    )}
+
+                                    {playlists.length > 0 && (
+                                        <ResultSection title="Playlists">
+                                            <div className={styles.playlistsResultPanel}>
+                                                <YoutubeMusicPlaylistGrid
+                                                    onOpenPlaylist={handleOpenPlaylist}
+                                                    onPlayPlaylist={handlePlayPlaylist}
+                                                    playlists={playlists}
+                                                />
+                                            </div>
+                                        </ResultSection>
+                                    )}
+
+                                    {!searchQuery.isLoading &&
+                                        songs.length === 0 &&
+                                        playlists.length === 0 && (
+                                            <div className={styles.emptyState}>
+                                                <Text fw={600}>No results</Text>
+                                                <Text isMuted size="sm">
+                                                    Try a different title, artist, or link.
+                                                </Text>
+                                            </div>
+                                        )}
+                                </Stack>
+                            )}
+
+                            {submittedIsUrl && !submittedIsYoutubeUrl && (
+                                <div className={styles.emptyState}>
+                                    <Text fw={600}>Unsupported link</Text>
+                                    <Text isMuted size="sm">
+                                        Use a YouTube or YouTube Music URL.
+                                    </Text>
+                                </div>
+                            )}
                         </Stack>
-                        <Button onClick={handleImportPreview}>Import</Button>
-                    </div>
-                )}
-
-                {liveSearchInput && isConnected && (
-                    <Stack gap="md">
-                        {searchQuery.isFetching && songs.length === 0 && playlists.length === 0 && (
-                            <div className={styles.emptyState}>
-                                <Text fw={600}>Searching YouTube Music</Text>
-                                <Text isMuted size="sm">
-                                    Results will update as you type.
-                                </Text>
-                            </div>
-                        )}
-                        {songs.length > 0 && (
-                            <ResultSection title="Songs">
-                                <Table>
-                                    <Table.Tbody>
-                                        {songs.map((song) => (
-                                            <SongResultRow
-                                                key={song.id}
-                                                onImport={handleImportSong}
-                                                song={song}
-                                            />
-                                        ))}
-                                    </Table.Tbody>
-                                </Table>
-                            </ResultSection>
-                        )}
-
-                        {playlists.length > 0 && (
-                            <ResultSection title="Playlists">
-                                <Table>
-                                    <Table.Tbody>
-                                        {playlists.map((playlist) => (
-                                            <PlaylistResultRow
-                                                key={playlist.id}
-                                                onImport={handleImportPlaylist}
-                                                playlist={playlist}
-                                            />
-                                        ))}
-                                    </Table.Tbody>
-                                </Table>
-                            </ResultSection>
-                        )}
-
-                        {!searchQuery.isLoading && songs.length === 0 && playlists.length === 0 && (
-                            <div className={styles.emptyState}>
-                                <Text fw={600}>No results</Text>
-                                <Text isMuted size="sm">
-                                    Try a different title, artist, or link.
-                                </Text>
-                            </div>
-                        )}
-                    </Stack>
-                )}
-
-                {submittedIsUrl && !submittedIsYoutubeUrl && (
-                    <div className={styles.emptyState}>
-                        <Text fw={600}>Unsupported link</Text>
-                        <Text isMuted size="sm">
-                            Use a YouTube or YouTube Music URL.
-                        </Text>
                     </div>
                 )}
             </Stack>
@@ -405,70 +408,4 @@ const ResultSection = ({ children, title }: { children: React.ReactNode; title: 
         <Text fw={600}>{title}</Text>
         {children}
     </Stack>
-);
-
-const SongResultRow = ({ onImport, song }: { onImport: (song: Song) => void; song: Song }) => (
-    <Table.Tr className={styles.resultRow}>
-        <Table.Td w={52}>
-            <Image
-                className={styles.resultImageInner}
-                containerClassName={styles.resultImage}
-                includeLoader={false}
-                src={song.imageUrl || undefined}
-                unloaderIcon="emptySongImage"
-            />
-        </Table.Td>
-        <Table.Td>
-            <Text className={styles.resultTitle}>{song.name}</Text>
-            <Text isMuted size="sm">
-                {song.artistName || song.albumArtistName || 'Unknown Artist'}
-            </Text>
-        </Table.Td>
-        <Table.Td>
-            <Group justify="flex-end" wrap="nowrap">
-                <Button onClick={() => addToQueueByData(Play.NOW, [song])} size="compact-sm">
-                    Play
-                </Button>
-                <Button onClick={() => addToQueueByData(Play.LAST, [song])} size="compact-sm">
-                    Queue
-                </Button>
-                <Button onClick={() => onImport(song)} size="compact-sm">
-                    Import
-                </Button>
-            </Group>
-        </Table.Td>
-    </Table.Tr>
-);
-
-const PlaylistResultRow = ({
-    onImport,
-    playlist,
-}: {
-    onImport: (playlist: Playlist) => void;
-    playlist: Playlist;
-}) => (
-    <Table.Tr className={styles.resultRow}>
-        <Table.Td w={52}>
-            <Image
-                className={styles.resultImageInner}
-                containerClassName={styles.resultImage}
-                includeLoader={false}
-                src={playlist.imageUrl || undefined}
-                unloaderIcon="emptyPlaylistImage"
-            />
-        </Table.Td>
-        <Table.Td>
-            <Text className={styles.resultTitle}>{playlist.name}</Text>
-            <Text isMuted size="sm">
-                {playlist.owner || `${playlist.songCount || 0} tracks`}
-            </Text>
-        </Table.Td>
-        <Table.Td>
-            <Group justify="flex-end" wrap="nowrap">
-                <Button onClick={() => onImport(playlist)} size="compact-sm">
-                    Import playlist
-                </Button>
-            </Group>
-        </Table.Td>
-    </Table.Tr>
 );

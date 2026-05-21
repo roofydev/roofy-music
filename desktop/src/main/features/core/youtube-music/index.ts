@@ -240,6 +240,7 @@ const startYtProxyServer = () => {
                 ipFamily?: number,
                 triedYtdlpUrl = false,
                 dropRange = false,
+                rejectedClientsForRequest = new Set<string>(),
             ) => {
                 const requestUrl = applyGoogleVideoRangeParam(url, headers.Range);
                 const family = ipFamily ?? getUrlIpFamily(requestUrl);
@@ -295,22 +296,35 @@ const startYtProxyServer = () => {
                         console.warn(
                             `[YT Stream Proxy] CDN 403 for ${videoId} with Range=${requestHeaders.Range}; retrying without Range before resolver fallback...`,
                         );
-                        forwardProxy(url, attempt, undefined, triedYtdlpUrl, true);
+                        forwardProxy(
+                            url,
+                            attempt,
+                            undefined,
+                            triedYtdlpUrl,
+                            true,
+                            rejectedClientsForRequest,
+                        );
                         return;
                     }
 
                     // Only invalidate cache once per cooldown to prevent resolve storms
-                    if (status === 403 && attempt === 1) {
+                    if (status === 403) {
                         const now = Date.now();
                         const lastInvalidation = recentInvalidations.get(videoId) || 0;
-                        if (now - lastInvalidation > INVALIDATION_COOLDOWN_MS) {
-                            const rejectedClients = new Set<string>();
-                            const rejectedClient = youtubeClientParam(requestUrl);
-                            if (rejectedClient) {
-                                rejectedClients.add(rejectedClient);
-                            }
+                        const rejectedClient = youtubeClientParam(requestUrl);
+                        const shouldTryFreshClient =
+                            attempt <= 6 &&
+                            Boolean(rejectedClient) &&
+                            !rejectedClientsForRequest.has(rejectedClient || '');
+                        const shouldInvalidate =
+                            shouldTryFreshClient ||
+                            now - lastInvalidation > INVALIDATION_COOLDOWN_MS;
+
+                        if (shouldInvalidate) {
+                            const rejectedClients = new Set(rejectedClientsForRequest);
+                            if (rejectedClient) rejectedClients.add(rejectedClient);
                             console.warn(
-                                `[YT Stream Proxy] CDN 403 for ${videoId} (client=${rejectedClient || 'unknown'}, family=${family || 'auto'}), invalidating cache and retrying fresh resolve...`,
+                                `[YT Stream Proxy] CDN 403 for ${videoId} (client=${rejectedClient || 'unknown'}, family=${family || 'auto'}), trying another direct client before yt-dlp...`,
                             );
                             recentInvalidations.set(videoId, now);
                             streamCache.delete(videoId);
@@ -330,6 +344,7 @@ const startYtProxyServer = () => {
                                         undefined,
                                         triedYtdlpUrl,
                                         dropRange,
+                                        rejectedClients,
                                     );
                                     return;
                                 }
@@ -1114,22 +1129,65 @@ const normalizePlaylistId = (id: string) => {
 
 const normalizeVideoId = (id: string) => id.replace(/^ytm:/, '');
 
-const bestThumbnail = (value: any): null | string => {
-    if (!value) return null;
-    if (typeof value === 'string') return value;
-    if (typeof value.url === 'string') return value.url;
+const normalizeThumbnailUrl = (value: unknown): null | string => {
+    if (typeof value !== 'string' || !value) return null;
+    if (value.startsWith('//')) return `https:${value}`;
+    if (!/^https?:\/\//i.test(value)) return null;
+    return value;
+};
 
-    const thumbnails =
+const thumbnailCandidates = (value: any): Array<{ area: number; url: string }> => {
+    if (!value) return [];
+
+    const directUrl = normalizeThumbnailUrl(typeof value === 'string' ? value : value?.url);
+    const directArea =
+        Number(value?.width || value?.size?.width || 0) *
+        Number(value?.height || value?.size?.height || 0);
+
+    const directCandidates = directUrl ? [{ area: directArea, url: directUrl }] : [];
+    const nested =
         value?.thumbnails ||
         value?.thumbnail ||
         value?.sources ||
         value?.images ||
         value?.contents ||
-        value;
+        null;
 
-    if (!Array.isArray(thumbnails) || thumbnails.length === 0) return null;
-    const best = thumbnails[thumbnails.length - 1];
-    return typeof best === 'string' ? best : best?.url || null;
+    if (!Array.isArray(nested)) return directCandidates;
+
+    return [...directCandidates, ...nested.flatMap((item) => thumbnailCandidates(item))];
+};
+
+const bestThumbnail = (value: any): null | string => {
+    const candidates = thumbnailCandidates(value);
+    if (candidates.length === 0) return null;
+
+    const preferredHosts = [
+        'i.ytimg.com',
+        'yt3.googleusercontent.com',
+        'yt3.ggpht.com',
+        'lh3.googleusercontent.com',
+        'www.gstatic.com',
+    ];
+
+    const scored = candidates.map((candidate, index) => {
+        let hostScore = 0;
+        try {
+            const host = new URL(candidate.url).hostname;
+            hostScore = preferredHosts.includes(host) ? 1 : 0;
+        } catch {
+            hostScore = 0;
+        }
+
+        return {
+            ...candidate,
+            index,
+            score: hostScore * 1_000_000_000 + candidate.area,
+        };
+    });
+
+    scored.sort((a, b) => b.score - a.score || b.index - a.index);
+    return scored[0]?.url || null;
 };
 
 const relatedArtist = (artist: any, fallback = 'Unknown Artist'): RelatedArtist => {
@@ -1382,6 +1440,238 @@ const youtubeMusicHomeSection = (
     title,
 });
 
+const scrapeHomeFromWeb = async (): Promise<YoutubeMusicHomeResponse> => {
+    const scrapeWindow = new BrowserWindow({
+        autoHideMenuBar: true,
+        height: 900,
+        show: false,
+        webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            partition: LOGIN_PARTITION,
+            sandbox: true,
+        },
+        width: 1280,
+    });
+
+    try {
+        await scrapeWindow.loadURL(SOURCE_URL);
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        const rawSections = (await scrapeWindow.webContents.executeJavaScript(`
+            (async () => {
+                const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+                for (let i = 0; i < 8; i += 1) {
+                    window.scrollTo(0, document.documentElement.scrollHeight);
+                    await wait(500);
+                }
+
+                const normalizeUrl = (value) => {
+                    if (!value) return null;
+                    if (value.startsWith('//')) return 'https:' + value;
+                    if (value.startsWith('/')) return new URL(value, location.origin).href;
+                    return value;
+                };
+
+                const getText = (root, selectors) => {
+                    for (const selector of selectors) {
+                        const value = root?.querySelector(selector)?.textContent?.replace(/\\s+/g, ' ').trim();
+                        if (value) return value;
+                    }
+                    return '';
+                };
+
+                const shelves = Array.from(document.querySelectorAll(
+                    'ytmusic-carousel-shelf-renderer, ytmusic-shelf-renderer, ytmusic-grid-renderer'
+                ));
+
+                return shelves.map((shelf, shelfIndex) => {
+                    const title =
+                        getText(shelf, ['h2', '.title', '#title', 'yt-formatted-string.title']) ||
+                        shelf.getAttribute('aria-label') ||
+                        'YouTube Music';
+
+                    const anchors = Array.from(shelf.querySelectorAll('a[href]'));
+                    const seenIds = new Set();
+                    const items = anchors.map((anchor) => {
+                        const href = anchor.href || anchor.getAttribute('href') || '';
+                        const url = new URL(href, location.origin);
+                        const root =
+                            anchor.closest('ytmusic-responsive-list-item-renderer') ||
+                            anchor.closest('ytmusic-two-row-item-renderer') ||
+                            anchor.closest('ytmusic-grid-renderer') ||
+                            anchor.parentElement;
+                        const itemTitle =
+                            getText(root, ['.title', '#title', 'yt-formatted-string.title']) ||
+                            anchor.getAttribute('title') ||
+                            anchor.getAttribute('aria-label') ||
+                            anchor.textContent ||
+                            '';
+                        const subtitle =
+                            getText(root, ['.subtitle', '#subtitle', '.secondary-flex-columns']) ||
+                            '';
+                        const image =
+                            root?.querySelector('yt-img-shadow')?.getAttribute('src') ||
+                            root?.querySelector('yt-img-shadow')?.getAttribute('data-src') ||
+                            root?.querySelector('img[src]')?.getAttribute('src') ||
+                            anchor.querySelector('yt-img-shadow')?.getAttribute('src') ||
+                            anchor.querySelector('yt-img-shadow')?.getAttribute('data-src') ||
+                            anchor.querySelector('img[src]')?.getAttribute('src') ||
+                            null;
+                        const videoId = url.searchParams.get('v');
+                        const playlistId = url.searchParams.get('list');
+                        const browseId = url.pathname.includes('/browse/') ? url.pathname.split('/browse/')[1] : null;
+
+                        let id = null;
+                        if (videoId && /^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+                            id = 'v:' + videoId;
+                        } else if (playlistId && !playlistId.toUpperCase().startsWith('RD')) {
+                            id = 'p:' + playlistId.replace(/^VL/, '');
+                        } else if (browseId) {
+                            id = 'b:' + browseId;
+                        }
+                        if (!id || seenIds.has(id)) return null;
+                        seenIds.add(id);
+
+                        if (videoId && /^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+                            const subtitleParts = subtitle
+                                .split(/[\\u2022\\u00b7]/)
+                                .map((part) => part.replace(/\\s+/g, ' ').trim())
+                                .filter(Boolean);
+                            return {
+                                album: subtitleParts[1] || null,
+                                artist: subtitleParts[0] || null,
+                                imageUrl: normalizeUrl(image),
+                                title: itemTitle.replace(/\\s+/g, ' ').trim(),
+                                type: 'song',
+                                videoId
+                            };
+                        }
+
+                        if (playlistId && !playlistId.toUpperCase().startsWith('RD')) {
+                            return {
+                                imageUrl: normalizeUrl(image),
+                                owner: subtitle.replace(/\\s+/g, ' ').trim() || null,
+                                playlistId: playlistId.replace(/^VL/, ''),
+                                title: itemTitle.replace(/\\s+/g, ' ').trim(),
+                                type: 'playlist'
+                            };
+                        }
+
+                        if (browseId) {
+                            return {
+                                browseId,
+                                imageUrl: normalizeUrl(image),
+                                subtitle: subtitle.replace(/\\s+/g, ' ').trim() || null,
+                                title: itemTitle.replace(/\\s+/g, ' ').trim(),
+                                type: 'album'
+                            };
+                        }
+
+                        return null;
+                    }).filter(Boolean);
+
+                    return { id: 'ytm-web-home-' + shelfIndex, items, title: title.replace(/\\s+/g, ' ').trim() };
+                }).filter((section) => section.items.length > 0);
+            })()
+        `)) as Array<{
+            id: string;
+            items: Array<{
+                album?: null | string;
+                artist?: null | string;
+                browseId?: string;
+                imageUrl?: null | string;
+                owner?: null | string;
+                playlistId?: string;
+                subtitle?: null | string;
+                title: string;
+                type: 'album' | 'playlist' | 'song';
+                videoId?: string;
+            }>;
+            title: string;
+        }>;
+
+        const sections = rawSections
+            .map((section) => {
+                const songs = section.items
+                    .filter((item) => item.type === 'song' && item.videoId)
+                    .map((item) =>
+                        songFromScrapedWebItem({
+                            album: item.album,
+                            artist: item.artist,
+                            imageUrl: item.imageUrl,
+                            title: item.title,
+                            videoId: item.videoId || '',
+                        }),
+                    )
+                    .filter((song): song is Song => Boolean(song));
+                const playlists = section.items
+                    .filter((item) => item.type === 'playlist' && item.playlistId)
+                    .map((item) =>
+                        playlistFromItem({
+                            author: item.owner ? { name: item.owner } : null,
+                            id: item.playlistId,
+                            thumbnail: item.imageUrl,
+                            title: item.title,
+                        }),
+                    )
+                    .filter((playlist): playlist is Playlist => Boolean(playlist));
+                const albums = section.items
+                    .filter((item) => item.type === 'album' && item.browseId)
+                    .map((item) =>
+                        albumFromItem({
+                            id: item.browseId,
+                            name: item.title,
+                            subtitle: item.subtitle,
+                            thumbnail: item.imageUrl,
+                            title: item.title,
+                        }),
+                    )
+                    .filter((album): album is Album => Boolean(album));
+
+                if (
+                    songs.length >= playlists.length &&
+                    songs.length >= albums.length &&
+                    songs.length
+                ) {
+                    return youtubeMusicHomeSection(
+                        section.id,
+                        section.title,
+                        LibraryItem.SONG,
+                        songs,
+                    );
+                }
+                if (playlists.length >= albums.length && playlists.length) {
+                    return youtubeMusicHomeSection(
+                        section.id,
+                        section.title,
+                        LibraryItem.PLAYLIST,
+                        playlists,
+                    );
+                }
+                if (albums.length) {
+                    return youtubeMusicHomeSection(
+                        section.id,
+                        section.title,
+                        LibraryItem.ALBUM,
+                        albums,
+                    );
+                }
+                return null;
+            })
+            .filter((section): section is YoutubeMusicHomeResponse['sections'][number] =>
+                Boolean(section),
+            );
+
+        return { sections };
+    } catch (error) {
+        console.warn('[YouTube Music] Failed to scrape home feed:', error);
+        return { sections: [] };
+    } finally {
+        if (!scrapeWindow.isDestroyed()) scrapeWindow.close();
+    }
+};
+
 const search = async (query: string): Promise<YoutubeMusicSearchResult> => {
     if (!query.trim()) {
         return { albumArtists: [], albums: [], playlists: [], songs: [] };
@@ -1456,6 +1746,32 @@ const getSongDetail = async (id: string): Promise<Song> => {
 };
 
 const home = async (): Promise<YoutubeMusicHomeResponse> => {
+    const webHome = await scrapeHomeFromWeb();
+
+    if (webHome.sections.length > 0) {
+        const seenSectionTitles = new Set<string>();
+        const dedupedSections: YoutubeMusicHomeResponse['sections'] = [];
+
+        for (const section of webHome.sections) {
+            const titleKey = section.title.toLowerCase().trim();
+            if (seenSectionTitles.has(titleKey)) continue;
+            seenSectionTitles.add(titleKey);
+
+            const seenItemIds = new Set<string>();
+            const uniqueItems = section.items.filter((item) => {
+                if (seenItemIds.has(item.id)) return false;
+                seenItemIds.add(item.id);
+                return true;
+            });
+
+            if (uniqueItems.length === 0) continue;
+
+            dedupedSections.push({ ...section, items: uniqueItems });
+        }
+
+        return { sections: dedupedSections };
+    }
+
     const yt = await getInnertube();
     const feed = await yt.music.getHomeFeed();
     const sections = (Array.isArray(feed?.sections) ? feed.sections : [])
@@ -1495,7 +1811,7 @@ const home = async (): Promise<YoutubeMusicHomeResponse> => {
             return null;
         })
         .filter(Boolean)
-        .slice(0, 8);
+        .slice(0, 24);
 
     return { sections };
 };
@@ -1685,7 +2001,11 @@ const scrapeAccountPlaylistsFromWeb = async (): Promise<Playlist[]> => {
                         root?.querySelector('#subtitle')?.textContent ||
                         '';
                     const image =
+                        root?.querySelector('yt-img-shadow')?.getAttribute('src') ||
+                        root?.querySelector('yt-img-shadow')?.getAttribute('data-src') ||
                         root?.querySelector('img[src]')?.getAttribute('src') ||
+                        anchor.querySelector('yt-img-shadow')?.getAttribute('src') ||
+                        anchor.querySelector('yt-img-shadow')?.getAttribute('data-src') ||
                         anchor.querySelector('img[src]')?.getAttribute('src') ||
                         null;
 
@@ -1798,7 +2118,11 @@ const scrapeAccountSongsFromWeb = async (): Promise<Song[]> => {
                         root?.querySelector('#subtitle')?.textContent ||
                         '';
                     const image =
+                        root?.querySelector('yt-img-shadow')?.getAttribute('src') ||
+                        root?.querySelector('yt-img-shadow')?.getAttribute('data-src') ||
                         root?.querySelector('img[src]')?.getAttribute('src') ||
+                        anchor.querySelector('yt-img-shadow')?.getAttribute('src') ||
+                        anchor.querySelector('yt-img-shadow')?.getAttribute('data-src') ||
                         anchor.querySelector('img[src]')?.getAttribute('src') ||
                         null;
 
