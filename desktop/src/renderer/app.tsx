@@ -15,7 +15,7 @@ import { useCheckForUpdates } from '/@/renderer/hooks/use-check-for-updates';
 import { useNativeMenuSync } from '/@/renderer/hooks/use-native-menu-sync';
 import { useSyncSettingsToMain } from '/@/renderer/hooks/use-sync-settings-to-main';
 import { AppRouter } from '/@/renderer/router/app-router';
-import { useCssSettings, useHotkeySettings, useLanguage } from '/@/renderer/store';
+import { useCssSettings, useHotkeySettings, useImportJobActions, useLanguage } from '/@/renderer/store';
 import { CrtOverlay } from '/@/renderer/components/crt-overlay/crt-overlay';
 import { useAppTheme } from '/@/renderer/themes/use-app-theme';
 import { sanitizeCss } from '/@/renderer/utils/sanitize';
@@ -24,6 +24,7 @@ import '/@/shared/styles/global.css';
 import { PlayerProvider } from '/@/renderer/features/player/context/player-context';
 import { AudioPlayers } from '/@/renderer/features/player/components/audio-players';
 import { ReleaseNotesModal } from '/@/renderer/release-notes-modal';
+import { ImportNotifications } from '/@/renderer/features/imports/components/import-notifications';
 
 const UpdateAvailableDialog = lazy(() =>
     import('./update-available-dialog').then((module) => ({
@@ -69,8 +70,8 @@ const AppShell = memo(function AppShell() {
         <>
             <AppEffects />
             <Notifications
-                containerWidth="300px"
-                position="bottom-center"
+                containerWidth="360px"
+                position="bottom-right"
                 styles={notificationStyles}
                 zIndex={50000}
             />
@@ -80,6 +81,7 @@ const AppShell = memo(function AppShell() {
                     <AppRouter />
                 </PlayerProvider>
             </WebAudioContext.Provider>
+            <ImportNotifications />
             <ReleaseNotesModal />
             <Suspense fallback={null}>
                 <UpdateAvailableDialog />
@@ -96,6 +98,7 @@ const AppEffects = () => (
         <GlobalShortcutsEffect />
         <LanguageEffect />
         <NativeMenuSyncEffect />
+        <ImportJobsEffect />
     </>
 );
 
@@ -170,6 +173,32 @@ const LanguageEffect = () => {
 
 const NativeMenuSyncEffect = () => {
     useNativeMenuSync();
+
+    return null;
+};
+
+const ImportJobsEffect = () => {
+    const { setJob } = useImportJobActions();
+
+    useEffect(() => {
+        if (!isElectron() || !window.api?.youtubeMusic?.onImportJobUpdated) return;
+
+        const removeUpdated = window.api.youtubeMusic.onImportJobUpdated((_event, job) => {
+            setJob(job);
+        });
+        const removeCompleted = window.api.youtubeMusic.onImportJobCompleted((_event, job) => {
+            setJob(job);
+        });
+        const removeFailed = window.api.youtubeMusic.onImportJobFailed((_event, job) => {
+            setJob(job);
+        });
+
+        return () => {
+            removeUpdated();
+            removeCompleted();
+            removeFailed();
+        };
+    }, [setJob]);
 
     return null;
 };

@@ -24,6 +24,13 @@ const getPlaylistDetail = (id: string): Promise<Playlist> =>
     ipcRenderer.invoke('youtube-music-playlist-detail', id);
 const getPlaylistSongs = (id: string): Promise<Song[]> =>
     ipcRenderer.invoke('youtube-music-playlist-songs', id);
+const getAccountPlaylists = (): Promise<Playlist[]> =>
+    ipcRenderer.invoke('youtube-music-account-playlists');
+const getAccountPlaylistSongs = (id: string): Promise<Song[]> =>
+    ipcRenderer.invoke('youtube-music-account-playlist-songs', id);
+const getAccountSongs = (): Promise<Song[]> => ipcRenderer.invoke('youtube-music-account-songs');
+const getSongDetail = (id: string): Promise<Song> =>
+    ipcRenderer.invoke('youtube-music-song-detail', id);
 const getSongList = (): Promise<Song[]> => ipcRenderer.invoke('youtube-music-song-list');
 
 // Stream resolver
@@ -35,6 +42,7 @@ const invalidateStream = (id: string) => ipcRenderer.invoke('stream:invalidate',
 const downloadTrack = (args: {
     album?: string;
     artist: string;
+    imageUrl?: string;
     sourceTrackId: string;
     title: string;
     videoId: string;
@@ -42,19 +50,68 @@ const downloadTrack = (args: {
 const getDownloadStatus = (sourceTrackId: string) =>
     ipcRenderer.invoke('youtube-music:download-status', sourceTrackId);
 
+// Imports
+const importTrack = (args: {
+    album?: string;
+    artist: string;
+    imageUrl?: string;
+    sourceTrackId: string;
+    targetPlaylistIds?: string[];
+    targetPlaylistNames?: string[];
+    title: string;
+    videoId: string;
+}) => ipcRenderer.invoke('youtube-music:import-track', args);
+
+const importPlaylist = (args: {
+    playlistId: string;
+    targetPlaylistIds?: string[];
+    targetPlaylistNames?: string[];
+}) => ipcRenderer.invoke('youtube-music:import-playlist', args);
+
+// Import job events
+const onImportJobUpdated = (cb: (event: Electron.IpcRendererEvent, job: any) => void) => {
+    ipcRenderer.on('roofy-import-job-updated', cb);
+    return () => {
+        ipcRenderer.removeListener('roofy-import-job-updated', cb);
+    };
+};
+
+const onImportJobCompleted = (cb: (event: Electron.IpcRendererEvent, job: any) => void) => {
+    ipcRenderer.on('roofy-import-job-completed', cb);
+    return () => {
+        ipcRenderer.removeListener('roofy-import-job-completed', cb);
+    };
+};
+
+const onImportJobFailed = (cb: (event: Electron.IpcRendererEvent, job: any) => void) => {
+    ipcRenderer.on('roofy-import-job-failed', cb);
+    return () => {
+        ipcRenderer.removeListener('roofy-import-job-failed', cb);
+    };
+};
+
 export const youtubeMusic = {
     connect,
     disconnect,
     downloadTrack,
+    getAccountPlaylists,
+    getAccountPlaylistSongs,
+    getAccountSongs,
     getAlbumSongs,
     getDownloadStatus,
     getLyrics,
     getPlaylistDetail,
     getPlaylistSongs,
+    getSongDetail,
     getSongList,
     getStreamUrl,
     home,
+    importPlaylist,
+    importTrack,
     invalidateStream,
+    onImportJobCompleted,
+    onImportJobFailed,
+    onImportJobUpdated,
     resolveStream,
     search,
     status,

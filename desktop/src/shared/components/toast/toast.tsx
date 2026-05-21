@@ -24,7 +24,7 @@ const getTitle = (type: NotificationProps['type']) => {
     return 'Info';
 };
 
-const showToast = ({ message, onClose, type, ...props }: NotificationProps) => {
+const showToast = ({ message, onClose, title, type, ...props }: NotificationProps) => {
     return notifications.show({
         ...props,
         classNames: {
@@ -42,7 +42,7 @@ const showToast = ({ message, onClose, type, ...props }: NotificationProps) => {
         },
         message: message ?? '',
         onClose,
-        title: getTitle(type),
+        title: title ?? getTitle(type),
         withBorder: true,
         withCloseButton: true,
     });

@@ -20,6 +20,7 @@ import { addToQueueByData, useListSettings } from '/@/renderer/store';
 import { Badge } from '/@/shared/components/badge/badge';
 import { Button } from '/@/shared/components/button/button';
 import { Group } from '/@/shared/components/group/group';
+import { Image } from '/@/shared/components/image/image';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Stack } from '/@/shared/components/stack/stack';
 import { Table } from '/@/shared/components/table/table';
@@ -184,6 +185,7 @@ const YoutubeMusicSearchSection = ({
             await window.api.youtubeMusic.downloadTrack({
                 album: song.album || undefined,
                 artist: song.artistName || song.albumArtistName || 'Unknown Artist',
+                imageUrl: song.imageUrl || undefined,
                 sourceTrackId: song.id,
                 title: song.name,
                 videoId,
@@ -195,7 +197,15 @@ const YoutubeMusicSearchSection = ({
     };
 
     return (
-        <section>
+        <section
+            style={{
+                background: 'color-mix(in srgb, #2f7d8c 6%, var(--theme-colors-background))',
+                border: '1px solid color-mix(in srgb, #2f7d8c 28%, var(--theme-colors-border))',
+                borderLeft: '3px solid #2f7d8c',
+                borderRadius: 8,
+                padding: 'var(--theme-spacing-md)',
+            }}
+        >
             <Group justify="space-between" mb="xs">
                 <Group>
                     <Text fw={600}>{title}</Text>
@@ -211,17 +221,12 @@ const YoutubeMusicSearchSection = ({
                         {songs.slice(0, 8).map((song) => (
                             <Table.Tr key={song.id}>
                                 <Table.Td w={42}>
-                                    {song.imageUrl ? (
-                                        <img
-                                            alt=""
-                                            height={32}
-                                            src={song.imageUrl}
-                                            style={{ objectFit: 'cover' }}
-                                            width={32}
-                                        />
-                                    ) : (
-                                        <Badge>YT</Badge>
-                                    )}
+                                    <Image
+                                        imageContainerProps={{ style: { height: 32, width: 32 } }}
+                                        includeLoader={false}
+                                        src={song.imageUrl || undefined}
+                                        unloaderIcon="emptySongImage"
+                                    />
                                 </Table.Td>
                                 <Table.Td>
                                     <Text>{song.name}</Text>
@@ -237,7 +242,10 @@ const YoutubeMusicSearchSection = ({
                                         >
                                             Play
                                         </Button>
-                                        <Button onClick={() => handleImport(song)} size="compact-sm">
+                                        <Button
+                                            onClick={() => handleImport(song)}
+                                            size="compact-sm"
+                                        >
                                             Import
                                         </Button>
                                     </Group>
@@ -250,26 +258,29 @@ const YoutubeMusicSearchSection = ({
             {itemType !== LibraryItem.SONG && (
                 <Table>
                     <Table.Tbody>
-                        {(itemType === LibraryItem.ALBUM ? albums : artists).slice(0, 8).map((item) => (
-                            <Table.Tr key={item.id}>
-                                <Table.Td w={42}>
-                                    {item.imageUrl ? (
-                                        <img
-                                            alt=""
-                                            height={32}
-                                            src={item.imageUrl}
-                                            style={{ objectFit: 'cover' }}
-                                            width={32}
+                        {(itemType === LibraryItem.ALBUM ? albums : artists)
+                            .slice(0, 8)
+                            .map((item) => (
+                                <Table.Tr key={item.id}>
+                                    <Table.Td w={42}>
+                                        <Image
+                                            imageContainerProps={{
+                                                style: { height: 32, width: 32 },
+                                            }}
+                                            includeLoader={false}
+                                            src={item.imageUrl || undefined}
+                                            unloaderIcon={
+                                                itemType === LibraryItem.ALBUM
+                                                    ? 'emptyAlbumImage'
+                                                    : 'emptyArtistImage'
+                                            }
                                         />
-                                    ) : (
-                                        <Badge>YT</Badge>
-                                    )}
-                                </Table.Td>
-                                <Table.Td>
-                                    <Text>{item.name}</Text>
-                                </Table.Td>
-                            </Table.Tr>
-                        ))}
+                                    </Table.Td>
+                                    <Table.Td>
+                                        <Text>{item.name}</Text>
+                                    </Table.Td>
+                                </Table.Tr>
+                            ))}
                     </Table.Tbody>
                 </Table>
             )}

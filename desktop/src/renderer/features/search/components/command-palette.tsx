@@ -6,6 +6,7 @@ import { HomeCommands } from '/@/renderer/features/search/components/home-comman
 import { SearchAlbumArtistsSection } from '/@/renderer/features/search/components/search-album-artists-section';
 import { SearchAlbumsSection } from '/@/renderer/features/search/components/search-albums-section';
 import { SearchSongsSection } from '/@/renderer/features/search/components/search-songs-section';
+import { SearchYoutubeMusicSection } from '/@/renderer/features/search/components/search-youtube-music-section';
 import { ServerCommands } from '/@/renderer/features/search/components/server-commands';
 import { useAppStore } from '/@/renderer/store';
 import { ActionIcon } from '/@/shared/components/action-icon/action-icon';
@@ -29,6 +30,7 @@ const SEARCH_SECTION_IDS = {
     albums: 'albums',
     artists: 'artists',
     tracks: 'tracks',
+    youtubeMusic: 'youtubeMusic',
 } as const;
 
 interface CommandPaletteSearchProps {
@@ -118,6 +120,19 @@ function CommandPaletteSearch({
                             setSearchSectionExpanded(
                                 SEARCH_SECTION_IDS.tracks,
                                 !(searchSectionsExpanded[SEARCH_SECTION_IDS.tracks] ?? true),
+                            )
+                        }
+                        query={query}
+                    />
+                    <SearchYoutubeMusicSection
+                        debouncedQuery={deferredSearchQuery}
+                        expanded={searchSectionsExpanded[SEARCH_SECTION_IDS.youtubeMusic] ?? true}
+                        isHome={isHome}
+                        onSelectResult={onSelectResult}
+                        onToggle={() =>
+                            setSearchSectionExpanded(
+                                SEARCH_SECTION_IDS.youtubeMusic,
+                                !(searchSectionsExpanded[SEARCH_SECTION_IDS.youtubeMusic] ?? true),
                             )
                         }
                         query={query}

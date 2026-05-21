@@ -4,6 +4,7 @@ export enum AppRoute {
     FAKE_LIBRARY_ALBUM_DETAILS = '/library/albums/dummy/:albumId',
     FAVORITES = '/favorites',
     HOME = '/',
+    IMPORTS = '/imports',
     LIBRARY_ALBUM_ARTISTS = '/library/album-artists',
     LIBRARY_ALBUM_ARTISTS_DETAIL = '/library/album-artists/:albumArtistId',
     LIBRARY_ALBUM_ARTISTS_DETAIL_DISCOGRAPHY = '/library/album-artists/:albumArtistId/discography',

@@ -31,6 +31,8 @@ type LocalFirstStatus = {
 };
 
 type ImportJob = {
+    album?: string;
+    artist?: string;
     audioFormat: string;
     cookieBrowser: string;
     createPlaylist: boolean;
@@ -38,6 +40,7 @@ type ImportJob = {
     error: string;
     expectedFiles?: string[];
     id: string;
+    imageUrl?: string;
     input: string;
     message: string;
     name?: string;
@@ -47,13 +50,20 @@ type ImportJob = {
     source?: 'youtube_music';
     sourceTrackId?: string;
     status: 'cancelled' | 'completed' | 'failed' | 'queued' | 'running';
+    targetPlaylistIds?: string[];
+    targetPlaylistNames?: string[];
+    title?: string;
     updatedAt: string;
     videoId?: string;
 };
 
 type SourceImportMetadata = {
+    album?: string;
+    artist?: string;
+    imageUrl?: string;
     source?: 'youtube_music';
     sourceTrackId?: string;
+    title?: string;
     videoId?: string;
 };
 
@@ -80,7 +90,15 @@ const COOKIE_BROWSER_ALLOWLIST = new Set([
     'opera',
     'vivaldi',
 ]);
-const COOKIE_BROWSER_AUTO_ATTEMPTS = ['edge', 'chrome', 'brave', 'firefox', 'vivaldi', 'chromium', 'opera'];
+const COOKIE_BROWSER_AUTO_ATTEMPTS = [
+    'edge',
+    'chrome',
+    'brave',
+    'firefox',
+    'vivaldi',
+    'chromium',
+    'opera',
+];
 
 let navidromeProcess: ChildProcessWithoutNullStreams | null = null;
 let activeImport: { child: ChildProcessWithoutNullStreams; id: string } | null = null;
@@ -147,7 +165,13 @@ const findExecutable = (baseName: string, envName: string) => {
         path.join(app.getAppPath(), 'resources/bin', binaryName),
         path.join(app.getAppPath(), '../resources/bin', process.platform, process.arch, binaryName),
         path.join(app.getAppPath(), '../resources/bin', binaryName),
-        path.join(__dirname, '../../../../../resources/bin', process.platform, process.arch, binaryName),
+        path.join(
+            __dirname,
+            '../../../../../resources/bin',
+            process.platform,
+            process.arch,
+            binaryName,
+        ),
         path.join(__dirname, '../../../../../resources/bin', binaryName),
     ];
 
@@ -203,7 +227,10 @@ const summarizeNavidromeError = (body: any, fallback: string) => {
     if (Array.isArray(body.errors)) return body.errors.join(', ');
     if (body.errors && typeof body.errors === 'object') {
         return Object.entries(body.errors)
-            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`)
+            .map(
+                ([key, value]) =>
+                    `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`,
+            )
             .join('; ');
     }
     return fallback;
@@ -223,7 +250,9 @@ const loginAsLocalAdmin = async () => {
     const body = await parseResponseBody(response);
 
     if (!response.ok) {
-        throw new Error(summarizeNavidromeError(body, 'Could not log in to the local Navidrome admin account.'));
+        throw new Error(
+            summarizeNavidromeError(body, 'Could not log in to the local Navidrome admin account.'),
+        );
     }
 
     const token = body?.token;
@@ -305,7 +334,9 @@ export const startLocalFirst = async () => {
         cwd: getDataPath(),
         env: {
             ...process.env,
-            PATH: ffmpegDir ? `${ffmpegDir}${path.delimiter}${process.env.PATH || ''}` : process.env.PATH,
+            PATH: ffmpegDir
+                ? `${ffmpegDir}${path.delimiter}${process.env.PATH || ''}`
+                : process.env.PATH,
             ND_ADDRESS: '127.0.0.1',
             ND_DATAFOLDER: getDataPath(),
             ND_DEVAUTOCREATEADMINPASSWORD: getPassword(),
@@ -365,10 +396,26 @@ export const shutdownLocalFirst = () => {
     }
 };
 
+const sendImportJobEvent = (job: ImportJob) => {
+    try {
+        const mainWindow = getMainWindow();
+        if (!mainWindow) return;
+        mainWindow.webContents.send('roofy-import-job-updated', job);
+        if (job.status === 'completed') {
+            mainWindow.webContents.send('roofy-import-job-completed', job);
+        } else if (job.status === 'failed') {
+            mainWindow.webContents.send('roofy-import-job-failed', job);
+        }
+    } catch {
+        // ignore
+    }
+};
+
 const updateJob = (id: string, patch: Partial<ImportJob>) => {
     const job = importJobs.find((item) => item.id === id);
     if (!job) return null;
     Object.assign(job, patch, { updatedAt: now() });
+    sendImportJobEvent(job);
     return job;
 };
 
@@ -379,14 +426,33 @@ const normalizeImportInput = (input: string) => {
     return `ytsearch1:${value}`;
 };
 
+const normalizeYoutubePlaylistId = (listId: string) => {
+    if (listId.startsWith('VL') && listId.length > 2) {
+        return listId.slice(2);
+    }
+
+    return listId;
+};
+
 const normalizeDownloadUrl = (input: string, playlist: boolean) => {
     const value = normalizeImportInput(input);
-    if (playlist || !/^https?:\/\//i.test(value)) return value;
+    if (!/^https?:\/\//i.test(value)) return value;
 
     try {
         const url = new URL(value);
         const hostname = url.hostname.replace(/^www\./, '');
-        if ((hostname === 'youtube.com' || hostname === 'm.youtube.com') && url.searchParams.has('v')) {
+        const listId = url.searchParams.get('list');
+
+        if (playlist && listId) {
+            return `https://www.youtube.com/playlist?list=${normalizeYoutubePlaylistId(listId)}`;
+        }
+
+        if (playlist) return value;
+
+        if (
+            (hostname === 'youtube.com' || hostname === 'm.youtube.com') &&
+            url.searchParams.has('v')
+        ) {
             return `https://www.youtube.com/watch?v=${url.searchParams.get('v')}`;
         }
         if (hostname === 'youtu.be') {
@@ -410,7 +476,10 @@ const inferPlaylistImport = (input: string, explicit?: boolean) => {
         const hostname = url.hostname.replace(/^www\./, '');
         const listId = url.searchParams.get('list') || '';
 
-        if ((hostname === 'youtube.com' || hostname === 'm.youtube.com') && url.pathname === '/playlist') {
+        if (
+            (hostname === 'youtube.com' || hostname === 'm.youtube.com') &&
+            url.pathname === '/playlist'
+        ) {
             return Boolean(listId);
         }
 
@@ -443,12 +512,16 @@ const findCommandOnPath = (command: string) => {
         timeout: 5000,
         windowsHide: true,
     });
-    const firstLine = result.stdout?.split(/\r?\n/).map((line) => line.trim()).find(Boolean);
+    const firstLine = result.stdout
+        ?.split(/\r?\n/)
+        .map((line) => line.trim())
+        .find(Boolean);
     return result.status === 0 && firstLine ? firstLine : null;
 };
 
 const getJsRuntimeArgs = () => {
-    const configured = process.env.ROOFY_YT_DLP_JS_RUNTIME || (store.get('roofy.ytDlpJsRuntime') as string);
+    const configured =
+        process.env.ROOFY_YT_DLP_JS_RUNTIME || (store.get('roofy.ytDlpJsRuntime') as string);
     if (configured) return ['--js-runtimes', configured];
 
     const deno = denoBinaryPath() || findCommandOnPath('deno');
@@ -500,7 +573,9 @@ const formatYtDlpError = (output: string, cookieBrowser: string, attempts: strin
             cleanOutput,
             '',
             `The browser's cookie database is locked because the browser is running.`,
-            attempted ? `Attempted browsers: ${attempted}.` : 'No browser cookie extraction was attempted.',
+            attempted
+                ? `Attempted browsers: ${attempted}.`
+                : 'No browser cookie extraction was attempted.',
             'Fully close the browser (including background processes) and retry, or provide a cookies.txt file in Import settings.',
         ].join('\n');
     }
@@ -526,19 +601,30 @@ const formatYtDlpError = (output: string, cookieBrowser: string, attempts: strin
 
 const processImportQueue = () => {
     if (activeImport) return;
-    const nextJob = importJobs.slice().reverse().find((job) => job.status === 'queued');
+    const nextJob = importJobs
+        .slice()
+        .reverse()
+        .find((job) => job.status === 'queued');
     if (!nextJob) return;
     runImport(nextJob);
 };
 
-const runImport = (job: ImportJob, attemptIndex = 0, attemptedBrowsers: string[] = [], triedWithoutCookies = false) => {
+const runImport = (
+    job: ImportJob,
+    attemptIndex = 0,
+    attemptedBrowsers: string[] = [],
+    triedWithoutCookies = false,
+) => {
     const ytDlp = getToolCommand('yt-dlp', 'ROOFY_YT_DLP_PATH');
     const ffmpegPath = ffmpegBinaryPath();
     const libraryPath = getLibraryPath();
     const cookieAttempts = getCookieAttempts(job.cookieBrowser);
-    const cookiesFilePath = triedWithoutCookies ? undefined : (store.get('roofy.cookiesFilePath') as string | undefined);
+    const cookiesFilePath = triedWithoutCookies
+        ? undefined
+        : (store.get('roofy.cookiesFilePath') as string | undefined);
     const hasCookieFile = Boolean(cookiesFilePath);
-    const cookieBrowser = hasCookieFile || triedWithoutCookies ? '' : cookieAttempts[attemptIndex] || '';
+    const cookieBrowser =
+        hasCookieFile || triedWithoutCookies ? '' : cookieAttempts[attemptIndex] || '';
     const outputTemplate = path.join(
         libraryPath,
         'Downloads',
@@ -641,6 +727,7 @@ const runImport = (job: ImportJob, attemptIndex = 0, attemptedBrowsers: string[]
     child.on('close', async (code) => {
         activeImport = null;
         const current = importJobs.find((item) => item.id === job.id);
+        sendImportJobEvent(current || job);
 
         const uniquePaths = [...new Set(candidatePaths)];
         const audioFiles = uniquePaths.filter((p) => audioExts.has(path.extname(p).toLowerCase()));
@@ -738,6 +825,7 @@ const runImport = (job: ImportJob, attemptIndex = 0, attemptedBrowsers: string[]
     child.on('error', (error) => {
         activeImport = null;
         updateJob(job.id, { error: error.message, message: 'Import failed', status: 'failed' });
+        sendImportJobEvent(importJobs.find((item) => item.id === job.id) || job);
         processImportQueue();
     });
 };
@@ -843,7 +931,12 @@ const previewImport = async (input: string, playlist?: boolean, cookieBrowser?: 
         } catch (error: any) {
             lastError = error?.message || 'yt-dlp preview failed';
             const dbLocked = isCookieDatabaseLockedError(lastError);
-            if (dbLocked || effectiveBrowser !== 'auto' || !isAuthBlockedError(lastError) || index === attempts.length - 1) {
+            if (
+                dbLocked ||
+                effectiveBrowser !== 'auto' ||
+                !isAuthBlockedError(lastError) ||
+                index === attempts.length - 1
+            ) {
                 break;
             }
         }
@@ -865,7 +958,9 @@ const previewImport = async (input: string, playlist?: boolean, cookieBrowser?: 
         }
     }
 
-    throw new Error(formatYtDlpError(lastError || 'yt-dlp preview failed', effectiveBrowser, attemptedBrowsers));
+    throw new Error(
+        formatYtDlpError(lastError || 'yt-dlp preview failed', effectiveBrowser, attemptedBrowsers),
+    );
 };
 
 export const createImportJob = async (
@@ -876,6 +971,8 @@ export const createImportJob = async (
     createPlaylist?: boolean,
     playlistName?: string,
     sourceMetadata?: SourceImportMetadata,
+    targetPlaylistIds?: string[],
+    targetPlaylistNames?: string[],
 ) => {
     if (!input.trim()) {
         throw new Error('Enter a URL or search query.');
@@ -906,22 +1003,30 @@ export const createImportJob = async (
     const jobPlaylistName = isPlaylist ? name || undefined : singleTrackPlaylistName || undefined;
 
     const job: ImportJob = {
+        album: sourceMetadata?.album,
+        artist: sourceMetadata?.artist,
         audioFormat,
         cookieBrowser: effectiveBrowser,
         createPlaylist:
-            typeof createPlaylist === 'boolean' ? createPlaylist : isPlaylist || Boolean(jobPlaylistName),
+            typeof createPlaylist === 'boolean'
+                ? createPlaylist
+                : isPlaylist || Boolean(jobPlaylistName),
         createdAt: now(),
         error: '',
         id: randomUUID(),
+        imageUrl: sourceMetadata?.imageUrl,
         input: input.trim(),
         message: 'Queued',
-        name: name || singleTrackPlaylistName,
+        name: name || sourceMetadata?.title || singleTrackPlaylistName,
         playlist: isPlaylist,
         playlistName: jobPlaylistName,
         progress: 0,
         source: sourceMetadata?.source,
         sourceTrackId: sourceMetadata?.sourceTrackId,
         status: 'queued',
+        targetPlaylistIds,
+        targetPlaylistNames,
+        title: sourceMetadata?.title,
         updatedAt: now(),
         videoId: sourceMetadata?.videoId,
     };
@@ -940,7 +1045,6 @@ export const getImportJobForSourceTrack = (sourceTrackId: string) => {
         ) || null
     );
 };
-
 
 const convertSrtToLrc = (srtContent: string): string => {
     const lines = srtContent.split(/\r?\n/);
@@ -1131,14 +1235,18 @@ ipcMain.handle(
     async (
         _event,
         args: {
+            album?: string;
             audioFormat?: string;
+            artist?: string;
             cookieBrowser?: string;
             createPlaylist?: boolean;
+            imageUrl?: string;
             input: string;
             playlist?: boolean;
             playlistName?: string;
             source?: 'youtube_music';
             sourceTrackId?: string;
+            title?: string;
             videoId?: string;
         },
     ) => {
@@ -1150,8 +1258,12 @@ ipcMain.handle(
             args.createPlaylist,
             args.playlistName,
             {
+                album: args.album,
+                artist: args.artist,
+                imageUrl: args.imageUrl,
                 source: args.source,
                 sourceTrackId: args.sourceTrackId,
+                title: args.title,
                 videoId: args.videoId,
             },
         );
@@ -1167,7 +1279,9 @@ ipcMain.handle('roofy-local-cancel-import', (_event, id: string) => {
     return getLocalFirstStatus();
 });
 
-ipcMain.handle('roofy-local-create-user', (_event, args: CreateLocalUserArgs) => createLocalUser(args));
+ipcMain.handle('roofy-local-create-user', (_event, args: CreateLocalUserArgs) =>
+    createLocalUser(args),
+);
 
 ipcMain.handle('roofy-local-credentials', () => ({
     configPath: getConfigPath(),

@@ -40,9 +40,9 @@ export const YoutubeMusicController: Partial<InternalControllerEndpoint> = {
     getLyrics: async ({ query }) => {
         return (await window.api.youtubeMusic.getLyrics(query.songId)) || '';
     },
+    getPlaylistDetail: async ({ query }) => window.api.youtubeMusic.getPlaylistDetail(query.id),
     getPlaylistList: async () => ({ items: [], startIndex: 0, totalRecordCount: 0 }),
     getPlaylistListCount: async () => 0,
-    getPlaylistDetail: async ({ query }) => window.api.youtubeMusic.getPlaylistDetail(query.id),
     getPlaylistSongList: async ({ query }) => {
         const songs = await window.api.youtubeMusic.getPlaylistSongs(query.id);
         return { items: songs, startIndex: 0, totalRecordCount: songs.length };
@@ -60,12 +60,7 @@ export const YoutubeMusicController: Partial<InternalControllerEndpoint> = {
         const result = await window.api.youtubeMusic.search(query.songId);
         return result.songs;
     },
-    getSongDetail: async ({ query }) => {
-        const result = await window.api.youtubeMusic.search(query.id.replace(/^ytm:/, ''));
-        const song = result.songs.find((item) => item.id === query.id) || result.songs[0];
-        if (!song) throw new Error('YouTube Music song not found.');
-        return song;
-    },
+    getSongDetail: async ({ query }) => window.api.youtubeMusic.getSongDetail(query.id),
     getSongList: async ({ query }) => {
         const result = query.albumIds?.length
             ? await Promise.all(

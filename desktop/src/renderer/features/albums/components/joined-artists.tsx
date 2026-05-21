@@ -4,6 +4,7 @@ import { generatePath, Link } from 'react-router';
 import { AppRoute } from '/@/renderer/router/routes';
 import { Text, TextProps } from '/@/shared/components/text/text';
 import { AlbumArtist, RelatedAlbumArtist, RelatedArtist } from '/@/shared/types/domain-types';
+import { isYoutubeMusicEntityId } from '/@/shared/types/youtube-music-types';
 
 export const JOINED_ARTISTS_MUTED_PROPS = {
     linkProps: { fw: 400, isMuted: true },
@@ -118,7 +119,7 @@ const JoinedArtistsComponent = ({
                 {artists.map((artist, index) => (
                     <Fragment key={artist.id || `artist-${index}`}>
                         {index > 0 && ', '}
-                        {artist.id && !readOnly ? (
+                        {artist.id && !readOnly && !isYoutubeMusicEntityId(artist.id) ? (
                             <Text
                                 component={Link}
                                 fw={500}
@@ -159,7 +160,7 @@ const JoinedArtistsComponent = ({
 
                 const { artist, text } = part;
 
-                if (artist.id && !readOnly) {
+                if (artist.id && !readOnly && !isYoutubeMusicEntityId(artist.id)) {
                     return (
                         <Text
                             component={Link}
@@ -187,7 +188,7 @@ const JoinedArtistsComponent = ({
                     {unmatchedArtists.map((artist, index) => (
                         <Fragment key={artist.id}>
                             {index > 0 && ', '}
-                            {artist.id && !readOnly ? (
+                            {artist.id && !readOnly && !isYoutubeMusicEntityId(artist.id) ? (
                                 <Text
                                     component={Link}
                                     fw={500}

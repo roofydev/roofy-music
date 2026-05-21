@@ -22,6 +22,19 @@
     -webkit-app-region: no-drag;
 }
 
+.youtube-account,
+.macos-account {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    height: 100%;
+    -webkit-app-region: no-drag;
+}
+
+.youtube-account {
+    padding-right: 0.25rem;
+}
+
 .windows-button {
     display: flex;
     flex: 1;
@@ -112,6 +125,12 @@
     overflow: hidden;
 }
 
+.macos-account {
+    position: absolute;
+    top: 0;
+    right: 0.5rem;
+}
+
 .macos-button-group {
     position: absolute;
     top: 5px;
@@ -147,27 +166,27 @@
 }
 
 /* Retro theme overrides */
-:global([data-theme="retroMonochrome"]) .windows-container {
+:global([data-theme='retroMonochrome']) .windows-container {
     background: var(--retro-bg-2, #080808) !important;
     border-bottom: 1px solid var(--retro-border, #7a7a7a) !important;
 }
 
-:global([data-theme="retroMonochrome"]) .macos-container {
+:global([data-theme='retroMonochrome']) .macos-container {
     background: var(--retro-bg-2, #080808) !important;
     border-bottom: 1px solid var(--retro-border, #7a7a7a) !important;
 }
 
-:global([data-theme="retroMonochrome"]) .windows-button {
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
+:global([data-theme='retroMonochrome']) .windows-button {
     color: var(--retro-text-soft, #a0a0a0);
+    border: 1px solid var(--retro-border-muted, #3f3f3f);
 }
 
-:global([data-theme="retroMonochrome"]) .windows-button:hover {
-    background: var(--retro-panel-2, #101010);
+:global([data-theme='retroMonochrome']) .windows-button:hover {
     color: var(--retro-text-hot, #f1f1f1);
+    background: var(--retro-panel-2, #101010);
 }
 
-:global([data-theme="retroMonochrome"]) .windows-button.exit:hover {
-    background: var(--retro-panel-2, #101010);
+:global([data-theme='retroMonochrome']) .windows-button.exit:hover {
     color: var(--retro-text-hot, #f1f1f1);
+    background: var(--retro-panel-2, #101010);
 }

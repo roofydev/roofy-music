@@ -108,6 +108,7 @@ export const FullScreenPlayerImage = () => {
 
     const currentImageUrl = useItemImageUrl({
         id: currentSong?.imageId || undefined,
+        imageUrl: currentSong?.imageUrl,
         itemType: LibraryItem.SONG,
         serverId: currentSong?._serverId,
         type: 'fullScreenPlayer',
@@ -115,6 +116,7 @@ export const FullScreenPlayerImage = () => {
 
     const nextImageUrl = useItemImageUrl({
         id: nextSong?.imageId || undefined,
+        imageUrl: nextSong?.imageUrl,
         itemType: LibraryItem.SONG,
         serverId: nextSong?._serverId,
         type: 'fullScreenPlayer',
@@ -136,6 +138,23 @@ export const FullScreenPlayerImage = () => {
     useEffect(() => {
         imageStateRef.current = imageState;
     }, [imageState]);
+
+    useEffect(() => {
+        if (isPlayingRadio) {
+            return;
+        }
+
+        const isTop = imageStateRef.current.current === 0;
+        const activeImage = isTop
+            ? imageStateRef.current.topImage
+            : imageStateRef.current.bottomImage;
+
+        if (activeImage === currentImageUrl) {
+            return;
+        }
+
+        setImageState(isTop ? { topImage: currentImageUrl } : { bottomImage: currentImageUrl });
+    }, [currentImageUrl, isPlayingRadio, setImageState]);
 
     // Update images when song or size changes (skip when playing radio - no album art)
     useEffect(() => {

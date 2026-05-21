@@ -42,6 +42,12 @@
     white-space: nowrap;
 }
 
+.import-icon {
+    margin-right: var(--theme-spacing-xs);
+    color: var(--theme-colors-primary);
+    vertical-align: -2px;
+}
+
 a.title {
     width: auto;
 }

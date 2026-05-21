@@ -674,6 +674,7 @@ export const TableColumnContainer = (
                 [styles.compact]: props.size === 'compact',
                 [styles.dataRow]: isDataRow,
                 [styles.dragging]: isDataRow && isDragging,
+                [styles.importingRow]: isDataRow && Boolean((item as any)?.importStatus),
                 [styles.large]: props.size === 'large',
                 [styles.left]: props.columns[props.columnIndex].align === 'start',
                 [styles.noHorizontalPadding]: isNoHorizontalPaddingColumn(props.type),

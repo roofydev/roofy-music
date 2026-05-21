@@ -14,18 +14,23 @@ const createUser = (args: {
     username: string;
 }) => ipcRenderer.invoke('roofy-local-create-user', args);
 
-const previewImport = (args: { cookieBrowser?: string; input: string }) => {
+const previewImport = (args: { cookieBrowser?: string; input: string; playlist?: boolean }) => {
     return ipcRenderer.invoke('roofy-local-preview-import', args);
 };
 
 const createImport = (args: {
+    album?: string;
     audioFormat?: string;
+    artist?: string;
     cookieBrowser?: string;
     createPlaylist?: boolean;
+    imageUrl?: string;
     input: string;
+    playlist?: boolean;
     playlistName?: string;
     source?: 'youtube_music';
     sourceTrackId?: string;
+    title?: string;
     videoId?: string;
 }) => {
     return ipcRenderer.invoke('roofy-local-create-import', args);

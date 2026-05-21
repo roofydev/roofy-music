@@ -241,11 +241,8 @@ export function WebPlayer() {
                     }
                 }
 
-                if (num === 1) {
-                    playerRef.current?.player1()?.ref?.seekTo(timestamp, 'seconds');
-                } else {
-                    playerRef.current?.player2()?.ref?.seekTo(timestamp, 'seconds');
-                }
+                playerRef.current?.seekTo(timestamp);
+                setTimestamp(timestamp);
             },
             onPlayerStatus: async (properties) => {
                 setIsTransitioning(false);
@@ -293,7 +290,7 @@ export function WebPlayer() {
                 player.mediaStop();
             },
         },
-        [volume, num, isTransitioning, transitionType, audioFadeOnStatusChange],
+        [volume, num, isTransitioning, transitionType, audioFadeOnStatusChange, setTimestamp],
     );
 
     // Cleanup fade interval on unmount

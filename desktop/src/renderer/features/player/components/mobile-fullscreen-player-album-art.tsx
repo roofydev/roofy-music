@@ -102,14 +102,18 @@ export const MobileFullscreenPlayerAlbumArt = () => {
 
     const currentImageUrl = useItemImageUrl({
         id: currentSong?.imageId || undefined,
+        imageUrl: currentSong?.imageUrl,
         itemType: LibraryItem.SONG,
+        serverId: currentSong?._serverId,
         size: mainImageDimensions.idealSize,
         type: 'fullScreenPlayer',
     });
 
     const nextImageUrl = useItemImageUrl({
         id: nextSong?.imageId || undefined,
+        imageUrl: nextSong?.imageUrl,
         itemType: LibraryItem.SONG,
+        serverId: nextSong?._serverId,
         size: mainImageDimensions.idealSize,
         type: 'fullScreenPlayer',
     });
@@ -142,6 +146,23 @@ export const MobileFullscreenPlayerAlbumArt = () => {
     useEffect(() => {
         imageStateRef.current = imageState;
     }, [imageState]);
+
+    useEffect(() => {
+        if (isPlayingRadio) {
+            return;
+        }
+
+        const isTop = imageStateRef.current.current === 0;
+        const activeImage = isTop
+            ? imageStateRef.current.topImage
+            : imageStateRef.current.bottomImage;
+
+        if (activeImage === currentImageUrl) {
+            return;
+        }
+
+        setImageState(isTop ? { topImage: currentImageUrl } : { bottomImage: currentImageUrl });
+    }, [currentImageUrl, isPlayingRadio, setImageState]);
 
     // Update images when song or size changes
     useEffect(() => {

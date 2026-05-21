@@ -17,7 +17,7 @@ import {
 import { playlistsQueries } from '/@/renderer/features/playlists/api/playlists-api';
 import { useRecentPlaylists } from '/@/renderer/features/playlists/hooks/use-recent-playlists';
 import { useAddToPlaylist } from '/@/renderer/features/playlists/mutations/add-to-playlist-mutation';
-import { useCurrentServer, useCurrentServerId } from '/@/renderer/store';
+import { useCurrentServer, useCurrentServerId, useImportJobActions } from '/@/renderer/store';
 import { Checkbox } from '/@/shared/components/checkbox/checkbox';
 import { ContextMenu } from '/@/shared/components/context-menu/context-menu';
 import { Icon } from '/@/shared/components/icon/icon';
@@ -38,6 +38,7 @@ export const AddToPlaylistAction = ({ items, itemType, songs = [] }: AddToPlayli
     const { t } = useTranslation();
     const server = useCurrentServer();
     const serverId = useCurrentServerId();
+    const { setJob } = useImportJobActions();
     const queryClient = useQueryClient();
     const [searchTerm, setSearchTerm] = useState('');
     const [skipDuplicates, setSkipDuplicates] = useLocalStorage({
@@ -184,7 +185,7 @@ export const AddToPlaylistAction = ({ items, itemType, songs = [] }: AddToPlayli
                         itemType === LibraryItem.QUEUE_SONG);
 
                 if (isYoutubeOnlySelection) {
-                    if (!isElectron() || !window.api?.localFirst?.createImport) {
+                    if (!isElectron() || !window.api?.youtubeMusic?.importTrack) {
                         toast.error({
                             message: 'Import to playlist is only available in the desktop app.',
                             title: t('error.genericError'),
@@ -193,23 +194,19 @@ export const AddToPlaylistAction = ({ items, itemType, songs = [] }: AddToPlayli
                     }
 
                     for (const song of youtubeSongs) {
-                        await window.api.localFirst.createImport({
-                            createPlaylist: true,
-                            input:
-                                song.youtubeMusic?.watchUrl ||
-                                `https://music.youtube.com/watch?v=${song.youtubeMusic?.videoId}`,
-                            playlistName,
-                            source: 'youtube_music',
+                        const job = await window.api.youtubeMusic.importTrack({
+                            album: song.album || undefined,
+                            artist: song.artistName || song.albumArtistName || 'Unknown Artist',
+                            imageUrl: song.imageUrl || undefined,
                             sourceTrackId: song.id,
+                            targetPlaylistIds: [playlistId],
+                            targetPlaylistNames: [playlistName],
+                            title: song.name,
                             videoId: song.youtubeMusic!.videoId!,
                         });
+                        setJob(job);
                     }
 
-                    toast.success({
-                        message: `Queued ${youtubeSongs.length} import${
-                            youtubeSongs.length === 1 ? '' : 's'
-                        } for ${playlistName}`,
-                    });
                     return;
                 }
 
@@ -336,6 +333,7 @@ export const AddToPlaylistAction = ({ items, itemType, songs = [] }: AddToPlayli
             items,
             queryClient,
             serverId,
+            setJob,
             skipDuplicates,
             songs,
             t,

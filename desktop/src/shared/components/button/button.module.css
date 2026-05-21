@@ -218,6 +218,32 @@
     color: var(--retro-bg, #050505);
 }
 
+:global([data-theme="retroMonochrome"]) .root[data-variant='state-info'] {
+    background: var(--retro-border, #7a7a7a);
+    color: var(--retro-bg, #050505);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='state-success'] {
+    background: var(--retro-border-bright, #b8b8b8);
+    color: var(--retro-bg, #050505);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='state-warning'] {
+    background: var(--retro-text-muted, #707070);
+    color: var(--retro-bg, #050505);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='secondary'] {
+    color: var(--retro-text, #d0d0d0);
+    background: var(--retro-panel, #0b0b0b);
+    border: 1px solid var(--retro-border, #7a7a7a);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='secondary']:hover {
+    background: var(--retro-panel-2, #101010);
+    border-color: var(--retro-border-bright, #b8b8b8);
+}
+
 :global([data-theme="retroMonochrome"]) .label {
     font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
 }

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { ContextMenu } from '/@/shared/components/context-menu/context-menu';
 import { toast } from '/@/shared/components/toast/toast';
 import { Song, ServerType } from '/@/shared/types/domain-types';
+import { useImportJobActions } from '/@/renderer/store';
 
 interface DownloadToLibraryActionProps {
     songs: Song[];
@@ -12,6 +13,7 @@ interface DownloadToLibraryActionProps {
 
 export const DownloadToLibraryAction = ({ songs }: DownloadToLibraryActionProps) => {
     const { t } = useTranslation();
+    const { setJob } = useImportJobActions();
 
     const hasYtTracks = songs.some(
         (song) => song._serverType === ServerType.YOUTUBE_MUSIC && song.youtubeMusic?.videoId,
@@ -29,21 +31,22 @@ export const DownloadToLibraryAction = ({ songs }: DownloadToLibraryActionProps)
             }
 
             try {
-                await window.api.youtubeMusic.downloadTrack({
+                const job = await window.api.youtubeMusic.downloadTrack({
                     album: song.album || undefined,
                     artist: song.artistName || song.albumArtistName || 'Unknown Artist',
+                    imageUrl: song.imageUrl || undefined,
                     sourceTrackId: song.id,
                     title: song.name,
                     videoId: song.youtubeMusic.videoId,
                 });
-                toast.success({ message: `Queued "${song.name}" for local import` });
+                setJob(job);
             } catch (error) {
                 toast.error({
                     message: `Failed to queue "${song.name}": ${(error as Error).message}`,
                 });
             }
         }
-    }, [songs]);
+    }, [setJob, songs]);
 
     if (!hasYtTracks) return null;
 

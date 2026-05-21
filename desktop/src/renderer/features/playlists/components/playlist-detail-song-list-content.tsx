@@ -9,12 +9,13 @@ import { eventEmitter } from '/@/renderer/events/event-emitter';
 import { playlistsQueries } from '/@/renderer/features/playlists/api/playlists-api';
 import { PlaylistDetailAlbumView } from '/@/renderer/features/playlists/components/playlist-detail-album-view';
 import { usePlaylistTrackList } from '/@/renderer/features/playlists/hooks/use-playlist-track-list';
-import { useCurrentServer, useListSettings } from '/@/renderer/store';
+import { useCurrentServer, useImportJobs, useListSettings } from '/@/renderer/store';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import {
     LibraryItem,
     PlaylistSongListQuery,
     PlaylistSongListResponse,
+    ServerType,
     Song,
 } from '/@/shared/types/domain-types';
 import {
@@ -301,8 +302,89 @@ const PlaylistDetailTrackView = ({ data }: { data: PlaylistSongListResponse }) =
 };
 
 const PlaylistDetailTrackViewContent = ({ data }: { data: PlaylistSongListResponse }) => {
-    const { sortedAndFilteredSongs } = usePlaylistTrackList(data);
-    return <PlaylistDetailSongListView data={data} items={sortedAndFilteredSongs} />;
+    const { playlistId } = useParams() as { playlistId: string };
+    const server = useCurrentServer();
+    const queryClient = useQueryClient();
+    const jobs = useImportJobs();
+
+    const pendingImportSongs = useMemo(() => {
+        return Object.values(jobs)
+            .filter(
+                (job) =>
+                    (job.status === 'queued' || job.status === 'running') &&
+                    job.targetPlaylistIds?.includes(playlistId),
+            )
+            .map((job) => {
+                const artistName = job.artist || 'YouTube Music';
+                return {
+                    _itemType: LibraryItem.SONG,
+                    _serverId: server.id,
+                    _serverType: ServerType.NAVIDROME,
+                    _uniqueId: `import:${job.id}`,
+                    album: job.album || '',
+                    albumArtist: artistName,
+                    albumArtistName: artistName,
+                    albumArtists: [{ id: `import-artist:${job.id}`, name: artistName }],
+                    artistName,
+                    artists: [{ id: `import-artist:${job.id}`, name: artistName }],
+                    duration: 0,
+                    id: `import:${job.id}`,
+                    imageId: null,
+                    imageUrl: job.imageUrl || null,
+                    importProgress: job.progress,
+                    importStatus: job.status,
+                    name: job.title || job.name || 'Importing track',
+                    playlistItemId: `import:${job.id}`,
+                    youtubeMusic: job.videoId ? { videoId: job.videoId } : undefined,
+                } as unknown as Song;
+            });
+    }, [jobs, playlistId, server.id]);
+
+    const dataWithPendingImports = useMemo(() => {
+        if (pendingImportSongs.length === 0) {
+            return data;
+        }
+
+        return {
+            ...data,
+            items: [...pendingImportSongs, ...data.items],
+            totalRecordCount:
+                (data.totalRecordCount ?? data.items.length) + pendingImportSongs.length,
+        };
+    }, [data, pendingImportSongs]);
+
+    const completedImportKey = useMemo(() => {
+        return Object.values(jobs)
+            .filter(
+                (job) =>
+                    job.status === 'completed' && job.targetPlaylistIds?.includes(playlistId),
+            )
+            .map((job) => job.id)
+            .join(',');
+    }, [jobs, playlistId]);
+
+    useEffect(() => {
+        if (!completedImportKey) {
+            return;
+        }
+
+        const queryKey = playlistsQueries.songList({
+            query: {
+                id: playlistId,
+            },
+            serverId: server.id,
+        }).queryKey;
+
+        void queryClient.invalidateQueries({ queryKey });
+    }, [completedImportKey, playlistId, queryClient, server.id]);
+
+    const { sortedAndFilteredSongs } = usePlaylistTrackList(dataWithPendingImports);
+    return (
+        <PlaylistDetailSongListView
+            data={dataWithPendingImports}
+            items={sortedAndFilteredSongs}
+        />
+    );
 };
 
 const PlaylistDetailSongList = ({ data }: { data: PlaylistSongListResponse }) => {

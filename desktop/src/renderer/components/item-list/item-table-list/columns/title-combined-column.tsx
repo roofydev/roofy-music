@@ -31,6 +31,7 @@ export const DefaultTitleCombinedColumn = (props: ItemTableListInnerColumn) => {
     const row: object | undefined = (rowItem as any)?.id;
     const item = rowItem as any;
     const internalState = (props as any).internalState;
+    const isImporting = Boolean(item?.importStatus);
     const playButtonBehavior = usePlayButtonBehavior();
     const [isHovered, setIsHovered] = useState(false);
 
@@ -117,7 +118,7 @@ export const DefaultTitleCombinedColumn = (props: ItemTableListInnerColumn) => {
                             src={item?.imageUrl}
                             type="table"
                         />
-                        {isHovered && (
+                        {isHovered && !isImporting && (
                             <div
                                 className={clsx(styles.playButtonOverlay, {
                                     [styles.compactPlayButtonOverlay]: props.size === 'compact',
@@ -152,6 +153,9 @@ export const DefaultTitleCombinedColumn = (props: ItemTableListInnerColumn) => {
                 >
                     <Text className={styles.title} isNoSelect size="md" {...titleLinkProps}>
                         <ExplicitIndicator explicitStatus={item?.explicitStatus} />
+                        {isImporting && (
+                            <Icon className={styles.importIcon} icon="download" size="sm" />
+                        )}
                         {item.name as string}
                     </Text>
                     <div className={styles.artists}>
@@ -181,6 +185,7 @@ export const QueueSongTitleCombinedColumn = (props: ItemTableListInnerColumn) =>
     const song = rowItem as QueueSong;
     const item = rowItem as any;
     const internalState = (props as any).internalState;
+    const isImporting = Boolean(item?.importStatus);
     const playButtonBehavior = usePlayButtonBehavior();
     const [isHovered, setIsHovered] = useState(false);
     const isActive = useIsActiveRow(song?.id, song?._uniqueId);
@@ -268,7 +273,7 @@ export const QueueSongTitleCombinedColumn = (props: ItemTableListInnerColumn) =>
                             src={item?.imageUrl}
                             type="table"
                         />
-                        {isHovered && (
+                        {isHovered && !isImporting && (
                             <div
                                 className={clsx(styles.playButtonOverlay, {
                                     [styles.compactPlayButtonOverlay]: props.size === 'compact',
@@ -312,6 +317,9 @@ export const QueueSongTitleCombinedColumn = (props: ItemTableListInnerColumn) =>
                         {...titleLinkProps}
                     >
                         <ExplicitIndicator explicitStatus={song?.explicitStatus} />
+                        {isImporting && (
+                            <Icon className={styles.importIcon} icon="download" size="sm" />
+                        )}
                         {row.name as string}
                         {song?.trackSubtitle && props.itemType !== LibraryItem.QUEUE_SONG && (
                             <Text

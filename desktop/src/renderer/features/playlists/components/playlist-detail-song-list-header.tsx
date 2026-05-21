@@ -152,7 +152,9 @@ export const PlaylistDetailSongListHeader = ({
 
     const imageUrl = useItemImageUrl({
         id: detailQuery?.data?.imageId || undefined,
+        imageUrl: detailQuery?.data?.imageUrl,
         itemType: LibraryItem.PLAYLIST,
+        serverId: playlistServerId,
         type: 'header',
     });
 
@@ -193,7 +195,7 @@ export const PlaylistDetailSongListHeader = ({
                             onUploadFile={handlePlaylistImageUpload}
                         />
                     }
-                    imageUrl={imageUrl}
+                    imageUrl={imageUrl || detailQuery?.data?.imageUrl || undefined}
                     item={{
                         imageId: detailQuery?.data?.imageId,
                         imageUrl: detailQuery?.data?.imageUrl,

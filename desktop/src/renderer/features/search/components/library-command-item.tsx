@@ -42,6 +42,7 @@ interface LibraryCommandItemProps {
     imageUrl: null | string;
     isHighlighted?: boolean;
     itemType: LibraryItem;
+    onImport?: (song: Song) => void;
     song?: Song;
     subtitle?: string;
     title?: string;
@@ -55,6 +56,7 @@ export const LibraryCommandItem = ({
     imageUrl,
     isHighlighted,
     itemType,
+    onImport,
     song,
     subtitle,
     title,
@@ -138,6 +140,19 @@ export const LibraryCommandItem = ({
             </div>
             {showControls && (
                 <ActionIconGroup className={styles.controls}>
+                    {onImport && song && (
+                        <ActionIcon
+                            icon="download"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                onImport(song);
+                            }}
+                            size="xs"
+                            tooltip={{ label: 'Import to local library' }}
+                            variant="default"
+                        />
+                    )}
                     <PlayTooltip disabled={disabled} type={Play.NOW}>
                         <ActionIcon
                             icon="mediaPlay"

@@ -35,12 +35,12 @@ export const PlaylistSongContextMenu = ({ items, type }: PlaylistSongContextMenu
             <ContextMenu.Divider />
             <RemoveFromPlaylistAction items={items} />
             <ContextMenu.Divider />
-            <AddToPlaylistAction items={ids} itemType={type} />
+            <AddToPlaylistAction items={ids} itemType={type} songs={items} />
             <ContextMenu.Divider />
             <SetFavoriteAction ids={ids} itemType={type} />
             <SetRatingAction ids={ids} itemType={type} />
             <ContextMenu.Divider />
-            <DownloadAction ids={ids} />
+            <DownloadAction ids={ids} songs={items} />
             <ShareAction ids={ids} itemType={type} />
             <ContextMenu.Divider />
             <GoToAction items={items} />

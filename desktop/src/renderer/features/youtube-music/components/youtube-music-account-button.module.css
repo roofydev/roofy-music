@@ -1,0 +1,38 @@
+.login-button,
+.account {
+    -webkit-app-region: no-drag;
+}
+
+.account {
+    max-width: 260px;
+    padding: 0 0.25rem;
+}
+
+.avatar {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    overflow: hidden;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: white;
+    background: #2f7d8c;
+    border: 1px solid alpha(var(--theme-colors-border), 0.6);
+    border-radius: 999px;
+}
+
+.avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.name {
+    max-width: 120px;
+}
+
+.compact .name {
+    display: none;
+}

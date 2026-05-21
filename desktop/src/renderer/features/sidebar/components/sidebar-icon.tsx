@@ -70,6 +70,9 @@ export const SidebarIcon = ({ active, route, size }: SidebarIconProps) => {
             case AppRoute.LOCAL_FIRST:
                 if (isActive) return <RiDownloadCloud2Fill size={size} />;
                 return <RiDownloadCloud2Line size={size} />;
+            case AppRoute.IMPORTS:
+                if (isActive) return <RiDownloadCloud2Fill size={size} />;
+                return <RiDownloadCloud2Line size={size} />;
             case AppRoute.NOW_PLAYING:
                 if (isActive) return <RiPlayFill size={size} />;
                 return <RiPlayLine size={size} />;

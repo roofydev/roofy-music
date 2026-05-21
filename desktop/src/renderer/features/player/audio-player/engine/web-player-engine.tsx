@@ -80,6 +80,7 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
     const player2Ref = useRef<null | ReactPlayer>(null);
     const networkRetryCount1 = useRef(0);
     const networkRetryCount2 = useRef(0);
+    const isSeekingRef = useRef(false);
     const [ReactPlayerComponent, setReactPlayerComponent] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -144,9 +145,40 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
             };
         },
         seekTo(seekTo: number) {
-            playerNum === 1
-                ? player1Ref.current?.seekTo(seekTo, 'seconds')
-                : player2Ref.current?.seekTo(seekTo, 'seconds');
+            const target = playerNum === 1 ? player1Ref.current : player2Ref.current;
+            if (!target) return;
+            const internal = target.getInternalPlayer() as HTMLAudioElement | null;
+            const src = internal?.currentSrc || internal?.src;
+            console.debug('[WebPlayer] seekTo requested:', {
+                currentSrc: src,
+                playerNum,
+                requestedTime: seekTo,
+                seekable: internal?.seekable?.length
+                    ? Array.from({ length: internal.seekable.length }, (_, i) => ({
+                          end: internal.seekable.end(i),
+                          start: internal.seekable.start(i),
+                      }))
+                    : null,
+            });
+            isSeekingRef.current = true;
+            try {
+                if (internal && 'fastSeek' in internal && typeof internal.fastSeek === 'function') {
+                    internal.fastSeek(seekTo);
+                } else {
+                    target.seekTo(seekTo, 'seconds');
+                }
+            } catch {
+                target.seekTo(seekTo, 'seconds');
+            }
+            setTimeout(() => {
+                isSeekingRef.current = false;
+                const afterInternal = target.getInternalPlayer() as HTMLAudioElement | null;
+                console.debug('[WebPlayer] seekTo completed:', {
+                    actualTime: afterInternal?.currentTime,
+                    currentSrc: afterInternal?.currentSrc || afterInternal?.src,
+                    paused: afterInternal?.paused,
+                });
+            }, 300);
         },
         setVolume(volume: number) {
             setInternalVolume1(volume / 100 || 0);

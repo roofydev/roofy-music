@@ -86,13 +86,17 @@ const BackgroundImage = memo(({ dynamicBackground, dynamicIsImage }: BackgroundI
 
     const currentImageUrl = useItemImageUrl({
         id: currentSong?.imageId || undefined,
+        imageUrl: currentSong?.imageUrl,
         itemType: LibraryItem.SONG,
+        serverId: currentSong?._serverId,
         type: 'itemCard',
     });
 
     const nextImageUrl = useItemImageUrl({
         id: nextSong?.imageId || undefined,
+        imageUrl: nextSong?.imageUrl,
         itemType: LibraryItem.SONG,
+        serverId: nextSong?._serverId,
         type: 'itemCard',
     });
 
@@ -109,6 +113,21 @@ const BackgroundImage = memo(({ dynamicBackground, dynamicIsImage }: BackgroundI
     useEffect(() => {
         imageStateRef.current = imageState;
     }, [imageState]);
+
+    useEffect(() => {
+        const isTop = imageStateRef.current.current === 0;
+        const activeImage = isTop
+            ? imageStateRef.current.topImage
+            : imageStateRef.current.bottomImage;
+
+        if (activeImage === currentImageUrl) {
+            return;
+        }
+
+        setImageState((state) =>
+            isTop ? { ...state, topImage: currentImageUrl } : { ...state, bottomImage: currentImageUrl },
+        );
+    }, [currentImageUrl]);
 
     // Update images when song changes
     useEffect(() => {

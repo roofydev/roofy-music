@@ -50,6 +50,17 @@
     object-fit: var(--theme-image-fit);
 }
 
+.stream-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--theme-colors-background) 45%, transparent);
+    border-radius: var(--theme-radius-md);
+}
+
 .radio-image {
     background: var(--theme-colors-surface);
     border-radius: var(--theme-radius-md);

@@ -12,8 +12,15 @@ interface SidebarItemProps extends Omit<ButtonProps, 'component' | 'ref'> {
 
 export const SidebarItem = ({ children, className, to, ...props }: SidebarItemProps) => {
     const location = useLocation();
-    const toPath = typeof to === 'string' ? to : to.pathname || '';
-    const isActive = location.pathname === toPath;
+    const [toPath, rawToSearch = ''] =
+        typeof to === 'string' ? to.split('?') : [to.pathname || '', to.search || ''];
+    const toSearch = rawToSearch
+        ? rawToSearch.startsWith('?')
+            ? rawToSearch
+            : `?${rawToSearch}`
+        : '';
+    const isActive =
+        location.pathname === toPath && (toSearch ? location.search === toSearch : true);
 
     const handleLinkDragStart = (e: React.DragEvent<HTMLButtonElement>) => {
         e.preventDefault();

@@ -1,5 +1,8 @@
 .root {
     background-color: var(--theme-colors-surface);
+    border-color: color-mix(in srgb, var(--theme-colors-border) 70%, transparent);
+    border-radius: 8px;
+    box-shadow: 0 14px 40px rgb(0 0 0 / 28%);
 }
 
 .root.error {
@@ -20,10 +23,11 @@
 
 .title {
     font-size: var(--theme-font-size-md);
+    font-weight: 700;
 }
 
 .body {
-    padding: var(--theme-spacing-md);
+    padding: var(--theme-spacing-md) var(--theme-spacing-lg);
 }
 
 .loader {
@@ -31,11 +35,14 @@
 }
 
 .description {
-    font-size: var(--theme-font-size-md);
+    color: var(--theme-colors-foreground-muted);
+    font-size: var(--theme-font-size-sm);
+    line-height: 1.45;
 }
 
 .close-button {
     background-color: var(--theme-colors-surface);
+    color: var(--theme-colors-foreground-muted);
 }
 
 /* Retro theme overrides */

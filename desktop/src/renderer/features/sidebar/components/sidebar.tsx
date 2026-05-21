@@ -3,6 +3,7 @@ import isElectron from 'is-electron';
 import { AnimatePresence, motion } from 'motion/react';
 import { MouseEvent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router';
 
 import styles from './sidebar.module.css';
 
@@ -51,6 +52,7 @@ export const Sidebar = () => {
     const { t } = useTranslation();
 
     const sidebarPlaylistList = useSidebarPlaylistList();
+    const location = useLocation();
 
     const translatedSidebarItemMap = useMemo(
         () => ({
@@ -102,6 +104,13 @@ export const Sidebar = () => {
     const isCustomWindowBar =
         windowBarStyle === Platform.WINDOWS || windowBarStyle === Platform.MACOS;
     const showYoutubeMusic = isElectron();
+    const youtubeMusicItems = [
+        { label: 'Browse', search: '?view=browse' },
+        { label: 'Search', search: '?view=search' },
+        { label: 'My Songs', search: '?view=songs' },
+        { label: 'My Playlists', search: '?view=playlists' },
+        { label: 'Login', search: '?view=login' },
+    ];
 
     return (
         <div
@@ -121,7 +130,13 @@ export const Sidebar = () => {
                         item: styles.accordionItem,
                         root: styles.accordionRoot,
                     }}
-                    defaultValue={['library', 'youtube-music', 'collections', 'playlists']}
+                    defaultValue={[
+                        'library',
+                        'youtube-music',
+                        'imports',
+                        'collections',
+                        'playlists',
+                    ]}
                     multiple
                 >
                     <Accordion.Item value="library">
@@ -151,10 +166,39 @@ export const Sidebar = () => {
                                 </Text>
                             </Accordion.Control>
                             <Accordion.Panel>
-                                <SidebarItem to={AppRoute.YOUTUBE_MUSIC}>
+                                {youtubeMusicItems.map((item) => {
+                                    const to = `${AppRoute.YOUTUBE_MUSIC}${item.search}`;
+                                    return (
+                                        <SidebarItem key={item.search} to={to}>
+                                            <Group gap="md">
+                                                <SidebarIcon
+                                                    active={
+                                                        location.pathname ===
+                                                            AppRoute.YOUTUBE_MUSIC &&
+                                                        location.search === item.search
+                                                    }
+                                                    route={AppRoute.YOUTUBE_MUSIC}
+                                                />
+                                                {item.label}
+                                            </Group>
+                                        </SidebarItem>
+                                    );
+                                })}
+                            </Accordion.Panel>
+                        </Accordion.Item>
+                    )}
+                    {showYoutubeMusic && (
+                        <Accordion.Item value="imports">
+                            <Accordion.Control>
+                                <Text fw={500} variant="secondary">
+                                    Imports
+                                </Text>
+                            </Accordion.Control>
+                            <Accordion.Panel>
+                                <SidebarItem to={AppRoute.IMPORTS}>
                                     <Group gap="md">
-                                        <SidebarIcon route={AppRoute.YOUTUBE_MUSIC} />
-                                        Browse
+                                        <SidebarIcon route={AppRoute.IMPORTS} />
+                                        All Imports
                                     </Group>
                                 </SidebarItem>
                             </Accordion.Panel>
