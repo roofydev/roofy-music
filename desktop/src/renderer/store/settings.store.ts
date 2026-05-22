@@ -278,6 +278,7 @@ const CssSettingsSchema = z.object({
 });
 
 const DiscordSettingsSchema = z.object({
+    artworkWebhookUrl: z.string(),
     clientId: z.string(),
     displayType: DiscordDisplayTypeSchema,
     enabled: z.boolean(),
@@ -1107,13 +1108,14 @@ const initialState: SettingsState = {
         enabled: false,
     },
     discord: {
+        artworkWebhookUrl: '',
         clientId: '1507206067015254097',
         displayType: DiscordDisplayType.ROOFY,
         enabled: false,
         linkType: DiscordLinkType.NONE,
-        showAsListening: false,
+        showAsListening: true,
         showPaused: true,
-        showServerImage: false,
+        showServerImage: true,
         showStateIcon: true,
     },
     font: {
@@ -2455,10 +2457,20 @@ export const useSettingsStore = createWithEqualityFn<SettingsSlice>()(
                     state.general.themeLight = AppTheme.DEFAULT_LIGHT;
                 }
 
+                if (version <= 30) {
+                    if (state.discord) {
+                        state.discord.showAsListening = true;
+                        state.discord.showServerImage = true;
+                        state.discord.artworkWebhookUrl =
+                            state.discord.artworkWebhookUrl ||
+                            initialState.discord.artworkWebhookUrl;
+                    }
+                }
+
                 return persistedState;
             },
             name: 'store_settings',
-            version: 29,
+            version: 31,
         },
     ),
 );

@@ -5,6 +5,7 @@ import { YoutubeMusicSongsTable } from './youtube-music-songs-table';
 
 import { PageHeader } from '/@/renderer/components/page-header/page-header';
 import { FilterBar } from '/@/renderer/features/shared/components/filter-bar';
+import { RefreshButton } from '/@/renderer/features/shared/components/refresh-button';
 import { Button } from '/@/shared/components/button/button';
 import { Group } from '/@/shared/components/group/group';
 import { Image } from '/@/shared/components/image/image';
@@ -18,6 +19,7 @@ interface YoutubeMusicPlaylistDetailProps {
     onImportPlaylist: (playlist: Playlist) => void;
     onImportTracks: (playlist: Playlist) => void;
     onPlayPlaylist: (playlist: Playlist, playType: Play) => void;
+    onRefresh?: () => void;
     playlist?: Playlist;
     songs: Song[];
 }
@@ -32,6 +34,7 @@ export const YoutubeMusicPlaylistDetail = forwardRef<
             onImportPlaylist,
             onImportTracks,
             onPlayPlaylist,
+            onRefresh,
             playlist,
             songs,
         }: YoutubeMusicPlaylistDetailProps,
@@ -74,6 +77,7 @@ export const YoutubeMusicPlaylistDetail = forwardRef<
                         </Group>
                         {playlist && (
                             <Group gap="xs" wrap="nowrap">
+                                {onRefresh && <RefreshButton onClick={onRefresh} variant="subtle" />}
                                 <Button
                                     onClick={() => onImportPlaylist(playlist)}
                                     size="compact-sm"

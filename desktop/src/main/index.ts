@@ -536,7 +536,9 @@ async function createWindow(first = true): Promise<void> {
         autoHideMenuBar: true,
         frame: false,
         height: 900,
-        icon: isWindows() ? getAssetPath('icons/icon.ico') : getAssetPath('icons/icon.png'),
+        icon: isWindows()
+            ? nativeImage.createFromPath(getAssetPath('icons/icon.ico'))
+            : nativeImage.createFromPath(getAssetPath('icons/icon.png')),
         minHeight: 120,
         minWidth: 480,
         show: false,
@@ -1064,15 +1066,23 @@ if (!singleInstance) {
 
 // Register 'open-item' handler globally, ensuring it is only registered once
 if (!ipcMain.eventNames().includes('open-item')) {
-    ipcMain.handle('open-item', async (_event, path: string) => {
+    ipcMain.handle('open-item', async (_event, itemPath: string) => {
         return new Promise<void>((resolve, reject) => {
-            access(path, constants.F_OK, (error) => {
+            let resolvedPath = itemPath;
+
+            if (!path.isAbsolute(itemPath)) {
+                const configuredLibraryPath = store.get('roofy.libraryPath') as string | undefined;
+                const libraryPath = configuredLibraryPath || join(app.getPath('music'), 'Roofy Music');
+                resolvedPath = join(libraryPath, itemPath);
+            }
+
+            access(resolvedPath, constants.F_OK, (error) => {
                 if (error) {
                     reject(error);
                     return;
                 }
 
-                shell.showItemInFolder(path);
+                shell.showItemInFolder(resolvedPath);
                 resolve();
             });
         });

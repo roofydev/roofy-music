@@ -17,6 +17,7 @@ import { YoutubeMusicIcon } from '/@/renderer/features/youtube-music/components/
 import { YoutubeMusicPlaylistDetail } from '/@/renderer/features/youtube-music/components/youtube-music-playlist-detail';
 import { YoutubeMusicPlaylistGrid } from '/@/renderer/features/youtube-music/components/youtube-music-playlist-grid';
 import { YoutubeMusicSongsTable } from '/@/renderer/features/youtube-music/components/youtube-music-songs-table';
+import { RefreshButton } from '/@/renderer/features/shared/components/refresh-button';
 import { queryClient } from '/@/renderer/lib/react-query';
 import { addToQueueByData, useImportJobActions } from '/@/renderer/store';
 import { Badge } from '/@/shared/components/badge/badge';
@@ -255,6 +256,14 @@ const YoutubeMusicRoute = () => {
                                 <LibraryHeaderBar ignoreMaxWidth>
                                     <LibraryHeaderBar.Title>Browse</LibraryHeaderBar.Title>
                                     <YoutubeMusicIcon size="2rem" />
+                                    <RefreshButton
+                                        onClick={() =>
+                                            queryClient.invalidateQueries({
+                                                queryKey: ['youtube-music', 'home', 'main-feed'],
+                                            })
+                                        }
+                                        variant="subtle"
+                                    />
                                 </LibraryHeaderBar>
                             </PageHeader>
                             <ListWithSidebarContainer>
@@ -285,6 +294,11 @@ const YoutubeMusicRoute = () => {
                                     <YoutubeMusicIcon size="2rem" />
                                 </LibraryHeaderBar>
                                 <Group>
+                                    <RefreshButton
+                                        loading={searchQuery.isFetching}
+                                        onClick={() => searchQuery.refetch()}
+                                        variant="subtle"
+                                    />
                                     <TextInput
                                         leftSection={<Icon icon="search" />}
                                         onChange={(event) =>
@@ -430,6 +444,11 @@ const YoutubeMusicRoute = () => {
                                     <YoutubeMusicIcon size="2rem" />
                                 </LibraryHeaderBar>
                                 <Group>
+                                    <RefreshButton
+                                        loading={accountSongsQuery.isFetching}
+                                        onClick={() => accountSongsQuery.refetch()}
+                                        variant="subtle"
+                                    />
                                     <TextInput
                                         leftSection={<Icon icon="search" />}
                                         onChange={(event) =>
@@ -487,6 +506,10 @@ const YoutubeMusicRoute = () => {
                                                     onImportPlaylist={handlePlaylistImport}
                                                     onImportTracks={handlePlaylistImportTracks}
                                                     onPlayPlaylist={handlePlaylistPlay}
+                                                    onRefresh={() => {
+                                                        accountPlaylistDetailQuery.refetch();
+                                                        accountPlaylistSongsQuery.refetch();
+                                                    }}
                                                     playlist={accountPlaylistDetailQuery.data}
                                                     songs={accountPlaylistSongsQuery.data || []}
                                                 />
@@ -513,6 +536,11 @@ const YoutubeMusicRoute = () => {
                                             <YoutubeMusicIcon size="2rem" />
                                         </LibraryHeaderBar>
                                         <Group>
+                                            <RefreshButton
+                                                loading={accountPlaylistsQuery.isFetching}
+                                                onClick={() => accountPlaylistsQuery.refetch()}
+                                                variant="subtle"
+                                            />
                                             <TextInput
                                                 leftSection={<Icon icon="search" />}
                                                 onChange={(event) =>

@@ -23,6 +23,7 @@ type ImportJob = {
     cookieBrowser: string;
     createdAt: string;
     createPlaylist: boolean;
+    downloadedCount?: number;
     error: string;
     expectedFiles?: string[];
     id: string;
@@ -33,6 +34,7 @@ type ImportJob = {
     playlist: boolean;
     playlistName?: string;
     progress: number;
+    skippedCount?: number;
     source?: 'youtube_music';
     sourceTrackId?: string;
     status: 'cancelled' | 'completed' | 'failed' | 'queued' | 'running';
@@ -41,6 +43,7 @@ type ImportJob = {
     title?: string;
     updatedAt: string;
     videoId?: string;
+    warning?: string;
 };
 
 type LocalFirstStatus = {
@@ -120,6 +123,7 @@ const loadImportJobs = (): ImportJob[] => {
             progress: job.status === 'completed' ? 100 : job.progress || 0,
             status: job.status === 'running' ? 'failed' : job.status,
             updatedAt: job.updatedAt || now(),
+            warning: job.warning || '',
         }));
 };
 
@@ -641,6 +645,18 @@ const formatYtDlpError = (output: string, cookieBrowser: string, attempts: strin
     ].join('\n');
 };
 
+const formatPartialImportWarning = (skippedCount: number, playlist: boolean) => {
+    const itemLabel = playlist ? 'playlist item' : 'item';
+    const skippedCopy =
+        skippedCount > 0
+            ? `${skippedCount} ${itemLabel}${skippedCount === 1 ? '' : 's'}`
+            : playlist
+              ? 'Some playlist items'
+              : 'Some items';
+
+    return `${skippedCopy} could not be downloaded. Available tracks were imported.`;
+};
+
 const processImportQueue = () => {
     if (activeImport) return;
     const nextJob = importJobs
@@ -713,6 +729,7 @@ const runImport = (
 
     const recentOutput: string[] = [];
     const candidatePaths: string[] = [];
+    let failedItemCount = 0;
     const audioExts = new Set([
         '.aac',
         '.flac',
@@ -738,6 +755,7 @@ const runImport = (
         if (!clean) return;
         recentOutput.push(clean);
         if (recentOutput.length > 32) recentOutput.shift();
+        if (/^ERROR:/i.test(clean)) failedItemCount += 1;
 
         const percent = /\[download\]\s+(\d+(?:\.\d+)?)%/.exec(clean);
         if (percent) {
@@ -772,9 +790,24 @@ const runImport = (
         sendImportJobEvent(current || job);
 
         const uniquePaths = [...new Set(candidatePaths)];
-        const audioFiles = uniquePaths.filter((p) => audioExts.has(path.extname(p).toLowerCase()));
+        const audioFiles = uniquePaths
+            .filter((p) => audioExts.has(path.extname(p).toLowerCase()))
+            .filter((p) => existsSync(p));
+        const output = recentOutput.join('\n');
+        const canCreateEmptyPlaylist =
+            code !== 0 &&
+            job.createPlaylist &&
+            job.playlist &&
+            failedItemCount > 0 &&
+            !isAuthBlockedError(output) &&
+            !isCookieDatabaseLockedError(output);
+        const completedWithSkippedItems =
+            code !== 0 && (audioFiles.length > 0 || canCreateEmptyPlaylist);
+        const partialWarning = completedWithSkippedItems
+            ? formatPartialImportWarning(failedItemCount, job.playlist)
+            : '';
 
-        if (code === 0) {
+        if (code === 0 || completedWithSkippedItems) {
             for (const filePath of audioFiles) {
                 try {
                     processSubtitleForFile(filePath);
@@ -786,8 +819,10 @@ const runImport = (
 
         if (current?.status === 'cancelled') {
             updateJob(job.id, { message: 'Cancelled' });
-        } else if (code === 0) {
-            let message = 'Import complete';
+        } else if (code === 0 || completedWithSkippedItems) {
+            let message = completedWithSkippedItems
+                ? 'Import complete - skipped unavailable items'
+                : 'Import complete';
 
             if (audioFiles.length > 0) {
                 const needsScan = job.createPlaylist || Boolean(job.targetPlaylistIds?.length);
@@ -797,8 +832,11 @@ const runImport = (
                         updateJob(job.id, {
                             error: '',
                             message: 'Import complete - creating playlist',
+                            warning: partialWarning,
                         });
-                        message = 'Import complete - playlist created';
+                        message = completedWithSkippedItems
+                            ? 'Import complete - playlist created with skipped items'
+                            : 'Import complete - playlist created';
                     }
 
                     if (needsScan) {
@@ -807,6 +845,7 @@ const runImport = (
                             message: job.targetPlaylistIds?.length
                                 ? 'Import complete - adding to playlist'
                                 : 'Import complete - scanning library',
+                            warning: partialWarning,
                         });
                         await triggerNavidromeScan();
                     }
@@ -819,16 +858,23 @@ const runImport = (
                                     job.playlistName || job.name || 'Imported Playlist',
                                     songIds,
                                 );
-                                message = 'Import complete - playlist populated';
+                                message = completedWithSkippedItems
+                                    ? 'Import complete - playlist populated with skipped items'
+                                    : 'Import complete - playlist populated';
                             }
                         } catch (error: any) {
-                            console.error('[local-first] Failed to populate playlist via API:', error);
+                            console.error(
+                                '[local-first] Failed to populate playlist via API:',
+                                error,
+                            );
                         }
                     }
 
                     if (job.targetPlaylistIds?.length) {
                         await addImportedSongsToTargetPlaylists(job, audioFiles);
-                        message = 'Import complete - added to playlist';
+                        message = completedWithSkippedItems
+                            ? 'Import complete - added to playlist with skipped items'
+                            : 'Import complete - added to playlist';
                     }
 
                     if (job.createPlaylist) {
@@ -855,14 +901,26 @@ const runImport = (
             } else if (job.createPlaylist) {
                 try {
                     writePlaylistM3U(job, audioFiles);
+                    if (completedWithSkippedItems) {
+                        message = 'Import complete - empty playlist created';
+                    }
+                    await triggerNavidromeScan();
+                    getMainWindow()?.webContents.send('roofy-local-playlist-imported');
                 } catch (error: any) {
                     console.error('[local-first] Failed to create empty playlist:', error);
                 }
             }
 
-            updateJob(job.id, { error: '', message, progress: 100, status: 'completed' });
+            updateJob(job.id, {
+                downloadedCount: audioFiles.length,
+                error: '',
+                message,
+                progress: 100,
+                skippedCount: completedWithSkippedItems ? failedItemCount : 0,
+                status: 'completed',
+                warning: partialWarning,
+            });
         } else {
-            const output = recentOutput.join('\n');
             const nextAttempt = attemptIndex + 1;
             const nextAttemptedBrowsers = cookieBrowser
                 ? [...attemptedBrowsers, cookieBrowser]
@@ -1126,6 +1184,7 @@ export const createImportJob = async (
         title: sourceMetadata?.title,
         updatedAt: now(),
         videoId: sourceMetadata?.videoId,
+        warning: '',
     };
 
     importJobs.unshift(job);
@@ -1321,7 +1380,9 @@ const populatePlaylist = async (playlistName: string, songIds: string[]) => {
     const subsonicResponse = playlistsBody?.['subsonic-response'];
 
     if (!playlistsResponse.ok || subsonicResponse?.status === 'failed') {
-        throw new Error(summarizeNavidromeError(subsonicResponse?.error, 'Could not list playlists.'));
+        throw new Error(
+            summarizeNavidromeError(subsonicResponse?.error, 'Could not list playlists.'),
+        );
     }
 
     let playlists = subsonicResponse?.playlists?.playlist || [];
@@ -1341,7 +1402,9 @@ const populatePlaylist = async (playlistName: string, songIds: string[]) => {
         const newSongIds = songIds.filter((id) => !existingIds.has(id));
 
         if (newSongIds.length > 0) {
-            const songParams = newSongIds.map((id) => `songIdToAdd=${encodeURIComponent(id)}`).join('&');
+            const songParams = newSongIds
+                .map((id) => `songIdToAdd=${encodeURIComponent(id)}`)
+                .join('&');
             const updateResponse = await fetch(
                 `${url}/rest/updatePlaylist.view?${params}&playlistId=${encodeURIComponent(existing.id)}&${songParams}`,
             );
@@ -1349,7 +1412,10 @@ const populatePlaylist = async (playlistName: string, songIds: string[]) => {
             const updateSubsonic = updateBody?.['subsonic-response'];
             if (!updateResponse.ok || updateSubsonic?.status === 'failed') {
                 throw new Error(
-                    summarizeNavidromeError(updateSubsonic?.error, 'Could not add songs to playlist.'),
+                    summarizeNavidromeError(
+                        updateSubsonic?.error,
+                        'Could not add songs to playlist.',
+                    ),
                 );
             }
         }
@@ -1363,7 +1429,9 @@ const populatePlaylist = async (playlistName: string, songIds: string[]) => {
     const createBody = await parseResponseBody(createResponse);
     const createSubsonic = createBody?.['subsonic-response'];
     if (!createResponse.ok || createSubsonic?.status === 'failed') {
-        throw new Error(summarizeNavidromeError(createSubsonic?.error, 'Could not create playlist.'));
+        throw new Error(
+            summarizeNavidromeError(createSubsonic?.error, 'Could not create playlist.'),
+        );
     }
     return createSubsonic?.playlist?.id;
 };
@@ -1437,6 +1505,53 @@ const addImportedSongsToTargetPlaylists = async (job: ImportJob, audioFiles: str
             );
         }
     }
+};
+
+const deleteLocalTracks = async (songIds: string[]) => {
+    const url = getUrl();
+    const params = getSubsonicParams();
+    const libraryPath = getLibraryPath();
+    const deleted: string[] = [];
+    const failed: string[] = [];
+
+    for (const songId of songIds) {
+        try {
+            const response = await fetch(
+                `${url}/rest/getSong?${params}&id=${encodeURIComponent(songId)}`,
+            );
+            const body = await parseResponseBody(response);
+            const song = body?.['subsonic-response']?.song;
+
+            if (!song || !song.path) {
+                failed.push(songId);
+                continue;
+            }
+
+            const absolutePath = path.join(libraryPath, song.path);
+
+            if (existsSync(absolutePath)) {
+                unlinkSync(absolutePath);
+            }
+
+            // Also delete associated .lrc file
+            const lrcPath = absolutePath.replace(path.extname(absolutePath), '.lrc');
+            if (existsSync(lrcPath)) {
+                unlinkSync(lrcPath);
+            }
+
+            deleted.push(songId);
+        } catch (error) {
+            console.error(`[local-first] Failed to delete track ${songId}:`, error);
+            failed.push(songId);
+        }
+    }
+
+    if (deleted.length > 0) {
+        // Fire-and-forget scan to update Navidrome's database
+        triggerNavidromeScan().catch(() => {});
+    }
+
+    return { deleted: deleted.length, failed: failed.length };
 };
 
 const getLocalFirstStatus = (message = ''): LocalFirstStatus => {
@@ -1557,6 +1672,10 @@ ipcMain.handle('roofy-local-clear-imports', (_event, status: 'completed' | 'fail
 
 ipcMain.handle('roofy-local-create-user', (_event, args: CreateLocalUserArgs) =>
     createLocalUser(args),
+);
+
+ipcMain.handle('roofy-local-delete-tracks', async (_event, songIds: string[]) =>
+    deleteLocalTracks(songIds),
 );
 
 ipcMain.handle('roofy-local-credentials', () => ({

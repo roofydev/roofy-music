@@ -237,6 +237,31 @@ export const DiscordSettings = memo(() => {
         {
             control: (
                 <TextInput
+                    defaultValue={settings.artworkWebhookUrl}
+                    onBlur={(e) => {
+                        setSettings({
+                            discord: {
+                                artworkWebhookUrl: e.currentTarget.value,
+                            },
+                        });
+                    }}
+                    placeholder={t('setting.discordArtworkWebhook', {
+                        context: 'placeholder',
+                    })}
+                />
+            ),
+            description: t('setting.discordArtworkWebhook', {
+                context: 'description',
+                discord: 'Discord',
+            }),
+            isHidden: !isElectron(),
+            title: t('setting.discordArtworkWebhook', {
+                discord: 'Discord',
+            }),
+        },
+        {
+            control: (
+                <TextInput
                     defaultValue={generalSettings.lastfmApiKey}
                     onBlur={(e) => {
                         setSettings({

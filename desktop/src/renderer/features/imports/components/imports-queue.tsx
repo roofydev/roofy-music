@@ -231,6 +231,11 @@ export const ImportsQueue = () => {
                                                         {job.error}
                                                     </Text>
                                                 )}
+                                                {!job.error && job.warning && (
+                                                    <Text isMuted size="xs">
+                                                        {job.warning}
+                                                    </Text>
+                                                )}
                                             </Stack>
                                         </Group>
                                     </Table.Td>

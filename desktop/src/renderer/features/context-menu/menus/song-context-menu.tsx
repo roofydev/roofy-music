@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import { AddToPlaylistAction } from '/@/renderer/features/context-menu/actions/add-to-playlist-action';
 import { DownloadAction } from '/@/renderer/features/context-menu/actions/download-action';
+import { DeleteLocalTrackAction } from '/@/renderer/features/context-menu/actions/delete-local-track-action';
 import { DownloadToLibraryAction } from '/@/renderer/features/context-menu/actions/download-to-library-action';
 import { GetInfoAction } from '/@/renderer/features/context-menu/actions/get-info-action';
 import { GoToAction } from '/@/renderer/features/context-menu/actions/go-to-action';
@@ -41,6 +42,7 @@ export const SongContextMenu = ({ items, type }: SongContextMenuProps) => {
             <ContextMenu.Divider />
             <DownloadAction ids={ids} songs={items} />
             <DownloadToLibraryAction songs={items} />
+            <DeleteLocalTrackAction items={items} />
             <OpenYoutubeSourceAction songs={items} />
             <ShareAction ids={ids} itemType={LibraryItem.SONG} />
             <ContextMenu.Divider />

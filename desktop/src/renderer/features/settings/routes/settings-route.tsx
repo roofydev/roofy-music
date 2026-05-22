@@ -1,16 +1,11 @@
-import { lazy, Suspense, useState } from 'react';
+import { useState } from 'react';
 
 import { SettingsContent } from '/@/renderer/features/settings/components/settings-content';
+import { SettingsHeader } from '/@/renderer/features/settings/components/settings-header';
 import { SettingSearchContext } from '/@/renderer/features/settings/context/search-context';
 import { AnimatedPage } from '/@/renderer/features/shared/components/animated-page';
 import { LibraryContainer } from '/@/renderer/features/shared/components/library-container';
-import { Flex } from '/@/shared/components/flex/flex';
-
-const SettingsHeader = lazy(() =>
-    import('/@/renderer/features/settings/components/settings-header').then((module) => ({
-        default: module.SettingsHeader,
-    })),
-);
+import { NativeScrollArea } from '/@/renderer/components/native-scroll-area/native-scroll-area';
 
 const SettingsRoute = () => {
     const [search, setSearch] = useState('');
@@ -18,14 +13,17 @@ const SettingsRoute = () => {
     return (
         <AnimatedPage>
             <SettingSearchContext.Provider value={search}>
-                <LibraryContainer>
-                    <Flex direction="column" h="100%" w="100%">
-                        <Suspense fallback={<></>}>
-                            <SettingsHeader setSearch={setSearch} />
-                        </Suspense>
+                <NativeScrollArea
+                    pageHeaderProps={{
+                        backgroundColor: 'var(--theme-colors-background)',
+                        children: <SettingsHeader setSearch={setSearch} />,
+                        offset: 50,
+                    }}
+                >
+                    <LibraryContainer>
                         <SettingsContent />
-                    </Flex>
-                </LibraryContainer>
+                    </LibraryContainer>
+                </NativeScrollArea>
             </SettingSearchContext.Provider>
         </AnimatedPage>
     );

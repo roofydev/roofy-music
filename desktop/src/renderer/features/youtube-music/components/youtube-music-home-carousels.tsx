@@ -14,6 +14,7 @@ import { useGridRows } from '/@/renderer/components/item-list/helpers/use-grid-r
 import { ItemControls } from '/@/renderer/components/item-list/types';
 import { QuickImport } from '/@/renderer/features/local-first/components/quick-import';
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
+import { RefreshButton } from '/@/renderer/features/shared/components/refresh-button';
 import { youtubeMusicAuthStatusQueryKey } from '/@/renderer/features/youtube-music/components/youtube-music-account-button';
 import { Badge } from '/@/shared/components/badge/badge';
 import { Group } from '/@/shared/components/group/group';
@@ -57,7 +58,13 @@ const sectionTitle = (section: YoutubeMusicHomeSection) => (
     </Group>
 );
 
-const YoutubeMusicSectionHeader = ({ title }: { title?: string }) => {
+const YoutubeMusicSectionHeader = ({
+    onRefresh,
+    title,
+}: {
+    onRefresh?: () => void;
+    title?: string;
+}) => {
     if (!title) return null;
 
     return (
@@ -66,6 +73,7 @@ const YoutubeMusicSectionHeader = ({ title }: { title?: string }) => {
                 {title}
             </TextTitle>
             <QuickImport className={styles.quickImport} variant="inline" />
+            {onRefresh && <RefreshButton onClick={onRefresh} variant="subtle" />}
         </Group>
     );
 };
@@ -94,6 +102,7 @@ export const YoutubeMusicHomeCarousels = ({
         queryKey: ['youtube-music', 'home', 'main-feed'],
         staleTime: 1000 * 60 * 10,
     });
+    const { refetch: refetchHome } = homeQuery;
 
     const controls: ItemControls = useMemo(
         () => ({
@@ -125,7 +134,7 @@ export const YoutubeMusicHomeCarousels = ({
     if (homeQuery.isLoading) {
         return (
             <Stack className={styles.container} gap="lg" style={{ maxHeight }}>
-                <YoutubeMusicSectionHeader title={title} />
+                <YoutubeMusicSectionHeader onRefresh={refetchHome} title={title} />
                 <div
                     style={{
                         alignItems: 'center',
@@ -145,7 +154,7 @@ export const YoutubeMusicHomeCarousels = ({
 
     return (
         <Stack className={styles.container} gap="lg" style={{ maxHeight }}>
-            <YoutubeMusicSectionHeader title={title} />
+            <YoutubeMusicSectionHeader onRefresh={refetchHome} title={title} />
             <div className={styles.sections}>
                 {sections.map((section) => {
                     const cardRows = rowsByType(section.itemType, rows);
@@ -170,9 +179,11 @@ export const YoutubeMusicHomeCarousels = ({
                         <GridCarousel
                             cards={cards}
                             containerQuery={containerQuery}
+                            enableRefresh
                             key={section.id}
                             onNextPage={() => {}}
                             onPrevPage={() => {}}
+                            onRefresh={refetchHome}
                             placeholderItemType={section.itemType}
                             placeholderRows={cardRows}
                             rowCount={1}

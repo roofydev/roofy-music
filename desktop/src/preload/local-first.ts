@@ -45,6 +45,9 @@ const removeImport = (id: string) => {
 const clearImports = (status: 'completed' | 'failed') => {
     return ipcRenderer.invoke('roofy-local-clear-imports', status);
 };
+const deleteTracks = (songIds: string[]) => {
+    return ipcRenderer.invoke('roofy-local-delete-tracks', songIds);
+};
 
 const onPlaylistImported = (cb: () => void) => {
     ipcRenderer.on('roofy-local-playlist-imported', cb);
@@ -59,6 +62,7 @@ export const localFirst = {
     createImport,
     createUser,
     credentials,
+    deleteTracks,
     onPlaylistImported,
     openLibraryFolder,
     previewImport,

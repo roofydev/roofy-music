@@ -24,6 +24,7 @@
 .title {
     font-size: var(--theme-font-size-md);
     font-weight: 700;
+    overflow-wrap: anywhere;
 }
 
 .body {
@@ -38,6 +39,7 @@
     color: var(--theme-colors-foreground-muted);
     font-size: var(--theme-font-size-sm);
     line-height: 1.45;
+    overflow-wrap: anywhere;
 }
 
 .close-button {

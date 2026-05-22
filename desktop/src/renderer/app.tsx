@@ -17,10 +17,13 @@ import { useSyncSettingsToMain } from '/@/renderer/hooks/use-sync-settings-to-ma
 import { AppRouter } from '/@/renderer/router/app-router';
 import {
     useCssSettings,
+    useCurrentServer,
     useHotkeySettings,
     useImportJobActions,
     useLanguage,
 } from '/@/renderer/store';
+import { queryClient } from '/@/renderer/lib/react-query';
+import { queryKeys } from '/@/renderer/api/query-keys';
 import { CrtOverlay } from '/@/renderer/components/crt-overlay/crt-overlay';
 import { useAppTheme } from '/@/renderer/themes/use-app-theme';
 import { sanitizeCss } from '/@/renderer/utils/sanitize';
@@ -75,7 +78,7 @@ const AppShell = memo(function AppShell() {
         <>
             <AppEffects />
             <Notifications
-                containerWidth="360px"
+                containerWidth="min(440px, calc(100vw - 32px))"
                 position="bottom-right"
                 styles={notificationStyles}
                 zIndex={50000}
@@ -184,6 +187,7 @@ const NativeMenuSyncEffect = () => {
 
 const ImportJobsEffect = () => {
     const { setJob } = useImportJobActions();
+    const server = useCurrentServer();
 
     useEffect(() => {
         if (!isElectron() || !window.api?.youtubeMusic?.onImportJobUpdated) return;
@@ -204,12 +208,21 @@ const ImportJobsEffect = () => {
             setJob(job);
         });
 
+        const removePlaylistImported = window.api.localFirst?.onPlaylistImported?.(() => {
+            if (server?.id) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.playlists.root(server.id) });
+                queryClient.invalidateQueries({ queryKey: queryKeys.playlists.list(server.id) });
+                queryClient.invalidateQueries({ queryKey: queryKeys.songs.root(server.id) });
+            }
+        });
+
         return () => {
             removeUpdated();
             removeCompleted();
             removeFailed();
+            removePlaylistImported?.();
         };
-    }, [setJob]);
+    }, [setJob, server?.id]);
 
     return null;
 };

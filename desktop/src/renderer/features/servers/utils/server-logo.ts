@@ -1,4 +1,4 @@
-import RoofyLogo from '../../../../../logo.svg';
+import RoofyLogo from '../../../../../assets/RoofyMusicIcon.png';
 import JellyfinLogo from '../assets/jellyfin.png';
 import NavidromeLogo from '../assets/navidrome.png';
 import OpenSubsonicLogo from '../assets/opensubsonic.png';

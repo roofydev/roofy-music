@@ -2,7 +2,6 @@ import isElectron from 'is-electron';
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { LibraryContainer } from '/@/renderer/features/shared/components/library-container';
 import { useSettingsStore, useSettingsStoreActions } from '/@/renderer/store/settings.store';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Tabs } from '/@/shared/components/tabs/tabs';
@@ -55,9 +54,8 @@ export const SettingsContent = () => {
     const { setSettings } = useSettingsStoreActions();
 
     return (
-        <LibraryContainer>
-            <div style={{ height: '100%', overflow: 'scroll', padding: '1rem', width: '100%' }}>
-                <Tabs
+        <div style={{ padding: '1rem', width: '100%' }}>
+            <Tabs
                     keepMounted={false}
                     onChange={(e) => e && setSettings({ tab: e })}
                     orientation="horizontal"
@@ -116,8 +114,7 @@ export const SettingsContent = () => {
                             </Suspense>
                         </Tabs.Panel>
                     )}
-                </Tabs>
-            </div>
-        </LibraryContainer>
+            </Tabs>
+        </div>
     );
 };
