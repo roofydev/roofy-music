@@ -8,12 +8,14 @@ const BROWSER_IMAGE_LOAD_HOSTS = new Set([
     'i.ytimg.com',
     'lh3.googleusercontent.com',
     'www.gstatic.com',
+    'yt3.ggpht.com',
     'yt3.googleusercontent.com',
 ]);
 const THROTTLED_IMAGE_HOSTS = new Set([
     'i.ytimg.com',
     'lh3.googleusercontent.com',
     'www.gstatic.com',
+    'yt3.ggpht.com',
     'yt3.googleusercontent.com',
 ]);
 const THROTTLED_IMAGE_MAX_CONCURRENT = 4;

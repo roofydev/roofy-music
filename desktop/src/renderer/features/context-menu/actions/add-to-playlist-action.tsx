@@ -26,15 +26,28 @@ import { TextInput } from '/@/shared/components/text-input/text-input';
 import { toast } from '/@/shared/components/toast/toast';
 import { Tooltip } from '/@/shared/components/tooltip/tooltip';
 import { useLocalStorage } from '/@/shared/hooks/use-local-storage';
-import { LibraryItem, PlaylistListSort, ServerType, Song, SortOrder } from '/@/shared/types/domain-types';
+import {
+    LibraryItem,
+    Playlist,
+    PlaylistListSort,
+    ServerType,
+    Song,
+    SortOrder,
+} from '/@/shared/types/domain-types';
 
 interface AddToPlaylistActionProps {
     items: string[];
     itemType: LibraryItem;
+    playlists?: Playlist[];
     songs?: Song[];
 }
 
-export const AddToPlaylistAction = ({ items, itemType, songs = [] }: AddToPlaylistActionProps) => {
+export const AddToPlaylistAction = ({
+    items,
+    itemType,
+    playlists: sourcePlaylists = [],
+    songs = [],
+}: AddToPlaylistActionProps) => {
     const { t } = useTranslation();
     const server = useCurrentServer();
     const serverId = useCurrentServerId();
@@ -177,6 +190,11 @@ export const AddToPlaylistAction = ({ items, itemType, songs = [] }: AddToPlayli
                         song._serverType === ServerType.YOUTUBE_MUSIC &&
                         Boolean(song.youtubeMusic?.videoId),
                 );
+                const youtubePlaylists = sourcePlaylists.filter(
+                    (playlist) =>
+                        playlist._serverType === ServerType.YOUTUBE_MUSIC &&
+                        Boolean(playlist.youtubeMusic?.playlistId),
+                );
                 const isYoutubeOnlySelection =
                     youtubeSongs.length > 0 &&
                     youtubeSongs.length === items.length &&
@@ -203,6 +221,35 @@ export const AddToPlaylistAction = ({ items, itemType, songs = [] }: AddToPlayli
                             targetPlaylistNames: [playlistName],
                             title: song.name,
                             videoId: song.youtubeMusic!.videoId!,
+                        });
+                        setJob(job);
+                    }
+
+                    return;
+                }
+
+                const isYoutubePlaylistSelection =
+                    youtubePlaylists.length > 0 &&
+                    youtubePlaylists.length === items.length &&
+                    itemType === LibraryItem.PLAYLIST;
+
+                if (isYoutubePlaylistSelection) {
+                    if (!isElectron() || !window.api?.youtubeMusic?.importPlaylist) {
+                        toast.error({
+                            message: 'Import to playlist is only available in the desktop app.',
+                            title: t('error.genericError'),
+                        });
+                        return;
+                    }
+
+                    for (const playlist of youtubePlaylists) {
+                        const sourcePlaylistId = playlist.youtubeMusic!.playlistId!;
+                        const job = await window.api.youtubeMusic.importPlaylist({
+                            createPlaylist: false,
+                            playlistId: sourcePlaylistId,
+                            playlistName: playlist.name,
+                            targetPlaylistIds: [playlistId],
+                            targetPlaylistNames: [playlistName],
                         });
                         setJob(job);
                     }
@@ -336,6 +383,7 @@ export const AddToPlaylistAction = ({ items, itemType, songs = [] }: AddToPlayli
             setJob,
             skipDuplicates,
             songs,
+            sourcePlaylists,
             t,
         ],
     );

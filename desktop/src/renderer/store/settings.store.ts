@@ -1107,7 +1107,7 @@ const initialState: SettingsState = {
         enabled: false,
     },
     discord: {
-        clientId: '1165957668758900787',
+        clientId: '1507206067015254097',
         displayType: DiscordDisplayType.ROOFY,
         enabled: false,
         linkType: DiscordLinkType.NONE,

@@ -63,7 +63,9 @@ const importTrack = (args: {
 }) => ipcRenderer.invoke('youtube-music:import-track', args);
 
 const importPlaylist = (args: {
+    createPlaylist?: boolean;
     playlistId: string;
+    playlistName?: string;
     targetPlaylistIds?: string[];
     targetPlaylistNames?: string[];
 }) => ipcRenderer.invoke('youtube-music:import-playlist', args);

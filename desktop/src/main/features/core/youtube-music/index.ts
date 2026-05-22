@@ -34,7 +34,13 @@ const SOURCE_URL = 'https://music.youtube.com';
 const LOGIN_PARTITION = 'persist:roofy-youtube-music';
 const REQUIRED_COOKIE_NAMES = new Set(['APISID', 'SAPISID', 'SID', 'SSID']);
 const STREAM_CACHE_TTL_MS = 4 * 60 * 1000;
+const STREAM_CACHE_SAFETY_MS = 60 * 1000;
 const VIDEO_ID_REGEX = /^[A-Za-z0-9_-]{11}$/;
+const YOUTUBE_IMAGE_CACHE_MAX_ITEMS = 500;
+const YOUTUBE_IMAGE_CACHE_TTL_MS = 1000 * 60 * 60 * 24;
+const YOUTUBE_IMAGE_NEGATIVE_CACHE_TTL_MS = 1000 * 60 * 2;
+const YOUTUBE_IMAGE_FETCH_MAX_CONCURRENT = 3;
+const YOUTUBE_IMAGE_FETCH_START_GAP_MS = 175;
 const requireDependency = createRequire(__filename);
 
 type StoredSession = {
@@ -46,12 +52,20 @@ type StoredSession = {
 
 type StreamCacheEntry = {
     expiresAt: number;
+    source: 'direct' | 'yt-dlp';
     url: string;
 };
 
 type YoutubeAccountIdentity = {
     avatarUrl: null | string;
     displayName: null | string;
+};
+
+type YoutubeImageCacheEntry = {
+    body: Buffer;
+    contentType: string;
+    expiresAt: number;
+    statusCode: number;
 };
 
 const isGoogleVideoUrl = (url: string) => {
@@ -109,6 +123,71 @@ const youtubeClientParam = (url: string) => {
     }
 };
 
+const streamUrlExpiresAt = (url: string) => {
+    try {
+        const expire = Number(new URL(url).searchParams.get('expire') || 0);
+        if (!expire) return Date.now() + STREAM_CACHE_TTL_MS;
+        return Math.max(Date.now() + 30_000, expire * 1000 - STREAM_CACHE_SAFETY_MS);
+    } catch {
+        return Date.now() + STREAM_CACHE_TTL_MS;
+    }
+};
+
+const cacheStreamUrl = (videoId: string, url: string, source: StreamCacheEntry['source']) => {
+    streamCache.set(videoId, {
+        expiresAt: streamUrlExpiresAt(url),
+        source,
+        url,
+    });
+};
+
+const probeStreamUrl = async (url: string, timeoutMs = 2500): Promise<boolean> =>
+    new Promise((resolve) => {
+        let settled = false;
+        const finish = (ok: boolean) => {
+            if (settled) return;
+            settled = true;
+            resolve(ok);
+        };
+
+        let parsed: URL;
+        try {
+            parsed = new URL(url);
+        } catch {
+            finish(false);
+            return;
+        }
+
+        const clientUserAgent = userAgentForYoutubeClient(youtubeClientParam(url));
+        const hasSignedRange = parsed.hostname.endsWith('.googlevideo.com') && parsed.searchParams.has('range');
+        const req = https.request(
+            parsed,
+            {
+                headers: {
+                    Accept: '*/*',
+                    'Accept-Encoding': 'identity',
+                    Origin: SOURCE_URL,
+                    ...(hasSignedRange ? {} : { Range: 'bytes=0-1' }),
+                    Referer: `${SOURCE_URL}/`,
+                    ...(clientUserAgent ? { 'User-Agent': clientUserAgent } : {}),
+                },
+                method: 'GET',
+            },
+            (res) => {
+                const status = res.statusCode || 0;
+                res.resume();
+                finish((status >= 200 && status < 300) || status === 206);
+            },
+        );
+
+        req.setTimeout(timeoutMs, () => {
+            req.destroy();
+            finish(false);
+        });
+        req.on('error', () => finish(false));
+        req.end();
+    });
+
 const userAgentForYoutubeClient = (client: null | string) => {
     switch (client) {
         case 'ANDROID':
@@ -152,12 +231,222 @@ let ytProxyReadyPromise: null | Promise<void> = null;
 let accountIdentityRefreshPromise: null | Promise<null | StoredSession> = null;
 const recentInvalidations = new Map<string, number>();
 const INVALIDATION_COOLDOWN_MS = 10000;
+let contentPoTokenGenerationAvailable = true;
+const youtubeImageCache = new Map<string, YoutubeImageCacheEntry>();
+let activeYoutubeImageFetches = 0;
+let lastYoutubeImageFetchStart = 0;
+let youtubeImageFetchTimer: null | ReturnType<typeof setTimeout> = null;
+const youtubeImageFetchQueue: Array<() => void> = [];
+
+const isAllowedYoutubeImageUrl = (url: string) => {
+    try {
+        const host = new URL(url).hostname;
+        return [
+            'i.ytimg.com',
+            'lh3.googleusercontent.com',
+            'www.gstatic.com',
+            'yt3.ggpht.com',
+            'yt3.googleusercontent.com',
+        ].includes(host);
+    } catch {
+        return false;
+    }
+};
+
+const encodeProxyUrl = (url: string) => Buffer.from(url, 'utf8').toString('base64url');
+const decodeProxyUrl = (value: string) => Buffer.from(value, 'base64url').toString('utf8');
+
+const youtubeImageProxyUrl = (url: null | string) => {
+    if (!url || !ytProxyPort || !isAllowedYoutubeImageUrl(url)) return url;
+    return `http://127.0.0.1:${ytProxyPort}/yt-image/${encodeProxyUrl(url)}`;
+};
+
+const rememberYoutubeImage = (url: string, entry: YoutubeImageCacheEntry) => {
+    youtubeImageCache.set(url, entry);
+    while (youtubeImageCache.size > YOUTUBE_IMAGE_CACHE_MAX_ITEMS) {
+        const oldestKey = youtubeImageCache.keys().next().value;
+        if (!oldestKey) break;
+        youtubeImageCache.delete(oldestKey);
+    }
+};
+
+const pumpYoutubeImageFetchQueue = () => {
+    if (youtubeImageFetchTimer) {
+        clearTimeout(youtubeImageFetchTimer);
+        youtubeImageFetchTimer = null;
+    }
+
+    if (
+        activeYoutubeImageFetches >= YOUTUBE_IMAGE_FETCH_MAX_CONCURRENT ||
+        youtubeImageFetchQueue.length === 0
+    ) {
+        return;
+    }
+
+    const elapsedSinceLastStart = Date.now() - lastYoutubeImageFetchStart;
+    const waitMs = Math.max(0, YOUTUBE_IMAGE_FETCH_START_GAP_MS - elapsedSinceLastStart);
+
+    if (waitMs > 0) {
+        youtubeImageFetchTimer = setTimeout(pumpYoutubeImageFetchQueue, waitMs);
+        return;
+    }
+
+    const job = youtubeImageFetchQueue.shift();
+    if (!job) return;
+
+    activeYoutubeImageFetches += 1;
+    lastYoutubeImageFetchStart = Date.now();
+    job();
+};
+
+const enqueueYoutubeImageFetch = <T>(run: () => Promise<T>) =>
+    new Promise<T>((resolve, reject) => {
+        youtubeImageFetchQueue.push(() => {
+            run()
+                .then(resolve, reject)
+                .finally(() => {
+                    activeYoutubeImageFetches -= 1;
+                    pumpYoutubeImageFetchQueue();
+                });
+        });
+        pumpYoutubeImageFetchQueue();
+    });
+
+const fetchYoutubeImageFromNetwork = (
+    url: string,
+    redirectCount = 0,
+): Promise<YoutubeImageCacheEntry> =>
+    new Promise((resolve, reject) => {
+        const parsed = new URL(url);
+        const client = parsed.protocol === 'http:' ? http : https;
+        const req = client.request(
+            parsed,
+            {
+                headers: {
+                    Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                    Referer: `${SOURCE_URL}/`,
+                    'User-Agent':
+                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',
+                },
+                method: 'GET',
+            },
+            (response) => {
+                const status = response.statusCode || 0;
+                if (status >= 300 && status < 400 && response.headers.location) {
+                    response.resume();
+                    if (redirectCount >= 3) {
+                        reject(new Error('YouTube image redirect limit exceeded'));
+                        return;
+                    }
+                    const redirectUrl = new URL(response.headers.location, url).href;
+                    fetchYoutubeImageFromNetwork(redirectUrl, redirectCount + 1).then(
+                        resolve,
+                        reject,
+                    );
+                    return;
+                }
+
+                if (status < 200 || status >= 300) {
+                    response.resume();
+                    const entry = {
+                        body: Buffer.alloc(0),
+                        contentType: String(response.headers['content-type'] || 'text/plain'),
+                        expiresAt: Date.now() + YOUTUBE_IMAGE_NEGATIVE_CACHE_TTL_MS,
+                        statusCode: status,
+                    };
+                    rememberYoutubeImage(url, entry);
+                    resolve(entry);
+                    return;
+                }
+
+                const chunks: Buffer[] = [];
+                response.on('data', (chunk: Buffer) => chunks.push(chunk));
+                response.on('end', () => {
+                    const entry = {
+                        body: Buffer.concat(chunks),
+                        contentType: String(response.headers['content-type'] || 'image/jpeg'),
+                        expiresAt: Date.now() + YOUTUBE_IMAGE_CACHE_TTL_MS,
+                        statusCode: status,
+                    };
+                    rememberYoutubeImage(url, entry);
+                    resolve(entry);
+                });
+            },
+        );
+
+        req.setTimeout(5000, () => {
+            req.destroy(new Error('YouTube image request timed out'));
+        });
+        req.on('error', reject);
+        req.end();
+    });
+
+const fetchYoutubeImage = (url: string): Promise<YoutubeImageCacheEntry> => {
+    const cached = youtubeImageCache.get(url);
+    if (cached && cached.expiresAt > Date.now()) {
+        return Promise.resolve(cached);
+    }
+
+    return enqueueYoutubeImageFetch(async () => {
+        const entry = await fetchYoutubeImageFromNetwork(url);
+        rememberYoutubeImage(url, entry);
+        return entry;
+    });
+};
 
 const startYtProxyServer = () => {
     if (ytProxyReadyPromise) return ytProxyReadyPromise;
 
     ytProxyReadyPromise = new Promise((resolve) => {
         const server = http.createServer(async (req, res) => {
+            const imageMatch = req.url?.match(/^\/yt-image\/([A-Za-z0-9_-]+)$/);
+            if (imageMatch) {
+                if (req.method !== 'GET' && req.method !== 'HEAD') {
+                    res.statusCode = 405;
+                    res.end();
+                    return;
+                }
+
+                let imageUrl = '';
+                try {
+                    imageUrl = decodeProxyUrl(imageMatch[1]);
+                } catch {
+                    res.statusCode = 400;
+                    res.end();
+                    return;
+                }
+
+                if (!isAllowedYoutubeImageUrl(imageUrl)) {
+                    res.statusCode = 403;
+                    res.end();
+                    return;
+                }
+
+                try {
+                    const image = await fetchYoutubeImage(imageUrl);
+                    res.statusCode = image.statusCode;
+                    res.setHeader('Access-Control-Allow-Origin', '*');
+                    res.setHeader(
+                        'Cache-Control',
+                        image.statusCode >= 200 && image.statusCode < 300
+                            ? 'public, max-age=86400'
+                            : 'public, max-age=120',
+                    );
+                    res.setHeader('Content-Type', image.contentType);
+                    res.setHeader('Content-Length', image.body.length);
+                    if (req.method === 'HEAD') {
+                        res.end();
+                        return;
+                    }
+                    res.end(image.body);
+                } catch (error) {
+                    console.warn('[YouTube Music] Failed to proxy image:', error);
+                    res.statusCode = 502;
+                    res.end();
+                }
+                return;
+            }
+
             const match = req.url?.match(/^\/yt-stream\/([A-Za-z0-9_-]{11})$/);
             if (!match) {
                 res.statusCode = 404;
@@ -219,31 +508,16 @@ const startYtProxyServer = () => {
                 headers['Cookie'] = stored.cookie;
             }
 
-            // Detect IP family from the stream URL so we match what Innertube used
-            const getUrlIpFamily = (url: string): number => {
-                try {
-                    const u = new URL(url);
-                    const ipParam = u.searchParams.get('ip');
-                    if (!ipParam) return 0;
-                    const decoded = decodeURIComponent(ipParam);
-                    return decoded.includes(':') ? 6 : decoded.includes('.') ? 4 : 0;
-                } catch {
-                    return 0;
-                }
-            };
-
             console.log(`[YT Stream Proxy] Proxying ${videoId} -> ${new URL(streamUrl).hostname}`);
 
             const forwardProxy = (
                 url: string,
                 attempt = 1,
-                ipFamily?: number,
                 triedYtdlpUrl = false,
                 dropRange = false,
                 rejectedClientsForRequest = new Set<string>(),
             ) => {
                 const requestUrl = applyGoogleVideoRangeParam(url, headers.Range);
-                const family = ipFamily ?? getUrlIpFamily(requestUrl);
                 const requestHeaders = { ...headers };
 
                 // googlevideo signed URLs can encode byte ranges in the query string.
@@ -262,7 +536,6 @@ const startYtProxyServer = () => {
                 }
 
                 const requestOptions: https.RequestOptions = {
-                    family: family || undefined,
                     headers: requestHeaders,
                     method: req.method,
                 };
@@ -281,7 +554,7 @@ const startYtProxyServer = () => {
                         console.log(
                             `[YT Stream Proxy] Following ${status} redirect for ${videoId}`,
                         );
-                        forwardProxy(redirectUrl, attempt + 1, undefined, triedYtdlpUrl, dropRange);
+                        forwardProxy(redirectUrl, attempt + 1, triedYtdlpUrl, dropRange);
                         return;
                     }
 
@@ -299,7 +572,6 @@ const startYtProxyServer = () => {
                         forwardProxy(
                             url,
                             attempt,
-                            undefined,
                             triedYtdlpUrl,
                             true,
                             rejectedClientsForRequest,
@@ -324,7 +596,7 @@ const startYtProxyServer = () => {
                             const rejectedClients = new Set(rejectedClientsForRequest);
                             if (rejectedClient) rejectedClients.add(rejectedClient);
                             console.warn(
-                                `[YT Stream Proxy] CDN 403 for ${videoId} (client=${rejectedClient || 'unknown'}, family=${family || 'auto'}), trying another direct client before yt-dlp...`,
+                                `[YT Stream Proxy] CDN 403 for ${videoId} (client=${rejectedClient || 'unknown'}), trying another direct client before yt-dlp...`,
                             );
                             recentInvalidations.set(videoId, now);
                             streamCache.delete(videoId);
@@ -341,7 +613,6 @@ const startYtProxyServer = () => {
                                     forwardProxy(
                                         freshUrl,
                                         attempt + 1,
-                                        undefined,
                                         triedYtdlpUrl,
                                         dropRange,
                                         rejectedClients,
@@ -364,7 +635,7 @@ const startYtProxyServer = () => {
                     if (status >= 400) {
                         console.error(
                             `[YT Stream Proxy] CDN returned ${status} for ${videoId} ` +
-                                `(family=${family || 'auto'}, Cookie=${Boolean(headers.Cookie)}, Range=${headers.Range || 'none'})`,
+                                `(Cookie=${Boolean(headers.Cookie)}, Range=${headers.Range || 'none'})`,
                         );
 
                         if (status === 403 && req.method === 'GET' && !res.headersSent) {
@@ -377,11 +648,8 @@ const startYtProxyServer = () => {
                                         console.warn(
                                             `[YT Stream Proxy] Falling back to yt-dlp direct URL for ${videoId}`,
                                         );
-                                        streamCache.set(videoId, {
-                                            expiresAt: Date.now() + STREAM_CACHE_TTL_MS,
-                                            url: ytdlpUrl,
-                                        });
-                                        forwardProxy(ytdlpUrl, attempt + 1, undefined, true);
+                                        cacheStreamUrl(videoId, ytdlpUrl, 'yt-dlp');
+                                        forwardProxy(ytdlpUrl, attempt + 1, true);
                                         return;
                                     }
                                 } catch (fallbackError) {
@@ -598,6 +866,34 @@ const resolveStreamUrl = async (
     }
 
     const yt = await getInnertube();
+    let contentPoToken: null | string | undefined;
+    const getContentPoToken = async () => {
+        if (contentPoToken !== undefined) return contentPoToken;
+        contentPoToken = await generatePoToken(videoId);
+        return contentPoToken;
+    };
+    const acceptResolvedUrl = async (
+        url: null | string,
+        label: string,
+        source: StreamCacheEntry['source'] = 'direct',
+    ) => {
+        if (!url) return null;
+        if (rejectedUrls.has(url)) {
+            console.warn(`[YT Stream] ${label} returned a rejected URL for ${videoId}`);
+            return null;
+        }
+
+        const isUsable = await probeStreamUrl(url).catch(() => false);
+        if (!isUsable) {
+            console.warn(`[YT Stream] ${label} URL failed preflight for ${videoId}`);
+            rejectedUrls.add(url);
+            return null;
+        }
+
+        console.log(`[YT Stream] Resolved via ${label} for ${videoId}`);
+        cacheStreamUrl(videoId, url, source);
+        return url;
+    };
 
     // Method 1: TV_EMBEDDED client (often bypasses bot checks without po_token)
     if (!rejectedClients.has('TVHTML5_SIMPLY_EMBEDDED_PLAYER')) {
@@ -605,14 +901,8 @@ const resolveStreamUrl = async (
             const info = await yt.getBasicInfo(videoId, { client: 'TV_EMBEDDED' });
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
             const url = await decipherFormatUrl(format, yt.session.player);
-            if (url && !rejectedUrls.has(url)) {
-                console.log(`[YT Stream] Resolved via TV_EMBEDDED for ${videoId}`);
-                streamCache.set(videoId, { expiresAt: Date.now() + STREAM_CACHE_TTL_MS, url });
-                return url;
-            }
-            if (url) {
-                console.warn(`[YT Stream] TV_EMBEDDED returned a rejected URL for ${videoId}`);
-            }
+            const usableUrl = await acceptResolvedUrl(url, 'TV_EMBEDDED');
+            if (usableUrl) return usableUrl;
         } catch (error) {
             console.warn(`[YT Stream] TV_EMBEDDED failed for ${videoId}:`, error);
         }
@@ -623,19 +913,14 @@ const resolveStreamUrl = async (
     // Method 2: WEB_REMIX with auth
     if (!rejectedClients.has('WEB_REMIX')) {
         try {
-            const info = await yt.music.getInfo(videoId);
+            const poToken = await getContentPoToken();
+            const info = await yt.music.getInfo(videoId, poToken ? { po_token: poToken } : undefined);
             const format = info.chooseFormat
                 ? info.chooseFormat({ quality: 'best', type: 'audio' })
                 : chooseAudioFormat(info.streaming_data?.adaptive_formats);
             const url = await decipherFormatUrl(format, yt.session.player);
-            if (url && !rejectedUrls.has(url)) {
-                console.log(`[YT Stream] Resolved via WEB_REMIX for ${videoId}`);
-                streamCache.set(videoId, { expiresAt: Date.now() + STREAM_CACHE_TTL_MS, url });
-                return url;
-            }
-            if (url) {
-                console.warn(`[YT Stream] WEB_REMIX returned a rejected URL for ${videoId}`);
-            }
+            const usableUrl = await acceptResolvedUrl(url, 'WEB_REMIX');
+            if (usableUrl) return usableUrl;
         } catch (error) {
             console.warn(`[YT Stream] WEB_REMIX failed for ${videoId}:`, error);
         }
@@ -646,17 +931,12 @@ const resolveStreamUrl = async (
     // Method 3: WEB client with auth
     if (!rejectedClients.has('WEB')) {
         try {
-            const info = await yt.getBasicInfo(videoId);
+            const poToken = await getContentPoToken();
+            const info = await yt.getBasicInfo(videoId, poToken ? { po_token: poToken } : undefined);
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
             const url = await decipherFormatUrl(format, yt.session.player);
-            if (url && !rejectedUrls.has(url)) {
-                console.log(`[YT Stream] Resolved via WEB for ${videoId}`);
-                streamCache.set(videoId, { expiresAt: Date.now() + STREAM_CACHE_TTL_MS, url });
-                return url;
-            }
-            if (url) {
-                console.warn(`[YT Stream] WEB returned a rejected URL for ${videoId}`);
-            }
+            const usableUrl = await acceptResolvedUrl(url, 'WEB');
+            if (usableUrl) return usableUrl;
         } catch (error) {
             console.warn(`[YT Stream] WEB failed for ${videoId}:`, error);
         }
@@ -670,14 +950,8 @@ const resolveStreamUrl = async (
             const info = await yt.getBasicInfo(videoId, { client: 'IOS' });
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
             const url = await decipherFormatUrl(format, yt.session.player);
-            if (url && !rejectedUrls.has(url)) {
-                console.log(`[YT Stream] Resolved via IOS for ${videoId}`);
-                streamCache.set(videoId, { expiresAt: Date.now() + STREAM_CACHE_TTL_MS, url });
-                return url;
-            }
-            if (url) {
-                console.warn(`[YT Stream] IOS returned a rejected URL for ${videoId}`);
-            }
+            const usableUrl = await acceptResolvedUrl(url, 'IOS');
+            if (usableUrl) return usableUrl;
         } catch (error) {
             console.warn(`[YT Stream] IOS failed for ${videoId}:`, error);
         }
@@ -691,14 +965,8 @@ const resolveStreamUrl = async (
             const info = await yt.getBasicInfo(videoId, { client: 'YTMUSIC_ANDROID' });
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
             const url = await decipherFormatUrl(format, yt.session.player);
-            if (url && !rejectedUrls.has(url)) {
-                console.log(`[YT Stream] Resolved via YTMUSIC_ANDROID for ${videoId}`);
-                streamCache.set(videoId, { expiresAt: Date.now() + STREAM_CACHE_TTL_MS, url });
-                return url;
-            }
-            if (url) {
-                console.warn(`[YT Stream] YTMUSIC_ANDROID returned a rejected URL for ${videoId}`);
-            }
+            const usableUrl = await acceptResolvedUrl(url, 'YTMUSIC_ANDROID');
+            if (usableUrl) return usableUrl;
         } catch (error) {
             console.warn(`[YT Stream] YTMUSIC_ANDROID failed for ${videoId}:`, error);
         }
@@ -712,14 +980,8 @@ const resolveStreamUrl = async (
             const info = await yt.getBasicInfo(videoId, { client: 'ANDROID' });
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
             const url = await decipherFormatUrl(format, yt.session.player);
-            if (url && !rejectedUrls.has(url)) {
-                console.log(`[YT Stream] Resolved via ANDROID for ${videoId}`);
-                streamCache.set(videoId, { expiresAt: Date.now() + STREAM_CACHE_TTL_MS, url });
-                return url;
-            }
-            if (url) {
-                console.warn(`[YT Stream] ANDROID returned a rejected URL for ${videoId}`);
-            }
+            const usableUrl = await acceptResolvedUrl(url, 'ANDROID');
+            if (usableUrl) return usableUrl;
         } catch (error) {
             console.warn(`[YT Stream] ANDROID failed for ${videoId}:`, error);
         }
@@ -730,14 +992,8 @@ const resolveStreamUrl = async (
     // Method 7: yt-dlp fallback
     try {
         const url = await resolveStreamUrlWithYtdlp(videoId);
-        if (url && !rejectedUrls.has(url)) {
-            console.log(`[YT Stream] Resolved via yt-dlp for ${videoId}`);
-            streamCache.set(videoId, { expiresAt: Date.now() + STREAM_CACHE_TTL_MS, url });
-            return url;
-        }
-        if (url) {
-            console.warn(`[YT Stream] yt-dlp returned a rejected URL for ${videoId}`);
-        }
+        const usableUrl = await acceptResolvedUrl(url, 'yt-dlp', 'yt-dlp');
+        if (usableUrl) return usableUrl;
     } catch (error) {
         console.warn(`[YT Stream] yt-dlp failed for ${videoId}:`, error);
     }
@@ -880,6 +1136,71 @@ const getInnertube = async () => {
     return innertubeInstance;
 };
 
+const generatePoToken = async (identifier: string): Promise<null | string> => {
+    if (!identifier || !contentPoTokenGenerationAvailable) return null;
+
+    try {
+        const requestKey = 'O43z0dpjhgX20SCx4KAo';
+        const cleanUp = (context: Partial<typeof globalThis>) => {
+            delete (context as any).window;
+            delete (context as any).document;
+        };
+
+        const { Window } = await import('happy-dom');
+        const happyWindow = new Window({ console, height: 1080, width: 1920 });
+        const happyDocument = happyWindow.document;
+
+        Object.assign(globalThis, {
+            document: happyDocument,
+            window: happyWindow,
+        });
+
+        const bgConfig: BgConfig = {
+            fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+                const request = new Request(
+                    typeof input === 'string'
+                        ? new URL(input)
+                        : input instanceof URL
+                          ? input
+                          : new URL(input.url),
+                    input instanceof Request ? input : undefined,
+                );
+                return net.fetch(request, init);
+            },
+            globalObj: globalThis,
+            identifier,
+            requestKey,
+        };
+
+        const bgChallenge = await BG.Challenge.create(bgConfig);
+        const interpreterJavascript =
+            bgChallenge?.interpreterJavascript?.privateDoNotAccessOrElseSafeScriptWrappedValue;
+
+        if (!interpreterJavascript) {
+            cleanUp(globalThis);
+            return null;
+        }
+
+        new Function(interpreterJavascript)();
+        const poTokenResult = await BG.PoToken.generate({
+            bgConfig,
+            globalName: bgChallenge.globalName,
+            program: bgChallenge.program,
+        }).finally(() => {
+            cleanUp(globalThis);
+        });
+
+        return poTokenResult.poToken || null;
+    } catch (error) {
+        const err = error as { code?: string };
+        if (err.code === 'VM_ERROR') {
+            contentPoTokenGenerationAvailable = false;
+        }
+        console.warn('[YouTube Music] Failed to generate content PO token:', error);
+        return null;
+    }
+};
+
 const getCookieHeader = async () => {
     const cookies = await session.fromPartition(LOGIN_PARTITION).cookies.get({});
     const youtubeCookies = cookies.filter((cookie) =>
@@ -1013,8 +1334,10 @@ const status = async (): Promise<YoutubeMusicAuthStatus> => {
             ? await refreshStoredAccountIdentity(rawStored)
             : rawStored;
 
+    await startYtProxyServer();
+
     return {
-        avatarUrl: stored?.avatarUrl || null,
+        avatarUrl: normalizeImageUrlForRenderer(stored?.avatarUrl || null),
         connected: Boolean(stored?.cookie),
         connectedAt: stored?.connectedAt || null,
         dependencyAvailable,
@@ -1129,6 +1452,11 @@ const normalizePlaylistId = (id: string) => {
 
 const normalizeVideoId = (id: string) => id.replace(/^ytm:/, '');
 
+const youtubeImageFallback = (videoId: null | string | undefined) =>
+    videoId && VIDEO_ID_REGEX.test(videoId) ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : null;
+
+const normalizeImageUrlForRenderer = (url: null | string) => youtubeImageProxyUrl(url);
+
 const normalizeThumbnailUrl = (value: unknown): null | string => {
     if (typeof value !== 'string' || !value) return null;
     if (value.startsWith('//')) return `https:${value}`;
@@ -1148,6 +1476,7 @@ const thumbnailCandidates = (value: any): Array<{ area: number; url: string }> =
     const nested =
         value?.thumbnails ||
         value?.thumbnail ||
+        value?.thumbnail_overlays ||
         value?.sources ||
         value?.images ||
         value?.contents ||
@@ -1222,22 +1551,102 @@ const itemArtists = (item: any): RelatedArtist[] => {
     return normalized.length ? normalized : [relatedArtist(null)];
 };
 
+const endpointPayload = (item: any) =>
+    item?.endpoint?.payload ||
+    item?.navigation_endpoint?.payload ||
+    item?.current_video_endpoint?.payload ||
+    {};
+
+const endpointUrl = (item: any): null | string =>
+    item?.endpoint?.toURL?.() || item?.navigation_endpoint?.toURL?.() || null;
+
+const extractVideoId = (item: any): null | string => {
+    const payload = endpointPayload(item);
+    const url = endpointUrl(item);
+    const candidates = [
+        item?.video_id,
+        item?.videoId,
+        payload?.videoId,
+        payload?.watchEndpoint?.videoId,
+        item?.basic_info?.id,
+        item?.id,
+    ];
+
+    if (url) {
+        try {
+            candidates.push(new URL(url, SOURCE_URL).searchParams.get('v'));
+        } catch {
+            // Ignore malformed endpoint URLs.
+        }
+    }
+
+    return (
+        candidates.find(
+            (candidate) => typeof candidate === 'string' && VIDEO_ID_REGEX.test(candidate),
+        ) || null
+    );
+};
+
+const extractBrowseId = (item: any): null | string => {
+    const payload = endpointPayload(item);
+    return (
+        item?.browse_id ||
+        item?.browseId ||
+        payload?.browseId ||
+        payload?.browseEndpoint?.browseId ||
+        null
+    );
+};
+
+const extractPlaylistId = (item: any): null | string => {
+    const payload = endpointPayload(item);
+    const url = endpointUrl(item);
+    const candidates = [
+        item?.playlist_id,
+        item?.playlistId,
+        payload?.playlistId,
+        payload?.watchEndpoint?.playlistId,
+        payload?.browseEndpoint?.playlistId,
+        extractBrowseId(item),
+        item?.id,
+    ];
+
+    if (url) {
+        try {
+            candidates.push(new URL(url, SOURCE_URL).searchParams.get('list'));
+        } catch {
+            // Ignore malformed endpoint URLs.
+        }
+    }
+
+    const playlistId = candidates.find((candidate) => typeof candidate === 'string' && candidate);
+    return playlistId ? normalizePlaylistId(playlistId) : null;
+};
+
+const isPlaylistLikeItem = (item: any) => {
+    const type = String(item?.item_type || '').toLowerCase();
+    if (type.includes('playlist')) return true;
+    const playlistId = extractPlaylistId(item);
+    const videoId = extractVideoId(item);
+    return Boolean(playlistId && !videoId);
+};
+
 const songFromItem = (item: any): null | Song => {
-    const videoId =
-        item?.video_id ||
-        item?.videoId ||
-        item?.endpoint?.payload?.videoId ||
-        item?.navigation_endpoint?.payload?.videoId ||
-        item?.basic_info?.id ||
-        item?.id;
-    if (!videoId || !VIDEO_ID_REGEX.test(videoId)) return null;
+    const videoId = extractVideoId(item);
+    if (!videoId) return null;
 
     const artists = itemArtists(item);
     const name = textValue(item?.title || item?.name || item?.basic_info?.title) || 'Untitled';
     const albumName = item?.album?.name || null;
     const durationSeconds = item?.duration?.seconds || item?.basic_info?.duration || 0;
     const createdAt = nowIso();
-    const imageUrl = bestThumbnail(item?.thumbnail || item?.basic_info?.thumbnail);
+    const imageUrl =
+        bestThumbnail(
+            item?.thumbnail ||
+                item?.thumbnails ||
+                item?.basic_info?.thumbnail ||
+                item?.thumbnail_overlay,
+        ) || youtubeImageFallback(videoId);
 
     return {
         _itemType: LibraryItem.SONG,
@@ -1265,7 +1674,7 @@ const songFromItem = (item: any): null | Song => {
         genres: [emptyGenre()],
         id: `ytm:${videoId}`,
         imageId: null,
-        imageUrl,
+        imageUrl: normalizeImageUrlForRenderer(imageUrl),
         lastPlayedAt: null,
         lyrics: null,
         mbzRecordingId: null,
@@ -1318,7 +1727,7 @@ const songFromScrapedWebItem = (item: {
     });
 
 const albumFromItem = (item: any): Album | null => {
-    const id = item?.id || item?.endpoint?.payload?.browseId;
+    const id = item?.id || extractBrowseId(item);
     if (!id) return null;
 
     const name = textValue(item?.title || item?.name) || 'Untitled Album';
@@ -1339,7 +1748,7 @@ const albumFromItem = (item: any): Album | null => {
         genres: [emptyGenre()],
         id: `ytm-album:${id}`,
         imageId: null,
-        imageUrl: bestThumbnail(item?.thumbnail),
+        imageUrl: normalizeImageUrlForRenderer(bestThumbnail(item?.thumbnail || item?.thumbnails)),
         isCompilation: null,
         lastPlayedAt: null,
         mbzId: null,
@@ -1366,7 +1775,7 @@ const albumFromItem = (item: any): Album | null => {
 };
 
 const artistFromItem = (item: any): AlbumArtist | null => {
-    const id = item?.id || item?.endpoint?.payload?.browseId;
+    const id = item?.id || extractBrowseId(item);
     if (!id) return null;
     const name = textValue(item?.title || item?.name) || 'Unknown Artist';
     return {
@@ -1379,7 +1788,7 @@ const artistFromItem = (item: any): AlbumArtist | null => {
         genres: [emptyGenre()],
         id: `ytm-artist:${id}`,
         imageId: null,
-        imageUrl: bestThumbnail(item?.thumbnail),
+        imageUrl: normalizeImageUrlForRenderer(bestThumbnail(item?.thumbnail || item?.thumbnails)),
         lastPlayedAt: null,
         mbz: null,
         name,
@@ -1392,12 +1801,30 @@ const artistFromItem = (item: any): AlbumArtist | null => {
 };
 
 const playlistFromItem = (item: any): null | Playlist => {
-    const id = item?.id || item?.playlist_id || item?.endpoint?.payload?.browseId;
-    if (!id) return null;
-    const playlistId = normalizePlaylistId(id);
+    const playlistId = extractPlaylistId(item);
+    if (!playlistId) return null;
+    const type = String(item?.item_type || '').toLowerCase();
+    const url = endpointUrl(item);
+    let hasPlaylistUrl = false;
+    if (url) {
+        try {
+            hasPlaylistUrl = Boolean(new URL(url, SOURCE_URL).searchParams.get('list'));
+        } catch {
+            hasPlaylistUrl = false;
+        }
+    }
+    if (['album', 'artist', 'library_artist', 'song', 'video'].includes(type) && !hasPlaylistUrl) {
+        return null;
+    }
     const name = textValue(item?.title || item?.name || item?.header?.title) || 'Untitled Playlist';
     const imageUrl =
-        bestThumbnail(item?.thumbnail || item?.thumbnails || item?.header?.thumbnail) || null;
+        bestThumbnail(
+            item?.thumbnail ||
+                item?.thumbnails ||
+                item?.background ||
+                item?.header?.thumbnail ||
+                item?.header?.thumbnails,
+        ) || null;
     return {
         _itemType: LibraryItem.PLAYLIST,
         _serverId: YOUTUBE_MUSIC_SOURCE_ID,
@@ -1407,7 +1834,7 @@ const playlistFromItem = (item: any): null | Playlist => {
         genres: [emptyGenre()],
         id: `ytm-playlist:${playlistId}`,
         imageId: null,
-        imageUrl,
+        imageUrl: normalizeImageUrlForRenderer(imageUrl),
         name,
         owner: item?.author?.name || null,
         ownerId: item?.author?.channel_id || null,
@@ -1426,6 +1853,47 @@ const shelfItems = (shelf: any) => {
     if (Array.isArray(shelf)) return shelf;
     return Array.isArray(shelf?.contents) ? shelf.contents : [];
 };
+
+const sectionItemsByType = (items: any[]) => {
+    const songs: Song[] = [];
+    const playlists: Playlist[] = [];
+    const albums: Album[] = [];
+
+    for (const item of items) {
+        if (isPlaylistLikeItem(item)) {
+            const playlist = playlistFromItem(item);
+            if (playlist) {
+                playlists.push(playlist);
+                continue;
+            }
+        }
+
+        const song = songFromItem(item);
+        if (song) {
+            songs.push(song);
+            continue;
+        }
+
+        const playlist = playlistFromItem(item);
+        if (playlist) {
+            playlists.push(playlist);
+            continue;
+        }
+
+        const album = albumFromItem(item);
+        if (album) {
+            albums.push(album);
+        }
+    }
+
+    return { albums, playlists, songs };
+};
+
+const dedupeById = <T extends { id: string }>(items: T[]) =>
+    items.filter(
+        (item, index, allItems) =>
+            allItems.findIndex((candidate) => candidate.id === item.id) === index,
+    );
 
 const youtubeMusicHomeSection = (
     id: string,
@@ -1481,6 +1949,34 @@ const scrapeHomeFromWeb = async (): Promise<YoutubeMusicHomeResponse> => {
                     return '';
                 };
 
+                const getImage = (root, anchor) => {
+                    const img =
+                        root?.querySelector('yt-img-shadow img[src]') ||
+                        root?.querySelector('img[src]') ||
+                        anchor?.querySelector('yt-img-shadow img[src]') ||
+                        anchor?.querySelector('img[src]');
+                    const ytImg =
+                        root?.querySelector('yt-img-shadow') ||
+                        anchor?.querySelector('yt-img-shadow');
+                    const srcset = img?.getAttribute('srcset') || img?.getAttribute('data-srcset');
+                    const srcsetUrl = srcset
+                        ? srcset
+                              .split(',')
+                              .map((part) => part.trim().split(/\\s+/)[0])
+                              .filter(Boolean)
+                              .pop()
+                        : null;
+                    return (
+                        srcsetUrl ||
+                        img?.currentSrc ||
+                        img?.getAttribute('src') ||
+                        img?.getAttribute('data-src') ||
+                        ytImg?.getAttribute('src') ||
+                        ytImg?.getAttribute('data-src') ||
+                        null
+                    );
+                };
+
                 const shelves = Array.from(document.querySelectorAll(
                     'ytmusic-carousel-shelf-renderer, ytmusic-shelf-renderer, ytmusic-grid-renderer'
                 ));
@@ -1510,14 +2006,7 @@ const scrapeHomeFromWeb = async (): Promise<YoutubeMusicHomeResponse> => {
                         const subtitle =
                             getText(root, ['.subtitle', '#subtitle', '.secondary-flex-columns']) ||
                             '';
-                        const image =
-                            root?.querySelector('yt-img-shadow')?.getAttribute('src') ||
-                            root?.querySelector('yt-img-shadow')?.getAttribute('data-src') ||
-                            root?.querySelector('img[src]')?.getAttribute('src') ||
-                            anchor.querySelector('yt-img-shadow')?.getAttribute('src') ||
-                            anchor.querySelector('yt-img-shadow')?.getAttribute('data-src') ||
-                            anchor.querySelector('img[src]')?.getAttribute('src') ||
-                            null;
+                        const image = getImage(root, anchor);
                         const videoId = url.searchParams.get('v');
                         const playlistId = url.searchParams.get('list');
                         const browseId = url.pathname.includes('/browse/') ? url.pathname.split('/browse/')[1] : null;
@@ -1677,6 +2166,7 @@ const search = async (query: string): Promise<YoutubeMusicSearchResult> => {
         return { albumArtists: [], albums: [], playlists: [], songs: [] };
     }
 
+    await startYtProxyServer();
     const yt = await getInnertube();
     const [songsResult, albumsResult, artistsResult, playlistsResult] = await Promise.all([
         yt.music.search(query, { type: 'song' }).catch(() => null),
@@ -1699,6 +2189,7 @@ const getSongDetail = async (id: string): Promise<Song> => {
         throw new Error('Invalid YouTube Music song id.');
     }
 
+    await startYtProxyServer();
     const yt = await getInnertube();
 
     try {
@@ -1745,90 +2236,171 @@ const getSongDetail = async (id: string): Promise<Song> => {
     return song;
 };
 
-const home = async (): Promise<YoutubeMusicHomeResponse> => {
-    const webHome = await scrapeHomeFromWeb();
+const collectHomeFromInnertube = async (): Promise<YoutubeMusicHomeResponse> => {
+    const yt = await getInnertube();
+    const feeds: any[] = [];
 
-    if (webHome.sections.length > 0) {
-        const seenSectionTitles = new Set<string>();
-        const dedupedSections: YoutubeMusicHomeResponse['sections'] = [];
+    try {
+        let feed = await yt.music.getHomeFeed();
+        feeds.push(feed);
 
-        for (const section of webHome.sections) {
-            const titleKey = section.title.toLowerCase().trim();
-            if (seenSectionTitles.has(titleKey)) continue;
-            seenSectionTitles.add(titleKey);
-
-            const seenItemIds = new Set<string>();
-            const uniqueItems = section.items.filter((item) => {
-                if (seenItemIds.has(item.id)) return false;
-                seenItemIds.add(item.id);
-                return true;
-            });
-
-            if (uniqueItems.length === 0) continue;
-
-            dedupedSections.push({ ...section, items: uniqueItems });
+        for (let index = 0; index < 2 && feed?.has_continuation; index += 1) {
+            feed = await feed.getContinuation();
+            feeds.push(feed);
         }
-
-        return { sections: dedupedSections };
+    } catch (error) {
+        console.warn('[YouTube Music] Failed to load InnerTube home feed:', error);
     }
 
-    const yt = await getInnertube();
-    const feed = await yt.music.getHomeFeed();
-    const sections = (Array.isArray(feed?.sections) ? feed.sections : [])
+    const rawSections = feeds.flatMap((feed) => (Array.isArray(feed?.sections) ? feed.sections : []));
+    const sections = rawSections
         .map((section: any, index: number) => {
             const title = textValue(section?.header?.title) || `Shelf ${index + 1}`;
             const contents = Array.isArray(section?.contents) ? section.contents : [];
-            const songs = contents.map(songFromItem).filter(Boolean).slice(0, 12);
+            const { albums, playlists, songs } = sectionItemsByType(contents);
+
             if (songs.length > 0) {
                 return youtubeMusicHomeSection(
                     `ytm-home-${index}-songs`,
                     title,
                     LibraryItem.SONG,
-                    songs,
+                    dedupeById(songs).slice(0, 12),
                 );
             }
 
-            const playlists = contents.map(playlistFromItem).filter(Boolean).slice(0, 12);
             if (playlists.length > 0) {
                 return youtubeMusicHomeSection(
                     `ytm-home-${index}-playlists`,
                     title,
                     LibraryItem.PLAYLIST,
-                    playlists,
+                    dedupeById(playlists).slice(0, 12),
                 );
             }
 
-            const albums = contents.map(albumFromItem).filter(Boolean).slice(0, 12);
             if (albums.length > 0) {
                 return youtubeMusicHomeSection(
                     `ytm-home-${index}-albums`,
                     title,
                     LibraryItem.ALBUM,
-                    albums,
+                    dedupeById(albums).slice(0, 12),
                 );
             }
 
             return null;
         })
-        .filter(Boolean)
+        .filter((section): section is YoutubeMusicHomeResponse['sections'][number] =>
+            Boolean(section),
+        )
         .slice(0, 24);
 
-    return { sections };
+    return dedupeHomeSections({ sections });
+};
+
+const dedupeHomeSections = (
+    response: YoutubeMusicHomeResponse,
+): YoutubeMusicHomeResponse => {
+    const seenSectionTitles = new Set<string>();
+    const dedupedSections: YoutubeMusicHomeResponse['sections'] = [];
+
+    for (const section of response.sections) {
+        const titleKey = section.title.toLowerCase().trim();
+        if (seenSectionTitles.has(titleKey)) continue;
+        seenSectionTitles.add(titleKey);
+
+        const uniqueItems = dedupeById(section.items);
+        if (uniqueItems.length === 0) continue;
+
+        dedupedSections.push({ ...section, items: uniqueItems });
+    }
+
+    return { sections: dedupedSections };
+};
+
+const enrichHomePlaylistThumbnails = async (
+    response: YoutubeMusicHomeResponse,
+): Promise<YoutubeMusicHomeResponse> => {
+    const missingPlaylists = response.sections
+        .filter((section) => section.itemType === LibraryItem.PLAYLIST)
+        .flatMap((section) => section.items as Playlist[])
+        .filter((playlist) => !playlist.imageUrl && playlist.youtubeMusic?.playlistId)
+        .slice(0, 24);
+
+    if (missingPlaylists.length === 0) return response;
+
+    const thumbnailById = new Map<string, null | string>();
+    await Promise.all(
+        missingPlaylists.map(async (playlist) => {
+            try {
+                const detail = await getPlaylistDetail(playlist.id);
+                thumbnailById.set(playlist.id, detail.imageUrl || null);
+            } catch {
+                thumbnailById.set(playlist.id, null);
+            }
+        }),
+    );
+
+    return {
+        sections: response.sections.map((section) => {
+            if (section.itemType !== LibraryItem.PLAYLIST) return section;
+
+            return {
+                ...section,
+                items: (section.items as Playlist[]).map((playlist) => ({
+                    ...playlist,
+                    imageUrl: playlist.imageUrl || thumbnailById.get(playlist.id) || null,
+                })),
+            };
+        }),
+    };
+};
+
+const home = async (): Promise<YoutubeMusicHomeResponse> => {
+    await startYtProxyServer();
+    const [innerTubeHome, webHome] = await Promise.all([
+        collectHomeFromInnertube(),
+        scrapeHomeFromWeb(),
+    ]);
+
+    const dedupedWebHome = dedupeHomeSections(webHome);
+    const chosenHome =
+        dedupedWebHome.sections.length >= innerTubeHome.sections.length
+            ? dedupedWebHome
+            : innerTubeHome;
+
+    return enrichHomePlaylistThumbnails(chosenHome);
 };
 
 const getPlaylistSongs = async (id: string): Promise<Song[]> => {
+    await startYtProxyServer();
     const playlistId = normalizePlaylistId(id);
     const yt = await getInnertube();
-    const playlist = await yt.music.getPlaylist(playlistId);
+    let playlist = await yt.music.getPlaylist(playlistId);
+    const items = [...shelfItems(playlist?.contents)];
 
-    return shelfItems(playlist?.contents).map(songFromItem).filter(Boolean).slice(0, 100);
+    for (let index = 0; index < 20 && playlist?.has_continuation; index += 1) {
+        try {
+            playlist = await playlist.getContinuation();
+            items.push(...shelfItems(playlist?.contents));
+        } catch (error) {
+            console.warn(`[YouTube Music] Failed to load playlist continuation ${playlistId}:`, error);
+            break;
+        }
+    }
+
+    return dedupeById(items.map(songFromItem).filter((song): song is Song => Boolean(song))).slice(
+        0,
+        500,
+    );
 };
 
 const getPlaylistDetail = async (id: string): Promise<Playlist> => {
+    await startYtProxyServer();
     const playlistId = normalizePlaylistId(id);
     const yt = await getInnertube();
     const playlist = await yt.music.getPlaylist(playlistId);
-    const songs = shelfItems(playlist?.contents).map(songFromItem).filter(Boolean);
+    const songs = await getPlaylistSongs(playlistId).catch(() =>
+        shelfItems(playlist?.contents).map(songFromItem).filter(Boolean),
+    );
     const parsed = playlistFromItem({
         ...playlist,
         id: playlist?.id || playlistId,
@@ -1851,12 +2423,15 @@ const getPlaylistDetail = async (id: string): Promise<Playlist> => {
         genres: [emptyGenre()],
         id: `ytm-playlist:${playlistId}`,
         imageId: null,
-        imageUrl:
+        imageUrl: normalizeImageUrlForRenderer(
             bestThumbnail(headerThumbnail) ||
-            bestThumbnail(playlist?.thumbnail) ||
-            bestThumbnail(playlist?.thumbnails) ||
-            parsed?.imageUrl ||
-            null,
+                bestThumbnail(playlist?.thumbnail) ||
+                bestThumbnail(playlist?.thumbnails) ||
+                bestThumbnail(playlist?.background) ||
+                parsed?.imageUrl ||
+                songs.find((song) => song.imageUrl)?.imageUrl ||
+                null,
+        ),
         name:
             textValue(headerTitle) ||
             parsed?.name ||
@@ -1877,6 +2452,7 @@ const getPlaylistDetail = async (id: string): Promise<Playlist> => {
 };
 
 const getAlbumSongs = async (id: string): Promise<Song[]> => {
+    await startYtProxyServer();
     const albumId = id.replace(/^ytm-album:/, '');
     const yt = await getInnertube();
     const album = await yt.music.getAlbum(albumId);
@@ -2040,7 +2616,7 @@ const scrapeAccountPlaylistsFromWeb = async (): Promise<Playlist[]> => {
                 genres: [emptyGenre()],
                 id: `ytm-playlist:${item.playlistId}`,
                 imageId: null,
-                imageUrl: item.imageUrl,
+                imageUrl: normalizeImageUrlForRenderer(item.imageUrl),
                 name: item.title || 'Untitled Playlist',
                 owner: item.owner,
                 ownerId: null,
@@ -2197,73 +2773,48 @@ const collectLibrarySongs = async (library: any): Promise<Song[]> => {
 };
 
 const getAccountPlaylists = async (): Promise<Playlist[]> => {
-    const webPlaylists = await scrapeAccountPlaylistsFromWeb();
-    if (webPlaylists.length > 0) return webPlaylists;
+    await startYtProxyServer();
+    try {
+        const yt = await getInnertube();
+        const library = await yt.music.getLibrary();
+        const libraryViews = [library];
 
-    const yt = await getInnertube();
-    const library = await yt.music.getLibrary();
-    const libraryViews = [library];
-
-    for (const filter of library?.filters || []) {
-        if (String(filter).toLowerCase().includes('playlist')) {
-            try {
-                libraryViews.unshift(await library.applyFilter(filter));
-            } catch (error) {
-                console.warn(`[YouTube Music] Failed to apply library filter "${filter}":`, error);
+        for (const filter of library?.filters || []) {
+            if (String(filter).toLowerCase().includes('playlist')) {
+                try {
+                    libraryViews.unshift(await library.applyFilter(filter));
+                } catch (error) {
+                    console.warn(`[YouTube Music] Failed to apply library filter "${filter}":`, error);
+                }
+                break;
             }
-            break;
         }
-    }
 
-    const libraryPlaylists = (
-        await Promise.all(libraryViews.map((view) => collectLibraryPlaylists(view).catch(() => [])))
-    )
-        .flat()
-        .filter(
-            (playlist, index, playlists) =>
-                playlists.findIndex((item) => item.id === playlist.id) === index,
+        const libraryPlaylists = dedupeById(
+            (
+                await Promise.all(
+                    libraryViews.map((view) => collectLibraryPlaylists(view).catch(() => [])),
+                )
+            ).flat(),
         );
 
-    if (libraryPlaylists.length > 0) return libraryPlaylists;
+        if (libraryPlaylists.length > 0) return libraryPlaylists;
 
-    const feed = await yt.getPlaylists().catch(() => null);
-    const playlists = feed?.playlists || [];
+        const feed = await yt.getPlaylists().catch(() => null);
+        const playlists = dedupeById(
+            (feed?.playlists || []).map(playlistFromItem).filter(Boolean),
+        ) as Playlist[];
 
-    return playlists
-        .map((item: any) => {
-            const id = item?.id || item?.playlist_id || item?.endpoint?.payload?.browseId;
-            if (!id) return null;
-            const playlistId = normalizePlaylistId(id);
-            return {
-                _itemType: LibraryItem.PLAYLIST,
-                _serverId: YOUTUBE_MUSIC_SOURCE_ID,
-                _serverType: ServerType.YOUTUBE_MUSIC,
-                description: textValue(item?.description) || null,
-                duration: null,
-                genres: [emptyGenre()],
-                id: `ytm-playlist:${playlistId}`,
-                imageId: null,
-                imageUrl: bestThumbnail(item?.thumbnail),
-                name: textValue(item?.title || item?.name) || 'Untitled Playlist',
-                owner: item?.author?.name || null,
-                ownerId: item?.author?.channel_id || null,
-                public: null,
-                size: item?.video_count || item?.videoCount || null,
-                songCount: item?.video_count || item?.videoCount || null,
-                sourceReadOnly: true,
-                youtubeMusic: {
-                    browseId: playlistId,
-                    playlistId,
-                },
-            };
-        })
-        .filter(Boolean) as Playlist[];
+        if (playlists.length > 0) return playlists;
+    } catch (error) {
+        console.warn('[YouTube Music] Failed to load account playlists from InnerTube:', error);
+    }
+
+    return scrapeAccountPlaylistsFromWeb();
 };
 
 const getAccountSongs = async (): Promise<Song[]> => {
-    const webSongs = await scrapeAccountSongsFromWeb();
-    if (webSongs.length > 0) return webSongs;
-
+    await startYtProxyServer();
     try {
         const yt = await getInnertube();
         const library = await yt.music.getLibrary();
@@ -2283,19 +2834,21 @@ const getAccountSongs = async (): Promise<Song[]> => {
             }
         }
 
-        const songs = (
-            await Promise.all(libraryViews.map((view) => collectLibrarySongs(view).catch(() => [])))
-        )
-            .flat()
-            .filter(
-                (song, index, allSongs) =>
-                    allSongs.findIndex((item) => item.id === song.id) === index,
-            );
+        const songs = dedupeById(
+            (
+                await Promise.all(
+                    libraryViews.map((view) => collectLibrarySongs(view).catch(() => [])),
+                )
+            ).flat(),
+        );
 
         if (songs.length > 0) return songs;
     } catch (error) {
         console.warn('[YouTube Music] Failed to load account songs from library:', error);
     }
+
+    const webSongs = await scrapeAccountSongsFromWeb();
+    if (webSongs.length > 0) return webSongs;
 
     return getSongList();
 };
@@ -2356,7 +2909,7 @@ ipcMain.handle(
             return {
                 bitrate: undefined,
                 codec: undefined,
-                expiresAt: Date.now() + STREAM_CACHE_TTL_MS,
+                expiresAt: streamCache.get(videoId)?.expiresAt || Date.now() + STREAM_CACHE_TTL_MS,
                 mimeType: undefined,
                 resolvedAt: Date.now(),
                 source: 'youtube_music',
@@ -2484,7 +3037,9 @@ ipcMain.handle(
     async (
         _event,
         args: {
+            createPlaylist?: boolean;
             playlistId: string;
+            playlistName?: string;
             targetPlaylistIds?: string[];
             targetPlaylistNames?: string[];
         },
@@ -2495,8 +3050,8 @@ ipcMain.handle(
             true,
             undefined,
             undefined,
-            true,
-            undefined,
+            args.createPlaylist ?? true,
+            args.playlistName,
             {
                 source: 'youtube_music',
             },

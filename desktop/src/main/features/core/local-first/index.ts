@@ -811,6 +811,21 @@ const runImport = (
                         await triggerNavidromeScan();
                     }
 
+                    if (job.createPlaylist) {
+                        try {
+                            const songIds = await findAllImportedSongIds(audioFiles);
+                            if (songIds.length > 0) {
+                                await populatePlaylist(
+                                    job.playlistName || job.name || 'Imported Playlist',
+                                    songIds,
+                                );
+                                message = 'Import complete - playlist populated';
+                            }
+                        } catch (error: any) {
+                            console.error('[local-first] Failed to populate playlist via API:', error);
+                        }
+                    }
+
                     if (job.targetPlaylistIds?.length) {
                         await addImportedSongsToTargetPlaylists(job, audioFiles);
                         message = 'Import complete - added to playlist';
@@ -1216,7 +1231,9 @@ const writePlaylistM3U = (job: ImportJob, audioFiles: string[]) => {
         let relativePath = file;
         try {
             relativePath = path.relative(playlistDir, file);
-            if (!relativePath || relativePath.startsWith('..')) {
+            // Only fall back to absolute path when relative() genuinely fails.
+            // Paths starting with ".." are valid relative paths to sibling/parent dirs.
+            if (!relativePath) {
                 relativePath = file;
             }
         } catch {
@@ -1253,6 +1270,103 @@ const triggerNavidromeScan = async () => {
 
 const getSubsonicParams = () =>
     `u=${encodeURIComponent(LOCAL_SERVER_USERNAME)}&p=${encodeURIComponent(getPassword())}&v=1.16.1&c=roofy&f=json`;
+
+const findAllImportedSongIds = async (audioFiles: string[]) => {
+    const songIds: string[] = [];
+    const seen = new Set<string>();
+
+    for (const file of audioFiles) {
+        const basename = path.basename(file, path.extname(file)).trim();
+        if (!basename) continue;
+
+        try {
+            const response = await fetch(
+                `${getUrl()}/rest/search3?${getSubsonicParams()}&query=${encodeURIComponent(basename)}&songCount=50&albumCount=0&artistCount=0`,
+            );
+            const body = await parseResponseBody(response);
+            const songs = body?.['subsonic-response']?.searchResult3?.song || [];
+
+            for (const song of songs) {
+                const id = String(song?.id || '');
+                if (!id || seen.has(id)) continue;
+
+                const songPath = (song.path || '').toLowerCase();
+                const songTitle = (song.title || '').toLowerCase();
+                const searchLower = basename.toLowerCase();
+
+                if (
+                    songPath.includes(searchLower) ||
+                    searchLower.includes(songTitle) ||
+                    songTitle.includes(searchLower)
+                ) {
+                    seen.add(id);
+                    songIds.push(id);
+                    break;
+                }
+            }
+        } catch (error) {
+            console.error(`[local-first] Failed to search for song "${basename}":`, error);
+        }
+    }
+
+    return songIds;
+};
+
+const populatePlaylist = async (playlistName: string, songIds: string[]) => {
+    const url = getUrl();
+    const params = getSubsonicParams();
+
+    const playlistsResponse = await fetch(`${url}/rest/getPlaylists?${params}`);
+    const playlistsBody = await parseResponseBody(playlistsResponse);
+    const subsonicResponse = playlistsBody?.['subsonic-response'];
+
+    if (!playlistsResponse.ok || subsonicResponse?.status === 'failed') {
+        throw new Error(summarizeNavidromeError(subsonicResponse?.error, 'Could not list playlists.'));
+    }
+
+    let playlists = subsonicResponse?.playlists?.playlist || [];
+    if (!Array.isArray(playlists)) {
+        playlists = playlists ? [playlists] : [];
+    }
+
+    const existing = playlists.find((p: any) => p.name === playlistName);
+
+    if (existing) {
+        const playlistResponse = await fetch(
+            `${url}/rest/getPlaylist?${params}&id=${encodeURIComponent(existing.id)}`,
+        );
+        const playlistBody = await parseResponseBody(playlistResponse);
+        const entries = playlistBody?.['subsonic-response']?.playlist?.entry || [];
+        const existingIds = new Set((entries || []).map((e: any) => String(e.id)));
+        const newSongIds = songIds.filter((id) => !existingIds.has(id));
+
+        if (newSongIds.length > 0) {
+            const songParams = newSongIds.map((id) => `songIdToAdd=${encodeURIComponent(id)}`).join('&');
+            const updateResponse = await fetch(
+                `${url}/rest/updatePlaylist.view?${params}&playlistId=${encodeURIComponent(existing.id)}&${songParams}`,
+            );
+            const updateBody = await parseResponseBody(updateResponse);
+            const updateSubsonic = updateBody?.['subsonic-response'];
+            if (!updateResponse.ok || updateSubsonic?.status === 'failed') {
+                throw new Error(
+                    summarizeNavidromeError(updateSubsonic?.error, 'Could not add songs to playlist.'),
+                );
+            }
+        }
+        return existing.id;
+    }
+
+    const songParams = songIds.map((id) => `songId=${encodeURIComponent(id)}`).join('&');
+    const createResponse = await fetch(
+        `${url}/rest/createPlaylist?${params}&name=${encodeURIComponent(playlistName)}&${songParams}`,
+    );
+    const createBody = await parseResponseBody(createResponse);
+    const createSubsonic = createBody?.['subsonic-response'];
+    if (!createResponse.ok || createSubsonic?.status === 'failed') {
+        throw new Error(summarizeNavidromeError(createSubsonic?.error, 'Could not create playlist.'));
+    }
+    return createSubsonic?.playlist?.id;
+};
 
 const findImportedSongIds = async (job: ImportJob, audioFiles: string[]) => {
     const searches = [

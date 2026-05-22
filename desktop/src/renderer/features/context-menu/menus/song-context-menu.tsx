@@ -4,8 +4,8 @@ import { AddToPlaylistAction } from '/@/renderer/features/context-menu/actions/a
 import { DownloadAction } from '/@/renderer/features/context-menu/actions/download-action';
 import { DownloadToLibraryAction } from '/@/renderer/features/context-menu/actions/download-to-library-action';
 import { GetInfoAction } from '/@/renderer/features/context-menu/actions/get-info-action';
-import { OpenYoutubeSourceAction } from '/@/renderer/features/context-menu/actions/open-youtube-source-action';
 import { GoToAction } from '/@/renderer/features/context-menu/actions/go-to-action';
+import { OpenYoutubeSourceAction } from '/@/renderer/features/context-menu/actions/open-youtube-source-action';
 import { PlayAction } from '/@/renderer/features/context-menu/actions/play-action';
 import { PlayTrackRadioAction } from '/@/renderer/features/context-menu/actions/play-track-radio-action';
 import { SetFavoriteAction } from '/@/renderer/features/context-menu/actions/set-favorite-action';
@@ -39,7 +39,7 @@ export const SongContextMenu = ({ items, type }: SongContextMenuProps) => {
             <SetFavoriteAction ids={ids} itemType={LibraryItem.SONG} songs={items} />
             <SetRatingAction ids={ids} itemType={LibraryItem.SONG} songs={items} />
             <ContextMenu.Divider />
-            <DownloadAction ids={ids} />
+            <DownloadAction ids={ids} songs={items} />
             <DownloadToLibraryAction songs={items} />
             <OpenYoutubeSourceAction songs={items} />
             <ShareAction ids={ids} itemType={LibraryItem.SONG} />

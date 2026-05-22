@@ -37,7 +37,11 @@ export const PlaylistContextMenu = ({ items, type }: PlaylistContextMenuProps) =
         >
             <PlayAction ids={ids} itemType={LibraryItem.PLAYLIST} />
             <ContextMenu.Divider />
-            <AddToPlaylistAction items={ids} itemType={LibraryItem.PLAYLIST} />
+            <AddToPlaylistAction
+                items={ids}
+                itemType={LibraryItem.PLAYLIST}
+                playlists={items}
+            />
             <ImportYoutubePlaylistToLibraryAction playlists={items} />
             <ContextMenu.Divider />
             <EditPlaylistAction disabled={!canEditPlaylist} items={items} />

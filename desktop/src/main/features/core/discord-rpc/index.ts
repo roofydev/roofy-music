@@ -1,7 +1,7 @@
 import { Client, SetActivity } from '@xhayper/discord-rpc';
 import { ipcMain } from 'electron';
 
-const ROOFY_DISCORD_APPLICATION_ID = '1165957668758900787';
+const ROOFY_DISCORD_APPLICATION_ID = '1507206067015254097';
 
 let client: Client | null = null;
 

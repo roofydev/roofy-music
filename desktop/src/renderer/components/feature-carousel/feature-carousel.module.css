@@ -5,6 +5,7 @@
     container-type: inline-size;
     overflow: hidden;
     border-radius: var(--theme-radius-md);
+    min-height: 240px;
 }
 
 .carousel {

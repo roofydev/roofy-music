@@ -126,7 +126,17 @@ export const YoutubeMusicHomeCarousels = ({
         return (
             <Stack className={styles.container} gap="lg" style={{ maxHeight }}>
                 <YoutubeMusicSectionHeader title={title} />
-                <Spinner container size={32} />
+                <div
+                    style={{
+                        alignItems: 'center',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        minHeight: '200px',
+                        width: '100%',
+                    }}
+                >
+                    <Spinner size={32} />
+                </div>
             </Stack>
         );
     }
