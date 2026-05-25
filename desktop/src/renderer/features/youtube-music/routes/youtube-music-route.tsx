@@ -11,17 +11,18 @@ import { FilterBar } from '/@/renderer/features/shared/components/filter-bar';
 import { LibraryContainer } from '/@/renderer/features/shared/components/library-container';
 import { LibraryHeaderBar } from '/@/renderer/features/shared/components/library-header-bar';
 import { ListWithSidebarContainer } from '/@/renderer/features/shared/components/list-with-sidebar-container';
+import { RefreshButton } from '/@/renderer/features/shared/components/refresh-button';
 import { youtubeMusicAuthStatusQueryKey } from '/@/renderer/features/youtube-music/components/youtube-music-account-button';
 import { YoutubeMusicHomeCarousels } from '/@/renderer/features/youtube-music/components/youtube-music-home-carousels';
 import { YoutubeMusicIcon } from '/@/renderer/features/youtube-music/components/youtube-music-icon';
 import { YoutubeMusicPlaylistDetail } from '/@/renderer/features/youtube-music/components/youtube-music-playlist-detail';
 import { YoutubeMusicPlaylistGrid } from '/@/renderer/features/youtube-music/components/youtube-music-playlist-grid';
 import { YoutubeMusicSongsTable } from '/@/renderer/features/youtube-music/components/youtube-music-songs-table';
-import { RefreshButton } from '/@/renderer/features/shared/components/refresh-button';
 import { queryClient } from '/@/renderer/lib/react-query';
 import { addToQueueByData, useImportJobActions } from '/@/renderer/store';
 import { Badge } from '/@/shared/components/badge/badge';
 import { Button } from '/@/shared/components/button/button';
+import { Checkbox } from '/@/shared/components/checkbox/checkbox';
 import { Group } from '/@/shared/components/group/group';
 import { Icon } from '/@/shared/components/icon/icon';
 import { Image } from '/@/shared/components/image/image';
@@ -47,10 +48,12 @@ const YoutubeMusicRoute = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const { setJob } = useImportJobActions();
     const viewParam = searchParams.get('view') as null | YtmView;
+    const queryParam = searchParams.get('q') || '';
     const activePlaylistId = searchParams.get('playlist');
     const activeView: YtmView = viewParam && VALID_VIEWS.has(viewParam) ? viewParam : 'browse';
 
     const [playlistSearchTerm, setPlaylistSearchTerm] = useState('');
+    const [saveVideoImports, setSaveVideoImports] = useState(false);
     const [songsSearchTerm, setSongsSearchTerm] = useState('');
 
     useEffect(() => {
@@ -63,6 +66,12 @@ const YoutubeMusicRoute = () => {
             })
             .catch((error) => toast.error({ message: (error as Error).message }));
     }, []);
+
+    useEffect(() => {
+        if (activeView === 'search' && queryParam) {
+            setQuery(queryParam);
+        }
+    }, [activeView, queryParam]);
 
     const isConnected = Boolean(status?.connected);
 
@@ -139,6 +148,7 @@ const YoutubeMusicRoute = () => {
                     album: song.album || undefined,
                     artist: song.artistName || song.albumArtistName || 'Unknown Artist',
                     imageUrl: song.imageUrl || undefined,
+                    saveVideo: saveVideoImports,
                     sourceTrackId: song.id,
                     title: song.name,
                     videoId,
@@ -149,7 +159,7 @@ const YoutubeMusicRoute = () => {
                 toast.error({ message: (error as Error).message });
             }
         },
-        [setJob],
+        [saveVideoImports, setJob],
     );
 
     const handlePlaylistImport = useCallback(
@@ -165,6 +175,7 @@ const YoutubeMusicRoute = () => {
                     input: `https://music.youtube.com/playlist?list=${playlistId}`,
                     playlist: true,
                     playlistName: playlist.name,
+                    saveVideo: saveVideoImports,
                     source: 'youtube_music',
                     sourceTrackId: playlist.id,
                     title: playlist.name,
@@ -175,7 +186,7 @@ const YoutubeMusicRoute = () => {
                 toast.error({ message: (error as Error).message });
             }
         },
-        [setJob],
+        [saveVideoImports, setJob],
     );
 
     const handlePlaylistImportTracks = useCallback(
@@ -293,20 +304,22 @@ const YoutubeMusicRoute = () => {
                                     </LibraryHeaderBar.Badge>
                                     <YoutubeMusicIcon size="2rem" />
                                 </LibraryHeaderBar>
-                                <Group>
+                                <Group className={styles.headerActions} wrap="nowrap">
                                     <RefreshButton
                                         loading={searchQuery.isFetching}
                                         onClick={() => searchQuery.refetch()}
                                         variant="subtle"
                                     />
+                                    <ImportVideoCheckbox
+                                        checked={saveVideoImports}
+                                        onChange={setSaveVideoImports}
+                                    />
                                     <TextInput
+                                        className={styles.headerSearch}
                                         leftSection={<Icon icon="search" />}
-                                        onChange={(event) =>
-                                            setQuery(event.currentTarget.value)
-                                        }
+                                        onChange={(event) => setQuery(event.currentTarget.value)}
                                         placeholder="Search YouTube Music"
                                         value={query}
-                                        width={200}
                                     />
                                 </Group>
                             </PageHeader>
@@ -333,81 +346,71 @@ const YoutubeMusicRoute = () => {
                                                             </Table.Tr>
                                                         </Table.Thead>
                                                         <Table.Tbody>
-                                                            {searchQuery.data.songs.map(
-                                                                (song) => (
-                                                                    <Table.Tr
-                                                                        className={
-                                                                            styles.songRow
-                                                                        }
-                                                                        key={song.id}
-                                                                    >
-                                                                        <Table.Td>
-                                                                            <Image
-                                                                                className={
-                                                                                    styles.artImage
+                                                            {searchQuery.data.songs.map((song) => (
+                                                                <Table.Tr
+                                                                    className={styles.songRow}
+                                                                    key={song.id}
+                                                                >
+                                                                    <Table.Td>
+                                                                        <Image
+                                                                            className={
+                                                                                styles.artImage
+                                                                            }
+                                                                            containerClassName={
+                                                                                styles.art
+                                                                            }
+                                                                            includeLoader={false}
+                                                                            src={
+                                                                                song.imageUrl ||
+                                                                                undefined
+                                                                            }
+                                                                            unloaderIcon="emptySongImage"
+                                                                        />
+                                                                    </Table.Td>
+                                                                    <Table.Td>{song.name}</Table.Td>
+                                                                    <Table.Td>
+                                                                        {song.artistName}
+                                                                    </Table.Td>
+                                                                    <Table.Td>
+                                                                        {song.album || '-'}
+                                                                    </Table.Td>
+                                                                    <Table.Td>
+                                                                        <Group
+                                                                            justify="flex-end"
+                                                                            wrap="nowrap"
+                                                                        >
+                                                                            <Button
+                                                                                onClick={() =>
+                                                                                    handleImportSong(
+                                                                                        song,
+                                                                                    )
                                                                                 }
-                                                                                containerClassName={
-                                                                                    styles.art
-                                                                                }
-                                                                                includeLoader={
-                                                                                    false
-                                                                                }
-                                                                                src={
-                                                                                    song.imageUrl ||
-                                                                                    undefined
-                                                                                }
-                                                                                unloaderIcon="emptySongImage"
-                                                                            />
-                                                                        </Table.Td>
-                                                                        <Table.Td>
-                                                                            {song.name}
-                                                                        </Table.Td>
-                                                                        <Table.Td>
-                                                                            {song.artistName}
-                                                                        </Table.Td>
-                                                                        <Table.Td>
-                                                                            {song.album || '-'}
-                                                                        </Table.Td>
-                                                                        <Table.Td>
-                                                                            <Group
-                                                                                justify="flex-end"
-                                                                                wrap="nowrap"
+                                                                                size="compact-sm"
                                                                             >
-                                                                                <Button
-                                                                                    onClick={() =>
-                                                                                        handleImportSong(
-                                                                                            song,
-                                                                                        )
-                                                                                    }
-                                                                                    size="compact-sm"
-                                                                                >
-                                                                                    Import
-                                                                                </Button>
-                                                                                <Button
-                                                                                    onClick={() =>
-                                                                                        handlePlay(
-                                                                                            song,
-                                                                                        )
-                                                                                    }
-                                                                                    size="compact-sm"
-                                                                                >
-                                                                                    Play
-                                                                                </Button>
-                                                                                <Button
-                                                                                    onClick={() =>
-                                                                                        handleQueue(
-                                                                                            song,
-                                                                                        )
-                                                                                    }
-                                                                                    size="compact-sm"
-                                                                                >
-                                                                                    Queue
-                                                                                </Button>
-                                                                            </Group>
-                                                                        </Table.Td>
-                                                                    </Table.Tr>
-                                                                ),
-                                                            )}
+                                                                                Import
+                                                                            </Button>
+                                                                            <Button
+                                                                                onClick={() =>
+                                                                                    handlePlay(song)
+                                                                                }
+                                                                                size="compact-sm"
+                                                                            >
+                                                                                Play
+                                                                            </Button>
+                                                                            <Button
+                                                                                onClick={() =>
+                                                                                    handleQueue(
+                                                                                        song,
+                                                                                    )
+                                                                                }
+                                                                                size="compact-sm"
+                                                                            >
+                                                                                Queue
+                                                                            </Button>
+                                                                        </Group>
+                                                                    </Table.Td>
+                                                                </Table.Tr>
+                                                            ))}
                                                         </Table.Tbody>
                                                     </Table>
                                                 ) : (
@@ -443,20 +446,24 @@ const YoutubeMusicRoute = () => {
                                     </LibraryHeaderBar.Badge>
                                     <YoutubeMusicIcon size="2rem" />
                                 </LibraryHeaderBar>
-                                <Group>
+                                <Group className={styles.headerActions} wrap="nowrap">
                                     <RefreshButton
                                         loading={accountSongsQuery.isFetching}
                                         onClick={() => accountSongsQuery.refetch()}
                                         variant="subtle"
                                     />
+                                    <ImportVideoCheckbox
+                                        checked={saveVideoImports}
+                                        onChange={setSaveVideoImports}
+                                    />
                                     <TextInput
+                                        className={styles.headerSearch}
                                         leftSection={<Icon icon="search" />}
                                         onChange={(event) =>
                                             setSongsSearchTerm(event.currentTarget.value)
                                         }
                                         placeholder="Filter songs"
                                         value={songsSearchTerm}
-                                        width={200}
                                     />
                                 </Group>
                             </PageHeader>
@@ -511,6 +518,8 @@ const YoutubeMusicRoute = () => {
                                                         accountPlaylistSongsQuery.refetch();
                                                     }}
                                                     playlist={accountPlaylistDetailQuery.data}
+                                                    saveVideoImports={saveVideoImports}
+                                                    setSaveVideoImports={setSaveVideoImports}
                                                     songs={accountPlaylistSongsQuery.data || []}
                                                 />
                                             )}
@@ -535,20 +544,24 @@ const YoutubeMusicRoute = () => {
                                             </LibraryHeaderBar.Badge>
                                             <YoutubeMusicIcon size="2rem" />
                                         </LibraryHeaderBar>
-                                        <Group>
+                                        <Group className={styles.headerActions} wrap="nowrap">
                                             <RefreshButton
                                                 loading={accountPlaylistsQuery.isFetching}
                                                 onClick={() => accountPlaylistsQuery.refetch()}
                                                 variant="subtle"
                                             />
+                                            <ImportVideoCheckbox
+                                                checked={saveVideoImports}
+                                                onChange={setSaveVideoImports}
+                                            />
                                             <TextInput
+                                                className={styles.headerSearch}
                                                 leftSection={<Icon icon="search" />}
                                                 onChange={(event) =>
                                                     setPlaylistSearchTerm(event.currentTarget.value)
                                                 }
                                                 placeholder="Filter playlists"
                                                 value={playlistSearchTerm}
-                                                width={200}
                                             />
                                         </Group>
                                     </PageHeader>
@@ -654,6 +667,20 @@ const ErrorState = ({ error }: { error: Error }) => (
             {error.message}
         </Text>
     </div>
+);
+
+const ImportVideoCheckbox = ({
+    checked,
+    onChange,
+}: {
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+}) => (
+    <Checkbox
+        checked={checked}
+        label="Save MP4 with imports"
+        onChange={(event) => onChange(event.currentTarget.checked)}
+    />
 );
 
 export default YoutubeMusicRoute;

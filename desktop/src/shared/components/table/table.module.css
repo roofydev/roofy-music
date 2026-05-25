@@ -9,19 +9,21 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .th {
-    background: var(--retro-panel-2, #101010);
-    color: var(--retro-text-hot, #f1f1f1);
+    background: rgba(255, 255, 255, 0.04);
+    color: #f2f2f2;
     text-transform: uppercase;
     font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
     font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
-    border-bottom: 1px solid var(--retro-border-dark, #222222);
-    border-right: 1px solid var(--retro-border-dark, #222222);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    border-right: none;
 }
 
 :global([data-theme="retroMonochrome"]) .td {
-    color: var(--retro-text, #d0d0d0);
+    color: #f2f2f2;
     font-size: 13px;
     font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
-    border-bottom: 1px solid var(--retro-border-dark, #222222);
-    border-right: 1px solid var(--retro-border-dark, #222222);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    border-right: none;
 }

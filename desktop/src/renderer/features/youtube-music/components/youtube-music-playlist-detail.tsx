@@ -7,6 +7,7 @@ import { PageHeader } from '/@/renderer/components/page-header/page-header';
 import { FilterBar } from '/@/renderer/features/shared/components/filter-bar';
 import { RefreshButton } from '/@/renderer/features/shared/components/refresh-button';
 import { Button } from '/@/shared/components/button/button';
+import { Checkbox } from '/@/shared/components/checkbox/checkbox';
 import { Group } from '/@/shared/components/group/group';
 import { Image } from '/@/shared/components/image/image';
 import { Stack } from '/@/shared/components/stack/stack';
@@ -21,6 +22,8 @@ interface YoutubeMusicPlaylistDetailProps {
     onPlayPlaylist: (playlist: Playlist, playType: Play) => void;
     onRefresh?: () => void;
     playlist?: Playlist;
+    saveVideoImports: boolean;
+    setSaveVideoImports: (checked: boolean) => void;
     songs: Song[];
 }
 
@@ -36,6 +39,8 @@ export const YoutubeMusicPlaylistDetail = forwardRef<
             onPlayPlaylist,
             onRefresh,
             playlist,
+            saveVideoImports,
+            setSaveVideoImports,
             songs,
         }: YoutubeMusicPlaylistDetailProps,
         ref,
@@ -77,7 +82,16 @@ export const YoutubeMusicPlaylistDetail = forwardRef<
                         </Group>
                         {playlist && (
                             <Group gap="xs" wrap="nowrap">
-                                {onRefresh && <RefreshButton onClick={onRefresh} variant="subtle" />}
+                                {onRefresh && (
+                                    <RefreshButton onClick={onRefresh} variant="subtle" />
+                                )}
+                                <Checkbox
+                                    checked={saveVideoImports}
+                                    label="Save MP4"
+                                    onChange={(event) =>
+                                        setSaveVideoImports(event.currentTarget.checked)
+                                    }
+                                />
                                 <Button
                                     onClick={() => onImportPlaylist(playlist)}
                                     size="compact-sm"

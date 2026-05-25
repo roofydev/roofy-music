@@ -1,0 +1,63 @@
+.rating-row {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.auto-dj-button {
+    flex-shrink: 0;
+}
+
+.auto-dj-button-inner,
+.auto-dj-button-label {
+    min-width: max-content;
+    overflow: visible;
+    color: inherit;
+}
+
+.auto-dj-button-label {
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
+:global([data-theme="retroMonochrome"]) .rating-row {
+    justify-content: flex-end;
+    width: 100%;
+}
+
+:global([data-theme="retroMonochrome"]) .rating-row :global([class*="mantine-Rating-root"]) {
+    flex-shrink: 1;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+:global([data-theme="retroMonochrome"]) .auto-dj-button {
+    min-width: 72px;
+    color: #f2f2f2 !important;
+    background: transparent;
+    border: 1px solid rgb(255 255 255 / 28%);
+}
+
+:global([data-theme="retroMonochrome"]) .auto-dj-button:hover {
+    color: #fff !important;
+    background: rgb(255 255 255 / 10%);
+    border-color: rgb(255 255 255 / 65%);
+}
+
+:global([data-theme="retroMonochrome"]) .auto-dj-button[data-enabled='true'] {
+    color: #f2f2f2 !important;
+    background: rgb(255 255 255 / 16%);
+    border-color: #f2f2f2;
+}
+
+:global([data-theme="retroMonochrome"]) .auto-dj-button-inner,
+:global([data-theme="retroMonochrome"]) .auto-dj-button-label {
+    color: inherit !important;
+}
+
+:global([data-theme="retroMonochrome"]) .auto-dj-button-label {
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-size: 11px;
+    line-height: 1;
+    letter-spacing: 0;
+}

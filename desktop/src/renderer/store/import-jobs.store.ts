@@ -11,6 +11,7 @@ export type ImportJob = {
     message?: string;
     name?: string;
     progress: number;
+    saveVideo?: boolean;
     skippedCount?: number;
     source: 'youtube_music';
     sourceTrackId?: string;
@@ -18,6 +19,7 @@ export type ImportJob = {
     targetPlaylistIds?: string[];
     targetPlaylistNames?: string[];
     title?: string;
+    videoDownloadedCount?: number;
     videoId?: string;
     warning?: string;
 };

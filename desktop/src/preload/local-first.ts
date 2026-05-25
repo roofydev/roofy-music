@@ -28,6 +28,7 @@ const createImport = (args: {
     input: string;
     playlist?: boolean;
     playlistName?: string;
+    saveVideo?: boolean;
     source?: 'youtube_music';
     sourceTrackId?: string;
     title?: string;
@@ -49,6 +50,29 @@ const deleteTracks = (songIds: string[]) => {
     return ipcRenderer.invoke('roofy-local-delete-tracks', songIds);
 };
 
+const getVideoMetadata = (args: {
+    path?: null | string;
+    songId?: string;
+    youtubeMusic?: {
+        videoId?: string;
+        watchUrl?: string;
+    };
+}) => {
+    return ipcRenderer.invoke('roofy-local-get-video-metadata', args);
+};
+
+const downloadVideoForSong = (args: {
+    path?: null | string;
+    songId: string;
+    title?: string;
+    youtubeMusic?: {
+        videoId?: string;
+        watchUrl?: string;
+    };
+}) => {
+    return ipcRenderer.invoke('roofy-local-download-video-for-song', args);
+};
+
 const onPlaylistImported = (cb: () => void) => {
     ipcRenderer.on('roofy-local-playlist-imported', cb);
     return () => {
@@ -63,6 +87,8 @@ export const localFirst = {
     createUser,
     credentials,
     deleteTracks,
+    downloadVideoForSong,
+    getVideoMetadata,
     onPlaylistImported,
     openLibraryFolder,
     previewImport,

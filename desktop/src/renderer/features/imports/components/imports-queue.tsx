@@ -22,6 +22,11 @@ const statusOrder: Record<string, number> = {
     running: 1,
 };
 
+const headerButtonClassNames = {
+    inner: styles.headerButtonInner,
+    label: styles.headerButtonLabel,
+};
+
 const getStatusCopy = (status: string, progress: number) => {
     if (status === 'queued') return 'Waiting';
     if (status === 'running') return progress > 0 ? `Downloading ${progress}%` : 'Downloading';
@@ -43,6 +48,19 @@ const getStatusBadge = (status: string) => {
         default:
             return <Badge>{status}</Badge>;
     }
+};
+
+const getVideoImportBadge = (job: {
+    saveVideo?: boolean;
+    status: string;
+    videoDownloadedCount?: number;
+}) => {
+    if (!job.saveVideo) return <Badge variant="light">Audio only</Badge>;
+    if (job.videoDownloadedCount && job.videoDownloadedCount > 0) {
+        return <Badge color="green">MP4 saved</Badge>;
+    }
+    if (job.status === 'failed') return <Badge color="red">MP4 not saved</Badge>;
+    return <Badge color="blue">MP4 requested</Badge>;
 };
 
 export const ImportsQueue = () => {
@@ -107,8 +125,10 @@ export const ImportsQueue = () => {
                 <Text isMuted size="sm">
                     Imported songs, imported playlists, and YouTube Music download jobs.
                 </Text>
-                <Group gap="xs" wrap="nowrap">
+                <Group className={styles.headerActions} gap="xs" wrap="nowrap">
                     <Button
+                        className={styles.headerButton}
+                        classNames={headerButtonClassNames}
                         disabled={stats.completed === 0}
                         onClick={handleClearCompleted}
                         size="compact-sm"
@@ -117,6 +137,8 @@ export const ImportsQueue = () => {
                         Clear completed
                     </Button>
                     <Button
+                        className={styles.headerButton}
+                        classNames={headerButtonClassNames}
                         disabled={stats.failed === 0}
                         onClick={handleClearFailed}
                         size="compact-sm"
@@ -219,9 +241,12 @@ export const ImportsQueue = () => {
                                                 <Text className={styles.trackTitle} size="sm">
                                                     {title}
                                                 </Text>
-                                                <Text isMuted size="xs">
-                                                    {artist}
-                                                </Text>
+                                                <Group gap="xs" wrap="wrap">
+                                                    <Text isMuted size="xs">
+                                                        {artist}
+                                                    </Text>
+                                                    {getVideoImportBadge(job)}
+                                                </Group>
                                                 {job.error && (
                                                     <Text
                                                         className={styles.errorText}

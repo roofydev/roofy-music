@@ -19,21 +19,21 @@
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .container {
     background-color: var(--retro-panel, #0b0b0b) !important;
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     padding: 10px;
 }
 
 :global([data-theme="retroMonochrome"]) .container.selected {
-    outline: 1px solid var(--retro-border-bright, #b8b8b8);
+    outline: 1px solid rgba(255, 255, 255, 0.65);
     outline-offset: 0;
 }
 
 :global([data-theme="retroMonochrome"]) .image-container {
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 :global([data-theme="retroMonochrome"]) .favorite-badge {
-    background-color: var(--retro-border, #7a7a7a);
+    background-color: rgba(255, 255, 255, 0.32);
     box-shadow: none;
 }
 

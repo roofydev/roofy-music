@@ -8,17 +8,26 @@ import styles from './full-screen-player-image.module.css';
 
 import { useItemImageUrl } from '/@/renderer/components/item-image/item-image';
 import {
+    useDownloadVideoForCurrentSong,
+    useLocalVideoMetadata,
+    VideoModeOverlay,
+} from '/@/renderer/features/player/components/local-video-player';
+import {
     useIsRadioActive,
     useRadioPlayer,
 } from '/@/renderer/features/radio/hooks/use-radio-player';
 import { AppRoute } from '/@/renderer/router/routes';
 import {
+    useFullScreenPlayerStore,
+    useFullScreenPlayerStoreActions,
     useGeneralSettings,
     useNativeAspectRatio,
     usePlayerData,
     usePlayerSong,
 } from '/@/renderer/store';
+import { ActionIcon } from '/@/shared/components/action-icon/action-icon';
 import { Badge } from '/@/shared/components/badge/badge';
+import { Button } from '/@/shared/components/button/button';
 import { Center } from '/@/shared/components/center/center';
 import { Flex } from '/@/shared/components/flex/flex';
 import { Group } from '/@/shared/components/group/group';
@@ -103,8 +112,15 @@ export const FullScreenPlayerImage = () => {
     const currentSong = usePlayerSong();
     const { nextSong } = usePlayerData();
     const { blurExplicitImages, playerItems } = useGeneralSettings();
+    const visualMode = useFullScreenPlayerStore((state) => state.visualMode);
+    const { setStore } = useFullScreenPlayerStoreActions();
+    const videoMetadataQuery = useLocalVideoMetadata();
+    const videoMetadata = videoMetadataQuery.data;
+    const hasVideo = Boolean(videoMetadata?.videoFileUrl || videoMetadata?.embedUrl);
+    const { downloadVideo, isDownloading } = useDownloadVideoForCurrentSong();
 
     const isPlayingRadio = isRadioActive && isRadioPlaying;
+    const isVideoMode = !isPlayingRadio && hasVideo && visualMode === 'video';
 
     const currentImageUrl = useItemImageUrl({
         id: currentSong?.imageId || undefined,
@@ -138,6 +154,12 @@ export const FullScreenPlayerImage = () => {
     useEffect(() => {
         imageStateRef.current = imageState;
     }, [imageState]);
+
+    useEffect(() => {
+        if (!hasVideo && visualMode === 'video') {
+            setStore({ visualMode: 'image' });
+        }
+    }, [hasVideo, setStore, visualMode]);
 
     useEffect(() => {
         if (isPlayingRadio) {
@@ -231,56 +253,110 @@ export const FullScreenPlayerImage = () => {
             justify="flex-start"
             p="1rem"
         >
-            <div className={styles.imageContainer} ref={mainImageRef}>
-                <AnimatePresence initial={false} mode="sync">
-                    {!isPlayingRadio && imageState.current === 0 && (
-                        <ImageWithPlaceholder
-                            animate="open"
-                            className="full-screen-player-image"
-                            custom={{ isOpen: imageState.current === 0 }}
-                            draggable={false}
-                            exit="closed"
-                            explicit={blurExplicitImages && imageState.topExplicit}
-                            initial="closed"
-                            key={`top-${currentSong?._uniqueId || 'none'}`}
-                            placeholder="var(--theme-colors-foreground-muted)"
-                            src={imageState.topImage || ''}
-                            variants={imageVariants}
+            <div
+                className={clsx(styles.visualSurface, {
+                    [styles.videoSurface]: isVideoMode,
+                })}
+            >
+                {hasVideo && (
+                    <div className={styles.visualModeToggle}>
+                        <ActionIcon
+                            icon="image"
+                            iconProps={{ color: !isVideoMode ? 'primary' : undefined }}
+                            onClick={() => setStore({ visualMode: 'image' })}
+                            size="md"
+                            tooltip={{ label: 'Show artwork' }}
+                            variant="subtle"
                         />
-                    )}
+                        <ActionIcon
+                            icon="mediaPlay"
+                            iconProps={{ color: isVideoMode ? 'primary' : undefined }}
+                            onClick={() => setStore({ visualMode: 'video' })}
+                            size="md"
+                            tooltip={{ label: 'Show video' }}
+                            variant="subtle"
+                        />
+                    </div>
+                )}
+                <div className={styles.imageContainer} ref={mainImageRef}>
+                    {isVideoMode && videoMetadata ? (
+                        <VideoModeOverlay metadata={videoMetadata} />
+                    ) : (
+                        <AnimatePresence initial={false} mode="sync">
+                            {!isPlayingRadio && imageState.current === 0 && (
+                                <ImageWithPlaceholder
+                                    animate="open"
+                                    className="full-screen-player-image"
+                                    custom={{ isOpen: imageState.current === 0 }}
+                                    draggable={false}
+                                    exit="closed"
+                                    explicit={blurExplicitImages && imageState.topExplicit}
+                                    initial="closed"
+                                    key={`top-${currentSong?._uniqueId || 'none'}`}
+                                    placeholder="var(--theme-colors-foreground-muted)"
+                                    src={imageState.topImage || ''}
+                                    variants={imageVariants}
+                                />
+                            )}
 
-                    {!isPlayingRadio && imageState.current === 1 && (
-                        <ImageWithPlaceholder
-                            animate="open"
-                            className="full-screen-player-image"
-                            custom={{ isOpen: imageState.current === 1 }}
-                            draggable={false}
-                            exit="closed"
-                            explicit={blurExplicitImages && imageState.bottomExplicit}
-                            initial="closed"
-                            key={`bottom-${currentSong?._uniqueId || 'none'}`}
-                            placeholder="var(--theme-colors-foreground-muted)"
-                            src={imageState.bottomImage || ''}
-                            variants={imageVariants}
-                        />
-                    )}
+                            {!isPlayingRadio && imageState.current === 1 && (
+                                <ImageWithPlaceholder
+                                    animate="open"
+                                    className="full-screen-player-image"
+                                    custom={{ isOpen: imageState.current === 1 }}
+                                    draggable={false}
+                                    exit="closed"
+                                    explicit={blurExplicitImages && imageState.bottomExplicit}
+                                    initial="closed"
+                                    key={`bottom-${currentSong?._uniqueId || 'none'}`}
+                                    placeholder="var(--theme-colors-foreground-muted)"
+                                    src={imageState.bottomImage || ''}
+                                    variants={imageVariants}
+                                />
+                            )}
 
-                    {isPlayingRadio && (
-                        <ImageWithPlaceholder
-                            animate="open"
-                            className="full-screen-player-image"
-                            custom={{ isOpen: true }}
-                            draggable={false}
-                            exit="closed"
-                            initial="closed"
-                            key="radio"
-                            placeholder="var(--theme-colors-foreground-muted)"
-                            placeholderIcon="radio"
-                            src=""
-                            variants={imageVariants}
-                        />
+                            {isPlayingRadio && (
+                                <ImageWithPlaceholder
+                                    animate="open"
+                                    className="full-screen-player-image"
+                                    custom={{ isOpen: true }}
+                                    draggable={false}
+                                    exit="closed"
+                                    initial="closed"
+                                    key="radio"
+                                    placeholder="var(--theme-colors-foreground-muted)"
+                                    placeholderIcon="radio"
+                                    src=""
+                                    variants={imageVariants}
+                                />
+                            )}
+                        </AnimatePresence>
                     )}
-                </AnimatePresence>
+                </div>
+                {isVideoMode && videoMetadata && (
+                    <div className={styles.videoActions}>
+                        {videoMetadata.sourceUrl && (
+                            <Button
+                                leftSection={<Icon icon="externalLink" />}
+                                onClick={() => window.open(videoMetadata.sourceUrl, '_blank')}
+                                size="compact-xs"
+                                variant="subtle"
+                            >
+                                Source
+                            </Button>
+                        )}
+                        {videoMetadata.canDownloadVideo && !videoMetadata.videoFileUrl && (
+                            <Button
+                                leftSection={<Icon icon="download" />}
+                                loading={isDownloading}
+                                onClick={downloadVideo}
+                                size="compact-xs"
+                            >
+                                Save MP4
+                            </Button>
+                        )}
+                    </div>
+                )}
             </div>
             <Stack className={styles.metadataContainer} gap="md" maw="100%">
                 <Text fw={900} lh="1.2" overflow="hidden" size="4xl" w="100%">
@@ -335,6 +411,11 @@ export const FullScreenPlayerImage = () => {
                 )}
                 {!isPlayingRadio && (
                     <Group justify="center" mt="sm">
+                        {hasVideo && (
+                            <Badge>
+                                {videoMetadata?.videoFileUrl ? 'MP4 video' : 'Streamable video'}
+                            </Badge>
+                        )}
                         {playerItems.map((i) => !i.disabled && builtDataItems[i.id])}
                     </Group>
                 )}

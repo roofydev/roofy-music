@@ -63,33 +63,53 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .player-button {
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
-    color: var(--retro-text-soft, #a0a0a0);
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: transparent;
+    color: #f2f2f2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: none;
+}
+
+:global([data-theme="retroMonochrome"]) .player-button:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.65);
 }
 
 :global([data-theme="retroMonochrome"]) .player-button:focus-visible {
-    outline: 1px solid var(--retro-border-bright, #b8b8b8);
+    outline: 1px solid #f2f2f2;
+    outline-offset: 2px;
 }
 
 :global([data-theme="retroMonochrome"]) .player-button.active svg {
-    fill: var(--retro-border-bright, #b8b8b8);
+    fill: #f2f2f2;
 }
 
 :global([data-theme="retroMonochrome"]) .main {
-    background: var(--retro-text, #d0d0d0) !important;
+    width: 52px;
+    height: 52px;
+    background: rgba(255, 255, 255, 0.12) !important;
     border-radius: 0 !important;
-    border: 1px solid var(--retro-border-bright, #b8b8b8);
+    border: 1px solid rgba(255, 255, 255, 0.65);
 }
 
 :global([data-theme="retroMonochrome"]) .main svg {
-    color: var(--retro-bg, #050505);
-    fill: var(--retro-bg, #050505);
+    color: #f2f2f2;
+    fill: #f2f2f2;
 }
 
 :global([data-theme="retroMonochrome"]) .secondary {
-    color: var(--retro-text-soft, #a0a0a0);
+    color: #f2f2f2;
 }
 
 :global([data-theme="retroMonochrome"]) .secondary svg {
-    color: var(--retro-text-soft, #a0a0a0);
+    color: #f2f2f2;
+}
+
+:global([data-theme="retroMonochrome"]) .tertiary svg {
+    color: #a6a6a6;
 }

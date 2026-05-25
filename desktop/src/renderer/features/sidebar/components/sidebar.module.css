@@ -83,19 +83,18 @@
     background: var(--theme-colors-background-alternate);
 }
 
-.accordion-content:last-child {
-    padding-bottom: var(--theme-spacing-md);
-}
-
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .container {
+    --retro-sidebar-row-height: 38px;
+
     gap: 0;
-    background: var(--retro-bg-2, #080808) !important;
+    background: rgb(10 10 10 / 96%) !important;
+    border-right: 1px solid rgb(255 255 255 / 35%);
 }
 
 :global([data-theme="retroMonochrome"]) .scroll-area {
     padding: 0;
-    scrollbar-color: var(--retro-border-muted, #3f3f3f) var(--retro-bg-2, #080808);
+    scrollbar-color: rgb(255 255 255 / 28%) rgb(10 10 10 / 96%);
     scrollbar-width: thin;
 }
 
@@ -104,21 +103,37 @@
 }
 
 :global([data-theme="retroMonochrome"]) .accordion-control {
+    min-height: var(--retro-sidebar-row-height);
+    padding: 0 8px;
     font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
-    color: var(--retro-text-soft, #a0a0a0);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: var(--retro-sidebar-row-height);
+    color: #f2f2f2;
     text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid rgb(255 255 255 / 25%);
     border-radius: 0;
 }
 
 :global([data-theme="retroMonochrome"]) .accordion-control:hover {
-    color: var(--retro-text, #d0d0d0);
-    background: var(--retro-panel-2, #101010);
+    color: #fff;
+    background: rgb(255 255 255 / 8%);
 }
 
 :global([data-theme="retroMonochrome"]) .accordion-content {
-    background: var(--retro-bg-2, #080808) !important;
+    background: rgb(10 10 10 / 96%) !important;
 }
 
 :global([data-theme="retroMonochrome"]) .sidebar-image {
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    border: 1px solid rgb(255 255 255 / 35%);
+}
+
+.youtube-music-header {
+    width: 100%;
+    min-width: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .youtube-music-header {
+    height: var(--retro-sidebar-row-height);
 }

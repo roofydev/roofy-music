@@ -4,6 +4,10 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  react-router: 7.14.0
+  xml2js: 0.5.0
+
 importers:
 
   .:
@@ -189,7 +193,7 @@ importers:
         specifier: ^2.16.1
         version: 2.16.1(react@19.2.6)
       react-router:
-        specifier: ^7.14.0
+        specifier: 7.14.0
         version: 7.14.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       react-split-pane:
         specifier: ^3.2.0
@@ -4437,7 +4441,7 @@ packages:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
 
   node-mpv@https://codeload.github.com/jeffvli/Node-MPV/tar.gz/32b4d64395289ad710c41d481d2707a7acfc228f:
-    resolution: {gitHosted: true, integrity: sha512-jWGM4rQH2NnorZ8BEG+AIEGqP3PzahlRosqJVGhd0Qu2sEu/aDG5FVO0nbMSbkYEeLMvB16PqXl+Hsd9xbQFgA==, tarball: https://codeload.github.com/jeffvli/Node-MPV/tar.gz/32b4d64395289ad710c41d481d2707a7acfc228f}
+    resolution: {integrity: sha512-jWGM4rQH2NnorZ8BEG+AIEGqP3PzahlRosqJVGhd0Qu2sEu/aDG5FVO0nbMSbkYEeLMvB16PqXl+Hsd9xbQFgA==, tarball: https://codeload.github.com/jeffvli/Node-MPV/tar.gz/32b4d64395289ad710c41d481d2707a7acfc228f}
     version: 2.0.0-beta.3
 
   node-releases@2.0.44:
@@ -5890,8 +5894,8 @@ packages:
     resolution: {integrity: sha512-k8KO9hrMyNk6tUWqUfkTEZbezRRpONVOzUTnc97VnCvyj6Tf9lyUR9EDAIeiVLv56jsMcoXEwjW8Kv5yPY52lw==}
     engines: {node: '>=16.0.0'}
 
-  xml2js@0.4.23:
-    resolution: {integrity: sha512-ySPiMjM0+pLDftHgXY4By0uswI3SPKLDw/i3UXbnO8M/p28zqexCUoPmQFrYD+/1BzhGJSs2i1ERWKJAtiLrug==}
+  xml2js@0.5.0:
+    resolution: {integrity: sha512-drPFnkQJik/O+uPKpqSgr22mpuFHqKdbS835iAQrUC73L2F5WkboIRd63ai/2Yg6I1jzifPFKH2NTK+cfglkIA==}
     engines: {node: '>=4.0.0'}
 
   xmlbuilder@11.0.1:
@@ -8683,7 +8687,7 @@ snapshots:
       jsbi: 2.0.5
       long: 4.0.0
       safe-buffer: 5.2.1
-      xml2js: 0.4.23
+      xml2js: 0.5.0
     optionalDependencies:
       abstract-socket: 2.1.1
 
@@ -12096,7 +12100,7 @@ snapshots:
 
   xml-naming@0.1.0: {}
 
-  xml2js@0.4.23:
+  xml2js@0.5.0:
     dependencies:
       sax: 1.6.0
       xmlbuilder: 11.0.1

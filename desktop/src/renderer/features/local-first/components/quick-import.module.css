@@ -144,3 +144,31 @@
         height: 64px;
     }
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .container {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-left: 3px solid rgba(255, 255, 255, 0.55);
+    border-radius: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .preview {
+    background: var(--retro-panel, #0b0b0b);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .preview-image,
+:global([data-theme="retroMonochrome"]) .preview-image-inner,
+:global([data-theme="retroMonochrome"]) .result-image,
+:global([data-theme="retroMonochrome"]) .result-image-inner,
+:global([data-theme="retroMonochrome"]) .result-image-fallback {
+    border-radius: 0;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+:global([data-theme="retroMonochrome"]) .empty-state {
+    border-radius: 0;
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+}

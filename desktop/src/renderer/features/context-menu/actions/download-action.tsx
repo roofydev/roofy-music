@@ -24,27 +24,35 @@ export const DownloadAction = ({ ids, songs = [] }: DownloadActionProps) => {
     );
     const isYoutubeOnlySelection = youtubeSongs.length > 0 && youtubeSongs.length === songs.length;
 
+    const queueYoutubeImports = useCallback(
+        async (saveVideo: boolean) => {
+            if (!isElectron() || !window.api?.youtubeMusic?.downloadTrack) {
+                toast.error({
+                    message: 'Import to Roofy Music is only available in the desktop app.',
+                });
+                return;
+            }
+
+            for (const song of youtubeSongs) {
+                const job = await window.api.youtubeMusic.downloadTrack({
+                    album: song.album || undefined,
+                    artist: song.artistName || song.albumArtistName || 'Unknown Artist',
+                    imageUrl: song.imageUrl || undefined,
+                    saveVideo,
+                    sourceTrackId: song.id,
+                    title: song.name,
+                    videoId: song.youtubeMusic!.videoId!,
+                });
+                setJob(job);
+            }
+        },
+        [setJob, youtubeSongs],
+    );
+
     const onSelect = useCallback(async () => {
         try {
             if (isYoutubeOnlySelection) {
-                if (!isElectron() || !window.api?.youtubeMusic?.downloadTrack) {
-                    toast.error({
-                        message: 'Import to Roofy Music is only available in the desktop app.',
-                    });
-                    return;
-                }
-
-                for (const song of youtubeSongs) {
-                    const job = await window.api.youtubeMusic.downloadTrack({
-                        album: song.album || undefined,
-                        artist: song.artistName || song.albumArtistName || 'Unknown Artist',
-                        imageUrl: song.imageUrl || undefined,
-                        sourceTrackId: song.id,
-                        title: song.name,
-                        videoId: song.youtubeMusic!.videoId!,
-                    });
-                    setJob(job);
-                }
+                await queueYoutubeImports(false);
                 return;
             }
 
@@ -64,15 +72,33 @@ export const DownloadAction = ({ ids, songs = [] }: DownloadActionProps) => {
             console.error('Failed to download items:', error);
             toast.error({ message: (error as Error).message });
         }
-    }, [ids, isYoutubeOnlySelection, server.id, setJob, youtubeSongs]);
+    }, [ids, isYoutubeOnlySelection, queueYoutubeImports, server.id]);
 
-    return (
+    const onSelectWithVideo = useCallback(async () => {
+        try {
+            await queueYoutubeImports(true);
+        } catch (error) {
+            console.error('Failed to download items:', error);
+            toast.error({ message: (error as Error).message });
+        }
+    }, [queueYoutubeImports]);
+
+    return isYoutubeOnlySelection ? (
+        <>
+            <ContextMenu.Item leftIcon="download" onSelect={onSelect}>
+                Import to Roofy Music
+            </ContextMenu.Item>
+            <ContextMenu.Item leftIcon="video" onSelect={onSelectWithVideo}>
+                Import to Roofy Music with MP4
+            </ContextMenu.Item>
+        </>
+    ) : (
         <ContextMenu.Item
             disabled={!isYoutubeOnlySelection && ids.length > 1}
             leftIcon="download"
             onSelect={onSelect}
         >
-            {isYoutubeOnlySelection ? 'Import to Roofy Music' : t('page.contextMenu.download')}
+            {t('page.contextMenu.download')}
         </ContextMenu.Item>
     );
 };

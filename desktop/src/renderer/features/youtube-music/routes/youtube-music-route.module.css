@@ -18,10 +18,20 @@
 
 .content-panel {
     display: flex;
-    flex-direction: column;
     flex: 1;
+    flex-direction: column;
     min-height: 0;
     overflow: hidden;
+}
+
+.header-actions {
+    flex: 0 0 auto;
+    min-width: min(28rem, 42vw);
+}
+
+.header-search {
+    flex: 1;
+    min-width: 18rem;
 }
 
 .song-row {
@@ -117,4 +127,39 @@
     height: 42px;
     font-size: 0.7rem;
     color: var(--theme-colors-foreground-muted);
+}
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .song-row:hover {
+    background: rgb(255 255 255 / 8%);
+}
+
+:global([data-theme="retroMonochrome"]) .playlist-title-button:hover {
+    color: #f2f2f2;
+}
+
+:global([data-theme="retroMonochrome"]) .art,
+:global([data-theme="retroMonochrome"]) .art-image,
+:global([data-theme="retroMonochrome"]) .detail-art,
+:global([data-theme="retroMonochrome"]) .detail-image {
+    border: 1px solid rgb(255 255 255 / 25%);
+    border-radius: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .loading-state,
+:global([data-theme="retroMonochrome"]) .error-state {
+    border: 1px dashed rgb(255 255 255 / 18%);
+    border-radius: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .error-state {
+    background: rgb(255 255 255 / 4%);
+}
+
+:global([data-theme="retroMonochrome"]) .header-actions {
+    align-items: center;
+}
+
+:global([data-theme="retroMonochrome"]) .header-search input {
+    min-height: 38px;
 }

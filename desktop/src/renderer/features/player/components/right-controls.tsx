@@ -2,6 +2,8 @@ import { t } from 'i18next';
 import { useCallback, useEffect, useState, WheelEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import styles from './right-controls.module.css';
+
 import { PopoverPlayQueue } from '/@/renderer/features/now-playing/components/popover-play-queue';
 import { PlayerConfig } from '/@/renderer/features/player/components/player-config';
 import { CustomPlayerbarSlider } from '/@/renderer/features/player/components/playerbar-slider';
@@ -68,7 +70,7 @@ export const RightControls = () => {
     const { showRatings } = useGeneralSettings();
     return (
         <Flex align="flex-end" direction="column" h="100%" px="1rem" py="0.5rem">
-            <Group h="calc(100% / 3)">
+            <Group className={styles.ratingRow} h="calc(100% / 3)">
                 {showRatings && <RatingButton />}
                 <AutoDJButton />
             </Group>
@@ -101,12 +103,17 @@ const AutoDJButton = () => {
 
     return (
         <Button
+            className={styles.autoDjButton}
+            classNames={{
+                inner: styles.autoDjButtonInner,
+                label: styles.autoDjButtonLabel,
+            }}
+            data-enabled={settings.enabled}
             onClick={(e) => {
                 e.stopPropagation();
                 toggleAutoDJ();
             }}
             size="compact-xs"
-            style={{ color: settings.enabled ? 'var(--theme-colors-primary)' : undefined }}
             uppercase
             variant="transparent"
         >

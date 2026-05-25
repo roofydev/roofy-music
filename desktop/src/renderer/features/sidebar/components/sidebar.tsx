@@ -21,6 +21,8 @@ import {
     SidebarPlaylistList,
     SidebarSharedPlaylistList,
 } from '/@/renderer/features/sidebar/components/sidebar-playlist-list';
+import { YoutubeMusicAccountButton } from '/@/renderer/features/youtube-music/components/youtube-music-account-button';
+import { YoutubeMusicIcon } from '/@/renderer/features/youtube-music/components/youtube-music-icon';
 import { AppRoute } from '/@/renderer/router/routes';
 import {
     useAppStore,
@@ -97,7 +99,14 @@ export const Sidebar = () => {
 
     /* Library accordion: only items with a route (exclude Collections section) */
     const libraryItemsWithRoute = useMemo(
-        () => sidebarItemsWithRoute.filter((item) => item.id !== 'Collections' && item.route),
+        () =>
+            sidebarItemsWithRoute.filter(
+                (item) => item.id !== 'Collections' && item.id !== 'Home' && item.route,
+            ),
+        [sidebarItemsWithRoute],
+    );
+    const homeItem = useMemo(
+        () => sidebarItemsWithRoute.find((item) => item.id === 'Home' && item.route),
         [sidebarItemsWithRoute],
     );
 
@@ -109,7 +118,6 @@ export const Sidebar = () => {
         { label: 'Search', search: '?view=search' },
         { label: 'My Songs', search: '?view=songs' },
         { label: 'My Playlists', search: '?view=playlists' },
-        { label: 'Login', search: '?view=login' },
     ];
 
     return (
@@ -122,11 +130,15 @@ export const Sidebar = () => {
             <Group grow id="global-search-container" style={{ flexShrink: 0 }}>
                 <ActionBar />
             </Group>
-            <ScrollArea
-                allowDragScroll
-                className={styles.scrollArea}
-                scrollbarsAutoHide="leave"
-            >
+            <ScrollArea allowDragScroll className={styles.scrollArea} scrollbarsAutoHide="leave">
+                {homeItem && (
+                    <SidebarItem to={homeItem.route}>
+                        <Group gap="md">
+                            <SidebarIcon route={homeItem.route} />
+                            {homeItem.label}
+                        </Group>
+                    </SidebarItem>
+                )}
                 <Accordion
                     classNames={{
                         content: styles.accordionContent,
@@ -134,13 +146,7 @@ export const Sidebar = () => {
                         item: styles.accordionItem,
                         root: styles.accordionRoot,
                     }}
-                    defaultValue={[
-                        'library',
-                        'youtube-music',
-                        'imports',
-                        'collections',
-                        'playlists',
-                    ]}
+                    defaultValue={['library', 'youtube-music', 'collections', 'playlists']}
                     multiple
                 >
                     <Accordion.Item value="library">
@@ -165,9 +171,21 @@ export const Sidebar = () => {
                     {showYoutubeMusic && (
                         <Accordion.Item value="youtube-music">
                             <Accordion.Control>
-                                <Text fw={500} variant="secondary">
-                                    YouTube Music
-                                </Text>
+                                <Group
+                                    align="center"
+                                    className={styles.youtubeMusicHeader}
+                                    gap="xs"
+                                    justify="space-between"
+                                    wrap="nowrap"
+                                >
+                                    <Group align="center" gap="xs" wrap="nowrap">
+                                        <YoutubeMusicIcon size="1rem" />
+                                        <Text fw={500} variant="secondary">
+                                            YT Music
+                                        </Text>
+                                    </Group>
+                                    <YoutubeMusicAccountButton compact labelMode="auth-only" />
+                                </Group>
                             </Accordion.Control>
                             <Accordion.Panel>
                                 {youtubeMusicItems.map((item) => {
@@ -188,23 +206,6 @@ export const Sidebar = () => {
                                         </SidebarItem>
                                     );
                                 })}
-                            </Accordion.Panel>
-                        </Accordion.Item>
-                    )}
-                    {showYoutubeMusic && (
-                        <Accordion.Item value="imports">
-                            <Accordion.Control>
-                                <Text fw={500} variant="secondary">
-                                    Imports
-                                </Text>
-                            </Accordion.Control>
-                            <Accordion.Panel>
-                                <SidebarItem to={AppRoute.IMPORTS}>
-                                    <Group gap="md">
-                                        <SidebarIcon route={AppRoute.IMPORTS} />
-                                        All Imports
-                                    </Group>
-                                </SidebarItem>
                             </Accordion.Panel>
                         </Accordion.Item>
                     )}

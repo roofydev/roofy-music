@@ -12,6 +12,7 @@
     gap: var(--theme-spacing-xs);
     justify-content: center;
     width: 100%;
+    min-width: 0;
     overflow: hidden;
 }
 
@@ -98,18 +99,37 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .image {
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    width: 64px;
+    height: 64px;
+    border: 1px solid rgb(255 255 255 / 42%);
 }
 
 :global([data-theme="retroMonochrome"]) .radio-image {
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    border: 1px solid rgb(255 255 255 / 42%);
     border-radius: 0;
 }
 
+:global([data-theme="retroMonochrome"]) .line-item {
+    max-width: 100%;
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-size: 16px;
+    font-weight: 800;
+    color: #f2f2f2;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
 :global([data-theme="retroMonochrome"]) .line-item.secondary {
-    color: var(--retro-text-muted, #707070);
+    font-size: 13px;
+    font-weight: 400;
+    color: #a6a6a6;
 }
 
 :global([data-theme="retroMonochrome"]) .line-item.secondary a {
-    color: var(--retro-text-muted, #707070);
+    color: #a6a6a6;
+}
+
+:global([data-theme="retroMonochrome"]) .left-controls-container {
+    gap: 12px;
+    align-items: center;
 }

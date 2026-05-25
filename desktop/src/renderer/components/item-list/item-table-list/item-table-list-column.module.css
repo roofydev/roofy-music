@@ -405,3 +405,55 @@
 .resize-handle:hover {
     opacity: 1;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .container.with-horizontal-border {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+:global([data-theme="retroMonochrome"]) .container.with-vertical-border {
+    border-right: none;
+}
+
+:global([data-theme="retroMonochrome"]) .container.data-row.row-hover-highlight-enabled[data-row-hovered='true']::before {
+    background-color: rgba(255, 255, 255, 0.07);
+    opacity: 1;
+}
+
+:global([data-theme="retroMonochrome"]) .container.data-row.row-selected::before {
+    background-color: rgba(255, 255, 255, 0.10);
+    opacity: 1;
+    border-left: 3px solid #fff;
+}
+
+:global([data-theme="retroMonochrome"]) .header-container {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+:global([data-theme="retroMonochrome"]) .header-content {
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #f2f2f2;
+}
+
+:global([data-theme="retroMonochrome"]) .content {
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+}
+
+:global([data-theme="retroMonochrome"]) .container.data-row {
+    min-height: 58px;
+}
+
+:global([data-theme="retroMonochrome"]) .container.data-row.dragging {
+    opacity: 0.55;
+    color: #555;
+    border-color: rgba(255, 255, 255, 0.10);
+}
+
+:global([data-theme="retroMonochrome"]) .container.data-row[data-row-dragged-over='top']::after,
+:global([data-theme="retroMonochrome"]) .container.data-row[data-row-dragged-over='bottom']::after {
+    background-color: #f2f2f2;
+}

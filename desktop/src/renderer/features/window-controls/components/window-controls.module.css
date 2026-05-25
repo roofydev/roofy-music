@@ -30,3 +30,27 @@
         background: var(--theme-colors-state-error);
     }
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .windows-button-group {
+    background: transparent;
+    width: auto;
+    gap: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .windows-button {
+    width: 34px;
+    height: 28px;
+    border-left: 1px solid rgba(255, 255, 255, 0.22);
+    color: #f2f2f2;
+    background: transparent;
+}
+
+:global([data-theme="retroMonochrome"]) .windows-button:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+:global([data-theme="retroMonochrome"]) .windows-button.exit-button:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #a6a6a6;
+}

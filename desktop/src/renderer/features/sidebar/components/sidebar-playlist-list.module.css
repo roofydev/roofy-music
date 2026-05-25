@@ -136,3 +136,45 @@
     min-width: 3rem;
     height: 3rem;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .row {
+    border-radius: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 10px;
+    gap: 10px;
+}
+
+:global([data-theme="retroMonochrome"]) .row-hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+:global([data-theme="retroMonochrome"]) .image-container {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+:global([data-theme="retroMonochrome"]) .name {
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+}
+
+:global([data-theme="retroMonochrome"]) .metadata-group-item {
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-size: 11px;
+    color: #707070;
+}
+
+:global([data-theme="retroMonochrome"]) .controls {
+    background: rgba(10, 10, 10, 0.96);
+}
+
+:global([data-theme="retroMonochrome"]) .row-dragged-over {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.65);
+}

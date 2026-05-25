@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import isElectron from 'is-electron';
-import { useEffect, useState } from 'react';
+import { KeyboardEvent, MouseEvent, useEffect, useState } from 'react';
 
 import styles from './youtube-music-account-button.module.css';
 
@@ -14,6 +14,7 @@ import { toast } from '/@/shared/components/toast/toast';
 
 interface YoutubeMusicAccountButtonProps {
     compact?: boolean;
+    labelMode?: 'auth-only' | 'default';
 }
 
 export const youtubeMusicAuthStatusQueryKey = ['youtube-music', 'auth-status'];
@@ -28,7 +29,10 @@ const initials = (name: null | string | undefined) => {
         .join('');
 };
 
-export const YoutubeMusicAccountButton = ({ compact }: YoutubeMusicAccountButtonProps) => {
+export const YoutubeMusicAccountButton = ({
+    compact,
+    labelMode = 'default',
+}: YoutubeMusicAccountButtonProps) => {
     const [avatarFailed, setAvatarFailed] = useState(false);
     const enabled = isElectron() && Boolean(window.api?.youtubeMusic?.status);
     const statusQuery = useQuery({
@@ -48,7 +52,9 @@ export const YoutubeMusicAccountButton = ({ compact }: YoutubeMusicAccountButton
 
     if (!enabled) return null;
 
-    const handleConnect = async () => {
+    const handleConnect = async (event?: MouseEvent<HTMLElement>) => {
+        event?.preventDefault();
+        event?.stopPropagation();
         try {
             const nextStatus = await window.api.youtubeMusic.connect();
             queryClient.setQueryData(youtubeMusicAuthStatusQueryKey, nextStatus);
@@ -58,7 +64,9 @@ export const YoutubeMusicAccountButton = ({ compact }: YoutubeMusicAccountButton
         }
     };
 
-    const handleDisconnect = async () => {
+    const handleDisconnect = async (event?: MouseEvent<HTMLElement>) => {
+        event?.preventDefault();
+        event?.stopPropagation();
         try {
             const nextStatus = await window.api.youtubeMusic.disconnect();
             queryClient.setQueryData(youtubeMusicAuthStatusQueryKey, nextStatus);
@@ -68,7 +76,36 @@ export const YoutubeMusicAccountButton = ({ compact }: YoutubeMusicAccountButton
         }
     };
 
+    const handleAuthKeyDown = (
+        event: KeyboardEvent<HTMLSpanElement>,
+        action: (event?: MouseEvent<HTMLElement>) => Promise<void>,
+    ) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        event.stopPropagation();
+        action();
+    };
+
     if (!isConnected) {
+        if (labelMode === 'auth-only') {
+            return (
+                <span
+                    aria-disabled={status?.dependencyAvailable === false}
+                    className={clsx(styles.authButton, styles.loginButton)}
+                    onClick={status?.dependencyAvailable === false ? undefined : handleConnect}
+                    onKeyDown={(event) => {
+                        if (status?.dependencyAvailable === false) return;
+                        handleAuthKeyDown(event, handleConnect);
+                    }}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    role="button"
+                    tabIndex={status?.dependencyAvailable === false ? -1 : 0}
+                >
+                    Login
+                </span>
+            );
+        }
+
         return (
             <Button
                 className={styles.loginButton}
@@ -103,14 +140,27 @@ export const YoutubeMusicAccountButton = ({ compact }: YoutubeMusicAccountButton
                     initials(displayName)
                 )}
             </div>
-            {!compact && (
+            {!compact && labelMode !== 'auth-only' && (
                 <Text className={styles.name} overflow="hidden" size="xs">
                     {displayName}
                 </Text>
             )}
-            <Button onClick={handleDisconnect} size="compact-sm" variant="subtle">
-                Logout
-            </Button>
+            {labelMode === 'auth-only' ? (
+                <span
+                    className={styles.authButton}
+                    onClick={handleDisconnect}
+                    onKeyDown={(event) => handleAuthKeyDown(event, handleDisconnect)}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    role="button"
+                    tabIndex={0}
+                >
+                    Logout
+                </span>
+            ) : (
+                <Button onClick={handleDisconnect} size="compact-sm" variant="subtle">
+                    Logout
+                </Button>
+            )}
         </Group>
     );
 };

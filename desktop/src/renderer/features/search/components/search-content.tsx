@@ -199,10 +199,10 @@ const YoutubeMusicSearchSection = ({
     return (
         <section
             style={{
-                background: 'color-mix(in srgb, #2f7d8c 6%, var(--theme-colors-background))',
-                border: '1px solid color-mix(in srgb, #2f7d8c 28%, var(--theme-colors-border))',
-                borderLeft: '3px solid #2f7d8c',
-                borderRadius: 8,
+                background: 'color-mix(in srgb, #707070 6%, var(--theme-colors-background))',
+                border: '1px solid rgba(255, 255, 255, 0.28)',
+                borderLeft: '3px solid rgba(255, 255, 255, 0.55)',
+                borderRadius: 0,
                 padding: 'var(--theme-spacing-md)',
             }}
         >

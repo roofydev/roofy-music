@@ -1,0 +1,59 @@
+.media {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #050505;
+    border: 0;
+}
+
+.interaction-shield {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    cursor: default;
+}
+
+.youtube-chrome-mask {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background:
+        linear-gradient(to bottom, #050505 0, rgb(5 5 5 / 86%) 3.5rem, transparent 6rem),
+        linear-gradient(to top, #050505 0, rgb(5 5 5 / 76%) 2.5rem, transparent 5rem);
+}
+
+.status-bar {
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    z-index: 4;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    pointer-events: none;
+}
+
+.status-text {
+    max-width: 100%;
+    padding: 0.35rem 0.55rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: rgb(0 0 0 / 70%);
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 5px;
+    backdrop-filter: blur(8px);
+}
+
+:global([data-theme="retroMonochrome"]) .status-text {
+    background: var(--retro-panel, #0b0b0b);
+    border-color: var(--retro-border-muted, #3f3f3f);
+    border-radius: 0;
+    backdrop-filter: none;
+}

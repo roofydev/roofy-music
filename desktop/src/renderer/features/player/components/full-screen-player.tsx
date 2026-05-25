@@ -125,7 +125,9 @@ const BackgroundImage = memo(({ dynamicBackground, dynamicIsImage }: BackgroundI
         }
 
         setImageState((state) =>
-            isTop ? { ...state, topImage: currentImageUrl } : { ...state, bottomImage: currentImageUrl },
+            isTop
+                ? { ...state, topImage: currentImageUrl }
+                : { ...state, bottomImage: currentImageUrl },
         );
     }, [currentImageUrl]);
 

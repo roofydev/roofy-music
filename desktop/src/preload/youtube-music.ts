@@ -43,6 +43,7 @@ const downloadTrack = (args: {
     album?: string;
     artist: string;
     imageUrl?: string;
+    saveVideo?: boolean;
     sourceTrackId: string;
     title: string;
     videoId: string;
@@ -55,6 +56,7 @@ const importTrack = (args: {
     album?: string;
     artist: string;
     imageUrl?: string;
+    saveVideo?: boolean;
     sourceTrackId: string;
     targetPlaylistIds?: string[];
     targetPlaylistNames?: string[];
@@ -66,6 +68,7 @@ const importPlaylist = (args: {
     createPlaylist?: boolean;
     playlistId: string;
     playlistName?: string;
+    saveVideo?: boolean;
     targetPlaylistIds?: string[];
     targetPlaylistNames?: string[];
 }) => ipcRenderer.invoke('youtube-music:import-playlist', args);

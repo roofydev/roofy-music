@@ -2945,6 +2945,7 @@ ipcMain.handle(
             album?: string;
             artist: string;
             imageUrl?: string;
+            saveVideo?: boolean;
             sourceTrackId: string;
             title: string;
             videoId: string;
@@ -2967,6 +2968,9 @@ ipcMain.handle(
                 title: args.title,
                 videoId: args.videoId,
             },
+            undefined,
+            undefined,
+            args.saveVideo,
         );
     },
 );
@@ -3002,6 +3006,7 @@ ipcMain.handle(
             album?: string;
             artist: string;
             imageUrl?: string;
+            saveVideo?: boolean;
             sourceTrackId: string;
             targetPlaylistIds?: string[];
             targetPlaylistNames?: string[];
@@ -3028,6 +3033,7 @@ ipcMain.handle(
             },
             args.targetPlaylistIds,
             args.targetPlaylistNames,
+            args.saveVideo,
         );
     },
 );
@@ -3040,6 +3046,7 @@ ipcMain.handle(
             createPlaylist?: boolean;
             playlistId: string;
             playlistName?: string;
+            saveVideo?: boolean;
             targetPlaylistIds?: string[];
             targetPlaylistNames?: string[];
         },
@@ -3057,6 +3064,7 @@ ipcMain.handle(
             },
             args.targetPlaylistIds,
             args.targetPlaylistNames,
+            args.saveVideo,
         );
     },
 );

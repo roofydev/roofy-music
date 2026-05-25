@@ -296,22 +296,6 @@ export const useDiscordRpc = () => {
                 !hasTrackOrRadio || // No track and not playing radio
                 (current[2] === 'paused' && !discordSettings.showPaused) // Paused with show paused setting disabled
             ) {
-                let reason: string;
-                if (!hasTrackOrRadio) {
-                    reason = current[0] ? 'no_track' : 'no_track_or_radio';
-                } else if (current[1] === 0 && !isPlayingRadio) {
-                    reason = 'start_of_track';
-                } else {
-                    reason = 'paused_with_show_paused_disabled';
-                }
-
-                logFn.debug(logMsg[LogCategory.EXTERNAL].discordRpcActivityCleared, {
-                    category: LogCategory.EXTERNAL,
-                    meta: {
-                        reason,
-                        status: current[2],
-                    },
-                });
                 return discordRpc?.clearActivity();
             }
 
@@ -344,24 +328,10 @@ export const useDiscordRpc = () => {
 
                 const isConnected = await discordRpc?.isConnected();
                 if (!isConnected) {
-                    logFn.debug(logMsg[LogCategory.EXTERNAL].discordRpcInitialized, {
-                        category: LogCategory.EXTERNAL,
-                        meta: { clientId: discordSettings.clientId },
-                    });
                     previousEnabledRef.current = true;
                     await discordRpc?.initialize(discordSettings.clientId);
                 }
 
-                logFn.debug(logMsg[LogCategory.EXTERNAL].discordRpcSetActivity, {
-                    category: LogCategory.EXTERNAL,
-                    meta: {
-                        currentStatus: current[2],
-                        reason: 'radio',
-                        showAsListening: discordSettings.showAsListening,
-                        stationName: stationName || 'Radio',
-                        title,
-                    },
-                });
                 discordRpc?.setActivity(activity);
                 return;
             }
@@ -394,28 +364,7 @@ export const useDiscordRpc = () => {
                 largeImageChanged
             ) {
                 if (trackChangedByState || trackChanged) {
-                    logFn.debug(logMsg[LogCategory.EXTERNAL].discordRpcTrackChanged, {
-                        category: LogCategory.EXTERNAL,
-                        meta: {
-                            artistName: song.artists?.[0]?.name,
-                            songId: song._uniqueId,
-                            songName: song.name,
-                        },
-                    });
                     setlastUniqueId(song._uniqueId);
-                }
-
-                let reason: string;
-                if (trackChangedByState || trackChanged) {
-                    reason = 'track_changed';
-                } else if (previous[1] === 0) {
-                    reason = 'song_started';
-                } else if (Math.abs(current[1] - previous[1]) > 1.2) {
-                    reason = 'time_jump';
-                } else if (largeImageChanged) {
-                    reason = 'image_changed';
-                } else {
-                    reason = 'player_state_changed';
                 }
 
                 const start = Math.round(Date.now() - current[1] * 1000);
@@ -584,23 +533,6 @@ export const useDiscordRpc = () => {
                     if (!activity.largeImageKey) {
                         activity.largeImageKey = await resolvePublicArtworkUrl(song);
                     }
-
-                    logFn.debug('Discord RPC image resolution', {
-                        category: LogCategory.EXTERNAL,
-                        meta: {
-                            imageId: song.imageId,
-                            imageUrl: song.imageUrl,
-                            imageUrlFetchable: isDiscordFetchableImageUrl(song.imageUrl),
-                            imageUrlRef: imageUrlRef.current,
-                            imageUrlRefFetchable: isDiscordFetchableImageUrl(imageUrlRef.current),
-                            largeImageKey: activity.largeImageKey,
-                            localArtworkUploadProvider: discordSettings.artworkWebhookUrl
-                                ? 'discord-webhook'
-                                : 'uguu',
-                            serverType: song._serverType,
-                            songId: song._uniqueId,
-                        },
-                    });
                 }
 
                 if (
@@ -628,50 +560,12 @@ export const useDiscordRpc = () => {
                 // Initialize if needed
                 const isConnected = await discordRpc?.isConnected();
                 if (!isConnected) {
-                    logFn.debug(logMsg[LogCategory.EXTERNAL].discordRpcInitialized, {
-                        category: LogCategory.EXTERNAL,
-                        meta: {
-                            clientId: discordSettings.clientId,
-                        },
-                    });
-
                     previousEnabledRef.current = true;
 
                     await discordRpc?.initialize(discordSettings.clientId);
                 }
-
-                logFn.debug(logMsg[LogCategory.EXTERNAL].discordRpcSetActivity, {
-                    category: LogCategory.EXTERNAL,
-                    meta: {
-                        albumName: song.album,
-                        artistName: song.artists?.[0]?.name,
-                        currentStatus: current[2],
-                        currentTime: current[1],
-                        displayType: discordSettings.displayType,
-                        hasLargeImage: !!activity.largeImageKey,
-                        hasTimestamps: !!(activity.startTimestamp && activity.endTimestamp),
-                        previousStatus: previous[2],
-                        previousTime: previous[1],
-                        reason,
-                        showAsListening: discordSettings.showAsListening,
-                        songName: song.name,
-                        trackChanged: trackChangedByState || trackChanged,
-                    },
-                });
                 discordRpc?.setActivity(activity);
                 previousLargeImageKeyRef.current = currentLargeImageKey || null;
-            } else {
-                logFn.debug(logMsg[LogCategory.EXTERNAL].discordRpcUpdateSkipped, {
-                    category: LogCategory.EXTERNAL,
-                    meta: {
-                        currentStatus: current[2],
-                        currentTime: current[1],
-                        previousStatus: previous[2],
-                        previousTime: previous[1],
-                        timeDiff: Math.abs(current[1] - previous[1]),
-                        trackChanged: trackChangedByState || trackChanged,
-                    },
-                });
             }
         },
         [

@@ -15,10 +15,57 @@
     display: flex;
     align-items: flex-end;
     justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    aspect-ratio: 1/1;
+    overflow: hidden;
+    background: rgb(0 0 0 / 12%);
+    border-radius: 5px;
+}
+
+.visual-surface {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: min(100%, 58vh);
     max-width: 100%;
     height: 65%;
-    aspect-ratio: 1/1;
     margin-bottom: 1rem;
+}
+
+.visual-surface.video-surface {
+    width: min(100%, 72vw);
+    aspect-ratio: 16 / 9;
+}
+
+.visual-mode-toggle {
+    position: absolute;
+    top: -2.65rem;
+    right: 50%;
+    z-index: 4;
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+    padding: 0.25rem;
+    background: rgb(var(--theme-colors-background-transparent), 86%);
+    border: 1px solid var(--theme-colors-border);
+    border-radius: 5px;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 28%);
+    backdrop-filter: blur(8px);
+    transform: translateX(50%);
+}
+
+.video-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    width: 100%;
+    max-width: 100%;
+    min-height: 1.9rem;
+    margin-top: 0.5rem;
 }
 
 .metadata-container {
@@ -50,19 +97,29 @@
             height: 100%;
             margin-bottom: 0;
         }
+
+        .visual-surface {
+            height: 100%;
+            margin-bottom: 0;
+        }
     }
 }
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .image {
-    border-radius: 0 !important;
     border: 1px solid var(--retro-border-muted, #3f3f3f);
+    border-radius: 0 !important;
     filter: none;
 }
 
 :global([data-theme="retroMonochrome"]) .metadata-container {
     background: var(--retro-panel, #0b0b0b);
     border: 1px solid var(--retro-border-muted, #3f3f3f);
+    border-radius: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .image-container,
+:global([data-theme="retroMonochrome"]) .visual-mode-toggle {
     border-radius: 0;
 }
 

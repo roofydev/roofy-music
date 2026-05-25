@@ -422,6 +422,7 @@ export type Song = {
         albumBrowseId?: string;
         mediaType?: 'song' | 'unknown' | 'video';
         playlistId?: string;
+        videoFilePath?: string;
         videoId: string;
         watchUrl: string;
     };

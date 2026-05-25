@@ -54,30 +54,37 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .root {
-    padding-right: 14px;
-    padding-left: 14px;
-    border-bottom: 1px solid var(--retro-border-dark, #222222);
+    min-height: var(--retro-sidebar-row-height, 38px);
+    padding-right: 12px;
+    padding-left: 12px;
     text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid rgb(255 255 255 / 14%);
 }
 
 :global([data-theme="retroMonochrome"]) .link {
-    color: var(--retro-text-soft, #a0a0a0);
+    min-height: var(--retro-sidebar-row-height, 38px);
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-weight: 600;
+    color: #a6a6a6;
     border: 0;
     border-radius: 0;
     transition: none;
 }
 
 :global([data-theme="retroMonochrome"]) .link.active {
-    color: var(--retro-active, #d8d8a0);
-    background: rgba(216, 216, 160, 0.08);
+    color: #fff !important;
+    background: rgb(255 255 255 / 12%);
+    border-left: 3px solid #fff;
 }
 
 :global([data-theme="retroMonochrome"]) .link:hover {
-    color: var(--retro-text, #d0d0d0);
-    background: var(--retro-panel-2, #101010);
+    color: #f2f2f2;
+    background: rgb(255 255 255 / 8%);
 }
 
 :global([data-theme="retroMonochrome"]) .label {
     font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 600;
 }

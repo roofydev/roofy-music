@@ -7,7 +7,7 @@ import { queryKeys } from '/@/renderer/api/query-keys';
 import { usePlayerEvents } from '/@/renderer/features/player/audio-player/hooks/use-player-events';
 import { updateQueueSong } from '/@/renderer/store/player.store';
 import { LogCategory, logFn } from '/@/renderer/utils/logger';
-import { QueueSong, SongDetailQuery } from '/@/shared/types/domain-types';
+import { QueueSong, ServerType, SongDetailQuery } from '/@/shared/types/domain-types';
 
 export const useUpdateCurrentSong = () => {
     const queryClient = useQueryClient();
@@ -37,17 +37,30 @@ export const useUpdateCurrentSong = () => {
                 });
 
                 if (updatedSong) {
+                    const nextSong =
+                        currentSong._serverType === ServerType.YOUTUBE_MUSIC &&
+                        updatedSong.artistName === 'Unknown Artist' &&
+                        currentSong.artistName &&
+                        currentSong.artistName !== 'Unknown Artist'
+                            ? {
+                                  ...updatedSong,
+                                  albumArtistName: currentSong.albumArtistName,
+                                  albumArtists: currentSong.albumArtists,
+                                  artistName: currentSong.artistName,
+                                  artists: currentSong.artists,
+                              }
+                            : updatedSong;
                     // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     const { _uniqueId, ...currentSongData } = currentSong;
 
-                    if (!isEqual(currentSongData, updatedSong)) {
-                        updateQueueSong(currentSong.id, updatedSong);
+                    if (!isEqual(currentSongData, nextSong)) {
+                        updateQueueSong(currentSong.id, nextSong);
 
                         logFn.debug('Song updated in queue', {
                             category: LogCategory.PLAYER,
                             meta: {
                                 id: currentSong.id,
-                                name: updatedSong.name,
+                                name: nextSong.name,
                             },
                         });
                     }

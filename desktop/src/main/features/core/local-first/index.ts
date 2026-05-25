@@ -1,8 +1,9 @@
 import { ChildProcessWithoutNullStreams, spawn, spawnSync } from 'child_process';
 import { randomBytes, randomUUID } from 'crypto';
 import { app, dialog, ipcMain, shell } from 'electron';
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'fs';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 import { store } from '../settings';
 
@@ -34,6 +35,7 @@ type ImportJob = {
     playlist: boolean;
     playlistName?: string;
     progress: number;
+    saveVideo?: boolean;
     skippedCount?: number;
     source?: 'youtube_music';
     sourceTrackId?: string;
@@ -42,6 +44,7 @@ type ImportJob = {
     targetPlaylistNames?: string[];
     title?: string;
     updatedAt: string;
+    videoDownloadedCount?: number;
     videoId?: string;
     warning?: string;
 };
@@ -69,6 +72,16 @@ type LocalFirstStatus = {
     };
 };
 
+type LocalVideoMetadata = {
+    audioPath: string;
+    songId?: string;
+    sourceUrl?: string;
+    title?: string;
+    updatedAt: string;
+    videoId?: string;
+    videoPath?: string;
+};
+
 type SourceImportMetadata = {
     album?: string;
     artist?: string;
@@ -82,6 +95,7 @@ type SourceImportMetadata = {
 const LOCAL_SERVER_ID = 'roofy-local-navidrome';
 const LOCAL_SERVER_USERNAME = 'admin';
 const IMPORT_JOBS_KEY = 'roofy.importJobs';
+const LOCAL_VIDEO_METADATA_KEY = 'roofy.localVideoMetadata';
 const DEFAULT_PORT = 4533;
 const DEFAULT_IMPORT_FORMAT = 'best';
 const COOKIE_BROWSER_ALLOWLIST = new Set([
@@ -129,6 +143,19 @@ const loadImportJobs = (): ImportJob[] => {
 
 const importJobs: ImportJob[] = loadImportJobs();
 
+const loadLocalVideoMetadata = (): LocalVideoMetadata[] => {
+    const saved = store.get(LOCAL_VIDEO_METADATA_KEY) as LocalVideoMetadata[] | undefined;
+    if (!Array.isArray(saved)) return [];
+
+    return saved.filter((item) => item?.audioPath);
+};
+
+const localVideoMetadata = loadLocalVideoMetadata();
+
+const persistLocalVideoMetadata = () => {
+    store.set(LOCAL_VIDEO_METADATA_KEY, localVideoMetadata.slice(0, 10000));
+};
+
 const persistImportJobs = () => {
     store.set(IMPORT_JOBS_KEY, importJobs.slice(0, 500));
 };
@@ -141,6 +168,106 @@ const getConfigPath = () => path.join(app.getPath('userData'), 'config.json');
 const getLibraryPath = () => {
     const configured = store.get('roofy.libraryPath') as string | undefined;
     return configured || getDefaultLibraryPath();
+};
+
+const toLibraryRelativePath = (filePath: string) => {
+    const relative = path.relative(getLibraryPath(), filePath);
+    return relative.split(path.sep).join('/');
+};
+
+const toLibraryAbsolutePath = (filePath: string) => {
+    if (!filePath) return '';
+    return path.isAbsolute(filePath) ? filePath : path.join(getLibraryPath(), filePath);
+};
+
+const normalizeMetadataPath = (filePath: string) =>
+    toLibraryRelativePath(toLibraryAbsolutePath(filePath));
+
+const extractYoutubeVideoId = (input?: null | string) => {
+    if (!input) return '';
+
+    const trimmed = input.trim();
+    const bracketMatch = /\[([a-zA-Z0-9_-]{11})\](?:\.[^.]+)?$/.exec(trimmed);
+    if (bracketMatch) return bracketMatch[1];
+
+    if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+
+    try {
+        const url = new URL(trimmed);
+        if (url.searchParams.get('v')) return url.searchParams.get('v') || '';
+        if (url.hostname === 'youtu.be') return url.pathname.replace(/^\//, '').slice(0, 11);
+        const embedMatch = /\/embed\/([a-zA-Z0-9_-]{11})/.exec(url.pathname);
+        if (embedMatch) return embedMatch[1];
+    } catch {
+        // Not a URL.
+    }
+
+    return '';
+};
+
+const getYoutubeWatchUrl = (videoId: string) => `https://www.youtube.com/watch?v=${videoId}`;
+
+const upsertLocalVideoMetadata = (metadata: LocalVideoMetadata) => {
+    const audioPath = normalizeMetadataPath(metadata.audioPath);
+    const existingIndex = localVideoMetadata.findIndex(
+        (item) =>
+            normalizeMetadataPath(item.audioPath) === audioPath ||
+            Boolean(metadata.songId && item.songId === metadata.songId),
+    );
+    const nextMetadata = {
+        ...(existingIndex >= 0 ? localVideoMetadata[existingIndex] : {}),
+        ...metadata,
+        audioPath,
+        updatedAt: now(),
+    };
+
+    if (existingIndex >= 0) {
+        localVideoMetadata[existingIndex] = nextMetadata;
+    } else {
+        localVideoMetadata.unshift(nextMetadata);
+    }
+
+    persistLocalVideoMetadata();
+    return nextMetadata;
+};
+
+const findLocalVideoMetadata = (args: {
+    path?: null | string;
+    songId?: string;
+    youtubeMusic?: { videoId?: string; watchUrl?: string };
+}) => {
+    const audioPath = args.path ? normalizeMetadataPath(args.path) : '';
+    const byStoredMetadata =
+        localVideoMetadata.find(
+            (item) =>
+                (args.songId && item.songId === args.songId) ||
+                (audioPath && normalizeMetadataPath(item.audioPath) === audioPath),
+        ) || null;
+
+    const videoId =
+        byStoredMetadata?.videoId ||
+        args.youtubeMusic?.videoId ||
+        extractYoutubeVideoId(args.youtubeMusic?.watchUrl) ||
+        extractYoutubeVideoId(args.path);
+    const sourceUrl = byStoredMetadata?.sourceUrl || args.youtubeMusic?.watchUrl || '';
+    const videoPath = byStoredMetadata?.videoPath
+        ? toLibraryAbsolutePath(byStoredMetadata.videoPath)
+        : '';
+    const hasVideoFile = Boolean(videoPath && existsSync(videoPath));
+
+    if (!videoId && !hasVideoFile) return null;
+
+    return {
+        audioPath: audioPath || byStoredMetadata?.audioPath || '',
+        canDownloadVideo: Boolean(videoId && audioPath && !hasVideoFile),
+        embedUrl: videoId
+            ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0`
+            : '',
+        sourceUrl: sourceUrl || (videoId ? getYoutubeWatchUrl(videoId) : ''),
+        videoFilePath: hasVideoFile ? videoPath : '',
+        videoFileUrl: hasVideoFile ? pathToFileURL(videoPath).toString() : '',
+        videoId,
+    };
 };
 
 const ensureLocalFolders = () => {
@@ -657,6 +784,145 @@ const formatPartialImportWarning = (skippedCount: number, playlist: boolean) => 
     return `${skippedCopy} could not be downloaded. Available tracks were imported.`;
 };
 
+const runYtDlpVideoDownload = (
+    input: string,
+    outputTemplate: string,
+    cookieBrowser?: string,
+): Promise<string[]> => {
+    const ytDlp = getToolCommand('yt-dlp', 'ROOFY_YT_DLP_PATH');
+    const ffmpegPath = ffmpegBinaryPath();
+    const cookiesFilePath = store.get('roofy.cookiesFilePath') as string | undefined;
+    const effectiveBrowser = normalizeCookieBrowser(
+        cookieBrowser ?? (store.get('roofy.cookieBrowser') as string | undefined),
+    );
+    const cookieArgs = cookiesFilePath
+        ? getCookieArgs('', cookiesFilePath)
+        : getCookieArgs(effectiveBrowser === 'auto' ? '' : effectiveBrowser, cookiesFilePath);
+    const destinationPaths: string[] = [];
+    const finalPaths: string[] = [];
+
+    const resolveCandidatePath = (filePath: string) =>
+        path.isAbsolute(filePath) ? filePath : path.resolve(getLibraryPath(), filePath);
+
+    const isUsableMp4 = (filePath: string) => {
+        try {
+            return (
+                path.extname(filePath).toLowerCase() === '.mp4' &&
+                existsSync(filePath) &&
+                statSync(filePath).size > 0
+            );
+        } catch {
+            return false;
+        }
+    };
+
+    return new Promise((resolve, reject) => {
+        const child = spawn(
+            ytDlp,
+            [
+                '--newline',
+                '--progress',
+                '--format',
+                'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                '--merge-output-format',
+                'mp4',
+                '--no-playlist',
+                '--no-mtime',
+                ...cookieArgs,
+                ...getJsRuntimeArgs(),
+                ...(ffmpegPath ? ['--ffmpeg-location', path.dirname(ffmpegPath)] : []),
+                '-o',
+                outputTemplate,
+                input,
+            ],
+            {
+                cwd: getLibraryPath(),
+                windowsHide: true,
+            },
+        );
+
+        const output: string[] = [];
+        const handleLine = (line: string) => {
+            const clean = line.trim();
+            if (!clean) return;
+            output.push(clean);
+            if (output.length > 48) output.shift();
+
+            const destination = /\[download\] Destination:\s*(.+)/.exec(clean);
+            if (destination) destinationPaths.push(destination[1]);
+
+            const merge = /\[Merger\] Merging formats into "([^"]+)"/.exec(clean);
+            if (merge) finalPaths.push(merge[1]);
+
+            const alreadyDownloaded = /\[download\]\s*(.+?)\s+has already been downloaded/.exec(
+                clean,
+            );
+            if (alreadyDownloaded) finalPaths.push(alreadyDownloaded[1]);
+        };
+
+        child.stdout.on('data', (chunk) => chunk.toString().split(/\r?\n/).forEach(handleLine));
+        child.stderr.on('data', (chunk) => chunk.toString().split(/\r?\n/).forEach(handleLine));
+        child.on('error', reject);
+        child.on('close', (code) => {
+            const preferredPaths = finalPaths.concat(destinationPaths);
+            const videoFiles = [...new Set(preferredPaths)]
+                .map(resolveCandidatePath)
+                .filter(isUsableMp4);
+
+            if (code === 0 && videoFiles.length > 0) {
+                resolve(videoFiles);
+                return;
+            }
+
+            reject(new Error(output.join('\n') || `yt-dlp exited with code ${code}`));
+        });
+    });
+};
+
+const downloadVideoForAudioFile = async (
+    audioFilePath: string,
+    args: {
+        cookieBrowser?: string;
+        songId?: string;
+        sourceUrl?: string;
+        title?: string;
+        videoId?: string;
+    },
+) => {
+    const inferredVideoId =
+        args.videoId ||
+        extractYoutubeVideoId(args.sourceUrl) ||
+        extractYoutubeVideoId(audioFilePath);
+
+    if (!inferredVideoId) {
+        throw new Error('No original video link is available for this local track.');
+    }
+
+    const audioAbsolutePath = toLibraryAbsolutePath(audioFilePath);
+    const sourceUrl = extractYoutubeVideoId(args.sourceUrl)
+        ? args.sourceUrl || getYoutubeWatchUrl(inferredVideoId)
+        : getYoutubeWatchUrl(inferredVideoId);
+    const dir = path.dirname(audioAbsolutePath);
+    const baseName = path.basename(audioAbsolutePath, path.extname(audioAbsolutePath));
+    const outputTemplate = path.join(dir, `${baseName}.video.%(ext)s`);
+    const existingPath = path.join(dir, `${baseName}.video.mp4`);
+    const videoFiles =
+        existsSync(existingPath) && statSync(existingPath).size > 0
+            ? [existingPath]
+            : await runYtDlpVideoDownload(sourceUrl, outputTemplate, args.cookieBrowser);
+    const videoPath = videoFiles[0];
+
+    return upsertLocalVideoMetadata({
+        audioPath: audioAbsolutePath,
+        songId: args.songId,
+        sourceUrl,
+        title: args.title,
+        updatedAt: now(),
+        videoId: inferredVideoId,
+        videoPath: toLibraryRelativePath(videoPath),
+    });
+};
+
 const processImportQueue = () => {
     if (activeImport) return;
     const nextJob = importJobs
@@ -823,10 +1089,54 @@ const runImport = (
             let message = completedWithSkippedItems
                 ? 'Import complete - skipped unavailable items'
                 : 'Import complete';
+            let videoDownloadedCount = 0;
 
             if (audioFiles.length > 0) {
                 const needsScan = job.createPlaylist || Boolean(job.targetPlaylistIds?.length);
                 try {
+                    for (const filePath of audioFiles) {
+                        const videoId =
+                            job.videoId ||
+                            extractYoutubeVideoId(job.input) ||
+                            extractYoutubeVideoId(filePath);
+                        upsertLocalVideoMetadata({
+                            audioPath: filePath,
+                            sourceUrl: videoId ? getYoutubeWatchUrl(videoId) : job.input,
+                            title: job.title || job.name,
+                            updatedAt: now(),
+                            videoId,
+                        });
+                    }
+
+                    if (job.saveVideo) {
+                        updateJob(job.id, {
+                            error: '',
+                            message: 'Import complete - saving video',
+                            warning: partialWarning,
+                        });
+
+                        for (const filePath of audioFiles) {
+                            try {
+                                const videoId =
+                                    job.videoId ||
+                                    extractYoutubeVideoId(job.input) ||
+                                    extractYoutubeVideoId(filePath);
+                                await downloadVideoForAudioFile(filePath, {
+                                    cookieBrowser: job.cookieBrowser,
+                                    sourceUrl: videoId ? getYoutubeWatchUrl(videoId) : job.input,
+                                    title: job.title || job.name,
+                                    videoId,
+                                });
+                                videoDownloadedCount += 1;
+                            } catch (error) {
+                                console.error(
+                                    '[local-first] Failed to save imported video:',
+                                    error,
+                                );
+                            }
+                        }
+                    }
+
                     if (job.createPlaylist) {
                         writePlaylistM3U(job, audioFiles);
                         updateJob(job.id, {
@@ -918,6 +1228,7 @@ const runImport = (
                 progress: 100,
                 skippedCount: completedWithSkippedItems ? failedItemCount : 0,
                 status: 'completed',
+                videoDownloadedCount,
                 warning: partialWarning,
             });
         } else {
@@ -1128,6 +1439,7 @@ export const createImportJob = async (
     sourceMetadata?: SourceImportMetadata,
     targetPlaylistIds?: string[],
     targetPlaylistNames?: string[],
+    saveVideo?: boolean,
 ) => {
     if (!input.trim()) {
         throw new Error('Enter a URL or search query.');
@@ -1176,6 +1488,7 @@ export const createImportJob = async (
         playlist: isPlaylist,
         playlistName: jobPlaylistName,
         progress: 0,
+        saveVideo,
         source: sourceMetadata?.source,
         sourceTrackId: sourceMetadata?.sourceTrackId,
         status: 'queued',
@@ -1630,6 +1943,7 @@ ipcMain.handle(
             input: string;
             playlist?: boolean;
             playlistName?: string;
+            saveVideo?: boolean;
             source?: 'youtube_music';
             sourceTrackId?: string;
             title?: string;
@@ -1652,6 +1966,9 @@ ipcMain.handle(
                 title: args.title,
                 videoId: args.videoId,
             },
+            undefined,
+            undefined,
+            args.saveVideo,
         );
     },
 );
@@ -1676,6 +1993,49 @@ ipcMain.handle('roofy-local-create-user', (_event, args: CreateLocalUserArgs) =>
 
 ipcMain.handle('roofy-local-delete-tracks', async (_event, songIds: string[]) =>
     deleteLocalTracks(songIds),
+);
+
+ipcMain.handle(
+    'roofy-local-get-video-metadata',
+    (
+        _event,
+        args: {
+            path?: null | string;
+            songId?: string;
+            youtubeMusic?: { videoId?: string; watchUrl?: string };
+        },
+    ) => findLocalVideoMetadata(args),
+);
+
+ipcMain.handle(
+    'roofy-local-download-video-for-song',
+    async (
+        _event,
+        args: {
+            path?: null | string;
+            songId: string;
+            title?: string;
+            youtubeMusic?: { videoId?: string; watchUrl?: string };
+        },
+    ) => {
+        if (!args.path) {
+            throw new Error('This local track does not expose a file path.');
+        }
+
+        const videoId =
+            args.youtubeMusic?.videoId ||
+            extractYoutubeVideoId(args.youtubeMusic?.watchUrl) ||
+            extractYoutubeVideoId(args.path);
+
+        await downloadVideoForAudioFile(args.path, {
+            songId: args.songId,
+            sourceUrl: args.youtubeMusic?.watchUrl || (videoId ? getYoutubeWatchUrl(videoId) : ''),
+            title: args.title,
+            videoId,
+        });
+
+        return findLocalVideoMetadata(args);
+    },
 );
 
 ipcMain.handle('roofy-local-credentials', () => ({

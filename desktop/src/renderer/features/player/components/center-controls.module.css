@@ -20,3 +20,12 @@
         }
     }
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .buttons-container {
+    gap: 0.5rem;
+}
+
+:global([data-theme="retroMonochrome"]) .controls-container {
+    height: auto;
+}

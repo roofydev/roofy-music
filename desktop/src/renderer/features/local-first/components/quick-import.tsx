@@ -14,6 +14,7 @@ import { AppRoute } from '/@/renderer/router/routes';
 import { addToQueueByData, useCurrentServer, useImportJobActions } from '/@/renderer/store';
 import { Badge } from '/@/shared/components/badge/badge';
 import { Button } from '/@/shared/components/button/button';
+import { Checkbox } from '/@/shared/components/checkbox/checkbox';
 import { Group } from '/@/shared/components/group/group';
 import { Icon } from '/@/shared/components/icon/icon';
 import { Image } from '/@/shared/components/image/image';
@@ -88,6 +89,7 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
     const [submittedInput, setSubmittedInput] = useState('');
     const [preview, setPreview] = useState<ImportPreview | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
+    const [saveVideo, setSaveVideo] = useState(false);
     const [error, setError] = useState('');
     const [debouncedInput] = useDebouncedValue(input.trim(), 300);
     const navigate = useNavigate();
@@ -226,6 +228,7 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                 input: submittedInput,
                 playlist: preview.isPlaylist,
                 playlistName: preview.isPlaylist ? preview.title : undefined,
+                saveVideo,
                 source: 'youtube_music',
                 sourceTrackId: preview.webpageUrl || submittedInput,
                 title: preview.title,
@@ -235,7 +238,7 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
         } catch (err: any) {
             toast.error({ message: err?.message || 'Import failed' });
         }
-    }, [preview, setJob, submittedInput]);
+    }, [preview, saveVideo, setJob, submittedInput]);
 
     return (
         <section className={clsx(styles.container, isInline && styles.inline, className)}>
@@ -340,7 +343,16 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                                             {preview.uploader}
                                         </Text>
                                     </Stack>
-                                    <Button onClick={handleImportPreview}>Import</Button>
+                                    <Stack align="flex-end" gap="xs">
+                                        <Checkbox
+                                            checked={saveVideo}
+                                            label="Save MP4 video"
+                                            onChange={(event) =>
+                                                setSaveVideo(event.currentTarget.checked)
+                                            }
+                                        />
+                                        <Button onClick={handleImportPreview}>Import</Button>
+                                    </Stack>
                                 </div>
                             )}
 

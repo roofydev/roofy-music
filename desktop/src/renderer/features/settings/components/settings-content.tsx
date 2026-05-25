@@ -54,66 +54,68 @@ export const SettingsContent = () => {
     const { setSettings } = useSettingsStoreActions();
 
     return (
-        <div style={{ padding: '1rem', width: '100%' }}>
+        <div
+            style={{ height: 'min(76vh, 54rem)', overflow: 'auto', padding: '1rem', width: '100%' }}
+        >
             <Tabs
-                    keepMounted={false}
-                    onChange={(e) => e && setSettings({ tab: e })}
-                    orientation="horizontal"
-                    value={currentTab}
-                    variant="default"
-                >
-                    <Tabs.List>
-                        <Tabs.Tab value="general">{t('page.setting.generalTab')}</Tabs.Tab>
-                        <Tabs.Tab value="playback">{t('page.setting.playbackTab')}</Tabs.Tab>
-                        <Tabs.Tab value="hotkeys">{t('page.setting.hotkeysTab')}</Tabs.Tab>
-                        {isElectron() && (
-                            <Tabs.Tab value="window">{t('page.setting.windowTab')}</Tabs.Tab>
-                        )}
-                        <Tabs.Tab value="advanced">{t('page.setting.advanced')}</Tabs.Tab>
-                        {isElectron() && <Tabs.Tab value="local">Local</Tabs.Tab>}
-                        {isElectron() && <Tabs.Tab value="streaming">Streaming</Tabs.Tab>}
-                    </Tabs.List>
-                    <Tabs.Panel value="general">
-                        <Suspense fallback={<Spinner container />}>
-                            <GeneralTab />
-                        </Suspense>
-                    </Tabs.Panel>
-                    <Tabs.Panel value="playback">
-                        <Suspense fallback={<Spinner container />}>
-                            <PlaybackTab />
-                        </Suspense>
-                    </Tabs.Panel>
-                    <Tabs.Panel value="hotkeys">
-                        <Suspense fallback={<Spinner container />}>
-                            <HotkeysTab />
-                        </Suspense>
-                    </Tabs.Panel>
+                keepMounted={false}
+                onChange={(e) => e && setSettings({ tab: e })}
+                orientation="horizontal"
+                value={currentTab}
+                variant="default"
+            >
+                <Tabs.List>
+                    <Tabs.Tab value="general">{t('page.setting.generalTab')}</Tabs.Tab>
+                    <Tabs.Tab value="playback">{t('page.setting.playbackTab')}</Tabs.Tab>
+                    <Tabs.Tab value="hotkeys">{t('page.setting.hotkeysTab')}</Tabs.Tab>
                     {isElectron() && (
-                        <Tabs.Panel value="window">
-                            <Suspense fallback={<Spinner container />}>
-                                <WindowTab />
-                            </Suspense>
-                        </Tabs.Panel>
+                        <Tabs.Tab value="window">{t('page.setting.windowTab')}</Tabs.Tab>
                     )}
-                    <Tabs.Panel value="advanced">
+                    <Tabs.Tab value="advanced">{t('page.setting.advanced')}</Tabs.Tab>
+                    {isElectron() && <Tabs.Tab value="local">Local</Tabs.Tab>}
+                    {isElectron() && <Tabs.Tab value="streaming">Streaming</Tabs.Tab>}
+                </Tabs.List>
+                <Tabs.Panel value="general">
+                    <Suspense fallback={<Spinner container />}>
+                        <GeneralTab />
+                    </Suspense>
+                </Tabs.Panel>
+                <Tabs.Panel value="playback">
+                    <Suspense fallback={<Spinner container />}>
+                        <PlaybackTab />
+                    </Suspense>
+                </Tabs.Panel>
+                <Tabs.Panel value="hotkeys">
+                    <Suspense fallback={<Spinner container />}>
+                        <HotkeysTab />
+                    </Suspense>
+                </Tabs.Panel>
+                {isElectron() && (
+                    <Tabs.Panel value="window">
                         <Suspense fallback={<Spinner container />}>
-                            <AdvancedTab />
+                            <WindowTab />
                         </Suspense>
                     </Tabs.Panel>
-                    {isElectron() && (
-                        <Tabs.Panel value="local">
-                            <Suspense fallback={<Spinner container />}>
-                                <LocalTab />
-                            </Suspense>
-                        </Tabs.Panel>
-                    )}
-                    {isElectron() && (
-                        <Tabs.Panel value="streaming">
-                            <Suspense fallback={<Spinner container />}>
-                                <StreamingTab />
-                            </Suspense>
-                        </Tabs.Panel>
-                    )}
+                )}
+                <Tabs.Panel value="advanced">
+                    <Suspense fallback={<Spinner container />}>
+                        <AdvancedTab />
+                    </Suspense>
+                </Tabs.Panel>
+                {isElectron() && (
+                    <Tabs.Panel value="local">
+                        <Suspense fallback={<Spinner container />}>
+                            <LocalTab />
+                        </Suspense>
+                    </Tabs.Panel>
+                )}
+                {isElectron() && (
+                    <Tabs.Panel value="streaming">
+                        <Suspense fallback={<Spinner container />}>
+                            <StreamingTab />
+                        </Suspense>
+                    </Tabs.Panel>
+                )}
             </Tabs>
         </div>
     );

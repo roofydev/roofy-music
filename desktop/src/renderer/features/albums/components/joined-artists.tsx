@@ -26,6 +26,15 @@ const JoinedArtistsComponent = ({
     readOnly = false,
     rootTextProps,
 }: JoinedArtistsProps) => {
+    const getArtistLink = (artist: AlbumArtist | RelatedAlbumArtist | RelatedArtist) => {
+        if (!artist.id || readOnly) return null;
+        if (isYoutubeMusicEntityId(artist.id)) {
+            return `${AppRoute.YOUTUBE_MUSIC}?view=search&q=${encodeURIComponent(artist.name)}`;
+        }
+        return generatePath(AppRoute.LIBRARY_ALBUM_ARTISTS_DETAIL, {
+            albumArtistId: artist.id,
+        });
+    };
     const parts: (
         | string
         | {
@@ -119,14 +128,12 @@ const JoinedArtistsComponent = ({
                 {artists.map((artist, index) => (
                     <Fragment key={artist.id || `artist-${index}`}>
                         {index > 0 && ', '}
-                        {artist.id && !readOnly && !isYoutubeMusicEntityId(artist.id) ? (
+                        {getArtistLink(artist) ? (
                             <Text
                                 component={Link}
                                 fw={500}
                                 isLink
-                                to={generatePath(AppRoute.LIBRARY_ALBUM_ARTISTS_DETAIL, {
-                                    albumArtistId: artist.id,
-                                })}
+                                to={getArtistLink(artist)!}
                                 {...linkProps}
                             >
                                 {artist.name}
@@ -160,16 +167,15 @@ const JoinedArtistsComponent = ({
 
                 const { artist, text } = part;
 
-                if (artist.id && !readOnly && !isYoutubeMusicEntityId(artist.id)) {
+                const artistLink = getArtistLink(artist);
+                if (artistLink) {
                     return (
                         <Text
                             component={Link}
                             fw={500}
                             isLink
                             key={`${artist.id}-${index}`}
-                            to={generatePath(AppRoute.LIBRARY_ALBUM_ARTISTS_DETAIL, {
-                                albumArtistId: artist.id,
-                            })}
+                            to={artistLink}
                             {...linkProps}
                         >
                             {text}
@@ -188,14 +194,12 @@ const JoinedArtistsComponent = ({
                     {unmatchedArtists.map((artist, index) => (
                         <Fragment key={artist.id}>
                             {index > 0 && ', '}
-                            {artist.id && !readOnly && !isYoutubeMusicEntityId(artist.id) ? (
+                            {getArtistLink(artist) ? (
                                 <Text
                                     component={Link}
                                     fw={500}
                                     isLink
-                                    to={generatePath(AppRoute.LIBRARY_ALBUM_ARTISTS_DETAIL, {
-                                        albumArtistId: artist.id,
-                                    })}
+                                    to={getArtistLink(artist)!}
                                     {...linkProps}
                                 >
                                     {artist.name}

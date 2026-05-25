@@ -63,3 +63,11 @@
 :global([data-theme="retroMonochrome"]) .main-content-container {
     background: var(--retro-bg, #050505) !important;
 }
+
+:global([data-theme="retroMonochrome"]) .main-content-container.sidebar-expanded {
+    grid-template-columns: minmax(220px, min(var(--sidebar-width), 260px)) 1fr;
+}
+
+:global([data-theme="retroMonochrome"]) .main-content-container.right-expanded {
+    grid-template-columns: minmax(220px, min(var(--sidebar-width), 260px)) 1fr var(--right-sidebar-width);
+}

@@ -93,11 +93,22 @@
 .title-wrapper {
     position: absolute;
     display: flex;
+    gap: var(--theme-spacing-md);
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     width: 100%;
+    min-width: 0;
     height: 100%;
     padding: 0 var(--theme-spacing-xs);
+}
+
+.title-wrapper > *:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.title-wrapper > *:not(:first-child) {
+    flex: 0 0 auto;
 }
 
 .title-wrapper.hidden {
@@ -106,12 +117,12 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .container {
-    background: var(--retro-bg, #050505) !important;
-    border-bottom: 1px solid var(--retro-border, #7a7a7a);
+    background: #050505 !important;
+    border-bottom: 1px solid rgb(255 255 255 / 35%);
 }
 
 :global([data-theme="retroMonochrome"]) .background-image {
-    background: var(--retro-bg, #050505) !important;
+    background: #050505 !important;
 }
 
 :global([data-theme="retroMonochrome"]) .background-image-overlay.light,

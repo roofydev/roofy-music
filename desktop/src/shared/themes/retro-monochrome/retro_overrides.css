@@ -9,68 +9,84 @@
 /* --- Global resets when retro theme is active --- */
 [data-theme="retroMonochrome"] {
     --retro-bg: #050505;
-    --retro-bg-2: #080808;
-    --retro-bg-3: #0d0d0d;
+    --retro-bg-2: #070707;
+    --retro-bg-3: #0a0a0a;
     --retro-panel: #0b0b0b;
-    --retro-panel-2: #101010;
+    --retro-panel-2: #111;
     --retro-panel-3: #151515;
-    --retro-border-bright: #b8b8b8;
-    --retro-border: #7a7a7a;
-    --retro-border-muted: #3f3f3f;
-    --retro-border-dark: #222222;
-    --retro-text-hot: #f1f1f1;
-    --retro-text: #d0d0d0;
-    --retro-text-soft: #a0a0a0;
-    --retro-text-muted: #707070;
-    --retro-text-dim: #4a4a4a;
-    --retro-active: #d8d8a0;
-    --retro-active-muted: #9a9a72;
-
+    --retro-border-bright: rgb(255 255 255 / 65%);
+    --retro-border: rgb(255 255 255 / 32%);
+    --retro-border-muted: rgb(255 255 255 / 18%);
+    --retro-border-dark: rgb(255 255 255 / 12%);
+    --retro-text-hot: #f2f2f2;
+    --retro-text: #f2f2f2;
+    --retro-text-soft: #a6a6a6;
+    --retro-text-muted: #a6a6a6;
+    --retro-text-dim: #707070;
+    --retro-active: rgb(255 255 255 / 14%);
+    --retro-active-muted: rgb(255 255 255 / 8%);
+    --retro-hover: rgb(255 255 255 / 8%);
+    --mantine-font-family: "IBM Plex Mono", "Courier New", monospace !important;
+    --mantine-font-family-headings: "IBM Plex Mono", "Courier New", monospace !important;
     --theme-content-font-family: "IBM Plex Mono", "Courier New", monospace !important;
+    --theme-heading-font-family: "IBM Plex Mono", "Courier New", monospace !important;
 
+    scrollbar-color: rgb(255 255 255 / 28%) #070707;
     scrollbar-width: thin;
-    scrollbar-color: var(--retro-border-muted) var(--retro-bg);
 }
 
-/* WebKit scrollbars — thin, no hover flash */
+/* --- Global scanline texture --- */
+[data-theme="retroMonochrome"] body,
+[data-theme="retroMonochrome"] html {
+    font-family: "IBM Plex Mono", "Courier New", monospace !important;
+    color: var(--retro-text) !important;
+    letter-spacing: 0.025em;
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgb(255 255 255 / 2.5%) 0,
+            rgb(255 255 255 / 2.5%) 1px,
+            transparent 1px,
+            transparent 4px
+        ),
+        #050505 !important;
+    text-rendering: geometricprecision;
+    -webkit-font-smoothing: none;
+}
+
+/* WebKit scrollbars — monochrome, visible */
 [data-theme="retroMonochrome"] ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 10px;
+    height: 10px;
 }
 
 [data-theme="retroMonochrome"] ::-webkit-scrollbar-track {
-    background: transparent;
+    background: #070707;
+    border-left: 1px solid rgb(255 255 255 / 12%);
 }
 
 [data-theme="retroMonochrome"] ::-webkit-scrollbar-thumb {
-    background: var(--retro-border-muted);
-    border: 0;
+    background: rgb(255 255 255 / 28%);
+    border: 1px solid rgb(255 255 255 / 35%);
 }
 
 [data-theme="retroMonochrome"] ::-webkit-scrollbar-thumb:hover {
-    background: var(--retro-border-muted);
+    background: rgb(255 255 255 / 42%);
 }
 
 /* OverlayScrollbars — only visible while scrolling, not on pointer hover */
 [data-theme="retroMonochrome"] .os-scrollbar.os-scrollbar-auto-hide-hidden {
-    opacity: 0 !important;
     pointer-events: none !important;
+    opacity: 0 !important;
 }
 
 /* --- Kill all rounded corners globally --- */
 [data-theme="retroMonochrome"] *,
 [data-theme="retroMonochrome"] *::before,
 [data-theme="retroMonochrome"] *::after {
+    font-family: "IBM Plex Mono", "Courier New", monospace !important;
     border-radius: 0 !important;
-}
-
-/* --- Kill all box shadows globally --- */
-[data-theme="retroMonochrome"] * {
     box-shadow: none !important;
-}
-
-/* --- Kill all backdrop-filter blur globally --- */
-[data-theme="retroMonochrome"] * {
     backdrop-filter: none !important;
 }
 
@@ -81,44 +97,36 @@
     filter: none !important;
 }
 
-/* --- Body / root background --- */
-[data-theme="retroMonochrome"] body,
-[data-theme="retroMonochrome"] html {
-    background: var(--retro-bg) !important;
-    color: var(--retro-text) !important;
-    font-family: "IBM Plex Mono", "Courier New", monospace !important;
-    -webkit-font-smoothing: none;
-    text-rendering: geometricPrecision;
-    letter-spacing: 0.025em;
-}
-
 /* --- Mantine component overrides --- */
 
 /* Buttons */
 [data-theme="retroMonochrome"] .mantine-Button-root {
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    border: 1px solid var(--retro-border) !important;
-    background: var(--retro-panel) !important;
-    color: var(--retro-text) !important;
+    padding: 9px 16px;
     font-family: var(--theme-content-font-family) !important;
+    font-weight: 700;
+    color: var(--retro-text) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: transparent !important;
+    border: 1px solid rgb(255 255 255 / 35%) !important;
     transition: none !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Button-root:hover {
-    background: var(--retro-panel-2) !important;
-    border-color: var(--retro-border-bright) !important;
     color: var(--retro-text-hot) !important;
+    background: rgb(255 255 255 / 12%) !important;
+    border-color: rgb(255 255 255 / 65%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Button-root:active {
+    background: rgb(255 255 255 / 14%) !important;
     transform: translateY(1px) !important;
-    background: var(--retro-panel-3) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Button-root[data-disabled="true"] {
-    color: var(--retro-text-dim) !important;
-    border-color: var(--retro-border-dark) !important;
+    color: #555 !important;
+    border-color: rgb(255 255 255 / 10%) !important;
+    opacity: 0.55;
 }
 
 /* Inputs */
@@ -127,54 +135,57 @@
 [data-theme="retroMonochrome"] .mantine-Textarea-input,
 [data-theme="retroMonochrome"] .mantine-Select-input,
 [data-theme="retroMonochrome"] .mantine-MultiSelect-input {
-    background: var(--retro-bg) !important;
-    color: var(--retro-text) !important;
-    border: 1px solid var(--retro-border) !important;
+    height: 38px;
     font-family: var(--theme-content-font-family) !important;
+    color: var(--retro-text) !important;
+    background: rgb(0 0 0 / 35%) !important;
+    border: 1px solid rgb(255 255 255 / 32%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Input-input:focus,
 [data-theme="retroMonochrome"] .mantine-TextInput-input:focus,
 [data-theme="retroMonochrome"] .mantine-Textarea-input:focus {
-    border-color: var(--retro-border-bright) !important;
-    outline: none !important;
-    box-shadow: inset 0 0 0 1px var(--retro-border-muted) !important;
+    outline: 1px solid #f2f2f2 !important;
+    outline-offset: 2px !important;
+    border-color: rgb(255 255 255 / 65%) !important;
+    box-shadow: none !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Input-input::placeholder {
-    color: var(--retro-text-dim) !important;
+    color: #777 !important;
+    text-transform: uppercase;
 }
 
 /* Modals */
 [data-theme="retroMonochrome"] .mantine-Modal-content {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border-bright) !important;
     color: var(--retro-text) !important;
+    background: var(--retro-panel) !important;
+    border: 1px solid rgb(255 255 255 / 35%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Modal-header {
-    background: var(--retro-panel) !important;
-    border-bottom: 1px solid var(--retro-border) !important;
-    text-transform: uppercase;
     font-family: var(--theme-content-font-family) !important;
+    text-transform: uppercase;
+    background: var(--retro-panel) !important;
+    border-bottom: 1px solid rgb(255 255 255 / 32%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Modal-overlay {
-    background: rgba(0, 0, 0, 0.85) !important;
+    background: rgb(0 0 0 / 85%) !important;
     backdrop-filter: none !important;
 }
 
 /* Checkbox / Switch */
 [data-theme="retroMonochrome"] .mantine-Checkbox-input {
-    background: var(--retro-bg) !important;
-    border: 1px solid var(--retro-border-muted) !important;
     width: 24px;
     height: 24px;
+    background: var(--retro-bg) !important;
+    border: 1px solid rgb(255 255 255 / 18%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Checkbox-input:checked {
     background: var(--retro-panel-2) !important;
-    border-color: var(--retro-border-bright) !important;
+    border-color: rgb(255 255 255 / 65%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Checkbox-icon {
@@ -182,40 +193,40 @@
 }
 
 [data-theme="retroMonochrome"] .mantine-Switch-track {
-    background: var(--retro-bg) !important;
-    border: 1px solid var(--retro-border-muted) !important;
     width: 40px;
     height: 24px;
+    background: var(--retro-bg) !important;
+    border: 1px solid rgb(255 255 255 / 18%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Switch-track[data-checked="true"] {
     background: var(--retro-panel-2) !important;
-    border-color: var(--retro-border-bright) !important;
+    border-color: rgb(255 255 255 / 65%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Switch-thumb {
-    background: var(--retro-border) !important;
-    border: 1px solid var(--retro-border-bright) !important;
     width: 18px;
     height: 18px;
+    background: rgb(255 255 255 / 32%) !important;
+    border: 1px solid rgb(255 255 255 / 65%) !important;
 }
 
 /* Slider */
 [data-theme="retroMonochrome"] .mantine-Slider-track {
-    background: var(--retro-bg) !important;
-    border: 1px solid var(--retro-border-muted) !important;
-    height: 16px;
+    height: 6px;
+    background: rgb(255 255 255 / 18%) !important;
+    border: 1px solid rgb(255 255 255 / 12%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Slider-bar {
-    background: var(--retro-border) !important;
+    background: #f2f2f2 !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Slider-thumb {
-    background: var(--retro-border-bright) !important;
-    border: 1px solid var(--retro-border-bright) !important;
-    width: 4px;
+    width: 8px;
     height: 14px;
+    background: #f2f2f2 !important;
+    border: 1px solid #f2f2f2 !important;
     border-radius: 0 !important;
 }
 
@@ -223,100 +234,103 @@
 [data-theme="retroMonochrome"] .mantine-Table-table {
     border-collapse: collapse;
     background: var(--retro-panel);
-    border: 1px solid var(--retro-border);
+    border: 1px solid rgb(255 255 255 / 35%);
 }
 
 [data-theme="retroMonochrome"] .mantine-Table-th {
-    background: var(--retro-panel-2) !important;
+    font-family: var(--theme-content-font-family) !important;
+    font-size: 12px;
+    font-weight: 800;
     color: var(--retro-text-hot) !important;
     text-transform: uppercase;
-    font-size: 12px;
-    border-bottom: 1px solid var(--retro-border-dark) !important;
-    border-right: 1px solid var(--retro-border-dark) !important;
-    font-family: var(--theme-content-font-family) !important;
+    letter-spacing: 0.06em;
+    background: var(--retro-panel-2) !important;
+    border-bottom: 1px solid rgb(255 255 255 / 12%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Table-td {
-    color: var(--retro-text) !important;
     font-size: 13px;
-    border-bottom: 1px solid var(--retro-border-dark) !important;
-    border-right: 1px solid var(--retro-border-dark) !important;
+    color: var(--retro-text) !important;
+    border-bottom: 1px solid rgb(255 255 255 / 12%) !important;
 }
 
 /* Tabs */
 [data-theme="retroMonochrome"] .mantine-Tabs-tab {
-    background: var(--retro-panel) !important;
-    color: var(--retro-text-soft) !important;
-    border: 1px solid var(--retro-border) !important;
-    border-right: 1px solid var(--retro-border-muted) !important;
-    text-transform: uppercase;
+    padding: 8px 14px;
     font-family: var(--theme-content-font-family) !important;
+    font-weight: 800;
+    color: var(--retro-text-soft) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: transparent !important;
+    border: 1px solid rgb(255 255 255 / 28%) !important;
     transition: none !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Tabs-tab[data-active="true"] {
-    color: var(--retro-active) !important;
-    background: rgba(216, 216, 160, 0.08) !important;
+    color: var(--retro-text-hot) !important;
+    background: rgb(255 255 255 / 12%) !important;
+    border-color: rgb(255 255 255 / 55%) !important;
 }
 
 /* Tooltip */
 [data-theme="retroMonochrome"] .mantine-Tooltip-tooltip {
-    background: var(--retro-panel-2) !important;
-    border: 1px solid var(--retro-border-muted) !important;
-    color: var(--retro-text) !important;
     font-family: var(--theme-content-font-family) !important;
+    color: var(--retro-text) !important;
+    background: var(--retro-panel-2) !important;
+    border: 1px solid rgb(255 255 255 / 18%) !important;
 }
 
 /* Badge */
 [data-theme="retroMonochrome"] .mantine-Badge-root {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border-muted) !important;
+    font-family: var(--theme-content-font-family) !important;
     color: var(--retro-text-soft) !important;
     text-transform: uppercase;
-    font-family: var(--theme-content-font-family) !important;
+    background: var(--retro-panel) !important;
+    border: 1px solid rgb(255 255 255 / 18%) !important;
 }
 
 /* Paper / Card surfaces */
 [data-theme="retroMonochrome"] .mantine-Paper-root {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
     color: var(--retro-text) !important;
+    background: var(--retro-panel) !important;
+    border: 1px solid rgb(255 255 255 / 32%) !important;
 }
 
 /* Popover / Dropdown */
 [data-theme="retroMonochrome"] .mantine-Popover-dropdown,
 [data-theme="retroMonochrome"] .mantine-Menu-dropdown {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
     color: var(--retro-text) !important;
+    background: var(--retro-panel) !important;
+    border: 1px solid rgb(255 255 255 / 32%) !important;
 }
 
 /* Divider */
 [data-theme="retroMonochrome"] .mantine-Divider-root {
-    border-color: var(--retro-border-muted) !important;
+    border-color: rgb(255 255 255 / 12%) !important;
 }
 
 /* Notifications */
 [data-theme="retroMonochrome"] .mantine-Notification-root {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
     color: var(--retro-text) !important;
+    background: var(--retro-panel) !important;
+    border: 1px solid rgb(255 255 255 / 32%) !important;
 }
 
 /* SegmentedControl */
 [data-theme="retroMonochrome"] .mantine-SegmentedControl-root {
     background: var(--retro-bg) !important;
-    border: 1px solid var(--retro-border) !important;
+    border: 1px solid rgb(255 255 255 / 32%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-SegmentedControl-indicator {
-    background: var(--retro-panel-2) !important;
-    border: 1px solid var(--retro-border-bright) !important;
+    background: rgb(255 255 255 / 12%) !important;
+    border: 1px solid rgb(255 255 255 / 55%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-SegmentedControl-label {
-    color: var(--retro-text-soft) !important;
     font-family: var(--theme-content-font-family) !important;
+    color: var(--retro-text-soft) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-SegmentedControl-label[data-active="true"] {
@@ -326,33 +340,33 @@
 /* Accordion */
 [data-theme="retroMonochrome"] .mantine-Accordion-item {
     background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
+    border: 1px solid rgb(255 255 255 / 32%) !important;
     border-bottom: 0 !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Accordion-item:last-child {
-    border-bottom: 1px solid var(--retro-border) !important;
+    border-bottom: 1px solid rgb(255 255 255 / 32%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Accordion-control {
-    color: var(--retro-text) !important;
     font-family: var(--theme-content-font-family) !important;
+    color: var(--retro-text) !important;
 }
 
 /* Progress bar */
 [data-theme="retroMonochrome"] .mantine-Progress-section {
-    background: var(--retro-border) !important;
+    background: rgb(255 255 255 / 32%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Progress-track {
     background: var(--retro-bg) !important;
-    border: 1px solid var(--retro-border-muted) !important;
+    border: 1px solid rgb(255 255 255 / 18%) !important;
 }
 
 /* Skeleton loader */
 [data-theme="retroMonochrome"] .mantine-Skeleton-root {
     background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border-dark) !important;
+    border: 1px solid rgb(255 255 255 / 12%) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Skeleton-root::after {
@@ -364,30 +378,44 @@
     ) !important;
 }
 
+/* Focus visible */
+[data-theme="retroMonochrome"] *:focus-visible {
+    outline: 1px solid #f2f2f2 !important;
+    outline-offset: 2px !important;
+}
+
 /* --- App-specific overrides --- */
 
 /* Sidebar */
 [data-theme="retroMonochrome"] .fs-sidebar-module-container {
-    background: var(--retro-bg-2) !important;
-    border-right: 1px solid var(--retro-border) !important;
+    background: rgb(10 10 10 / 96%) !important;
+    border-right: 1px solid rgb(255 255 255 / 35%) !important;
 }
 
 [data-theme="retroMonochrome"] .fs-sidebar-module-accordion-content a {
-    color: var(--retro-text-soft) !important;
-    border-bottom: 1px solid var(--retro-border-dark) !important;
-    text-transform: uppercase;
+    min-height: 30px;
+    padding: 0 14px;
     font-family: var(--theme-content-font-family) !important;
+    color: var(--retro-text-soft) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
 }
 
 [data-theme="retroMonochrome"] .fs-sidebar-module-accordion-content a[data-active="true"] {
-    color: var(--retro-active) !important;
-    background: rgba(216, 216, 160, 0.08) !important;
+    color: #fff !important;
+    background: rgb(255 255 255 / 12%) !important;
+    border-left: 3px solid #fff !important;
+}
+
+[data-theme="retroMonochrome"] .fs-sidebar-module-accordion-content a:hover {
+    background: rgb(255 255 255 / 8%) !important;
 }
 
 /* Player bar */
 [data-theme="retroMonochrome"] .fs-player-bar-module-container {
-    background: var(--retro-bg) !important;
-    border-top: 1px solid var(--retro-border) !important;
+    min-height: 92px;
+    background: rgb(8 8 8 / 98%) !important;
+    border-top: 1px solid rgb(255 255 255 / 38%) !important;
 }
 
 /* Main content */
@@ -399,14 +427,14 @@
 [data-theme="retroMonochrome"] .fs-item-card-module-image-container img,
 [data-theme="retroMonochrome"] .fs-image-module-image,
 [data-theme="retroMonochrome"] .mantine-Center-root img {
-    border: 1px solid var(--retro-border-muted) !important;
     background: var(--retro-bg) !important;
+    border: 1px solid rgb(255 255 255 / 35%) !important;
 }
 
 /* Window bar */
 [data-theme="retroMonochrome"] .fs-window-bar-module-window-bar {
-    background: var(--retro-bg-2) !important;
-    border-bottom: 1px solid var(--retro-border) !important;
+    background: rgb(5 5 5 / 98%) !important;
+    border-bottom: 1px solid rgb(255 255 255 / 35%) !important;
 }
 
 /* Page headers / overlays */
@@ -417,13 +445,13 @@
 /* Context menu */
 [data-theme="retroMonochrome"] .fs-context-menu-module-content {
     background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
+    border: 1px solid rgb(255 255 255 / 32%) !important;
 }
 
 /* Command palette / search */
 [data-theme="retroMonochrome"] [cmdk-item][data-selected] {
-    background: var(--retro-panel-2) !important;
     color: var(--retro-text-hot) !important;
+    background: var(--retro-panel-2) !important;
 }
 
 [data-theme="retroMonochrome"] [cmdk-list] {
@@ -433,13 +461,13 @@
 /* Expanded list item */
 [data-theme="retroMonochrome"] .fs-expanded-list-item-module-container {
     background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
+    border: 1px solid rgb(255 255 255 / 32%) !important;
 }
 
 /* Action bar */
 [data-theme="retroMonochrome"] .fs-action-bar-module-container {
     background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
+    border: 1px solid rgb(255 255 255 / 32%) !important;
 }
 
 /* Full-screen player */
@@ -448,11 +476,11 @@
 }
 
 [data-theme="retroMonochrome"] .fs-full-screen-player-image-module-image {
-    border: 1px solid var(--retro-border-muted) !important;
+    border: 1px solid rgb(255 255 255 / 35%) !important;
 }
 
 /* Drawer / side panels */
 [data-theme="retroMonochrome"] .mantine-Drawer-content {
     background: var(--retro-panel) !important;
-    border-left: 1px solid var(--retro-border) !important;
+    border-left: 1px solid rgb(255 255 255 / 35%) !important;
 }

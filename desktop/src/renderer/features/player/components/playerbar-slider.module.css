@@ -92,28 +92,46 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .bar {
-    background-color: var(--retro-border, #7a7a7a);
+    background-color: #f2f2f2;
     transition: none;
 }
 
 :global([data-theme="retroMonochrome"]) .root:hover .bar,
 :global([data-theme="retroMonochrome"]) .root:focus .bar {
-    background-color: var(--retro-border-bright, #b8b8b8);
+    background-color: #f2f2f2;
 }
 
 :global([data-theme="retroMonochrome"]) .thumb {
-    border-color: var(--retro-border-bright, #b8b8b8);
+    border-color: #f2f2f2;
     border-radius: 0;
-    width: 4px;
+    width: 8px;
     height: 14px;
     opacity: 1;
     transition: none;
+    background: #f2f2f2;
 }
 
 :global([data-theme="retroMonochrome"]) .label {
     background: var(--retro-panel, #0b0b0b);
-    color: var(--retro-text, #d0d0d0);
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    color: #f2f2f2;
+    border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow: none;
     font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+}
+
+:global([data-theme="retroMonochrome"]) .track {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.18);
+}
+
+:global([data-theme="retroMonochrome"]) .slider-container {
+    height: 24px;
+}
+
+:global([data-theme="retroMonochrome"]) .slider-value-wrapper,
+:global([data-theme="retroMonochrome"]) .slider-value-wrapper-elapsed {
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
 }

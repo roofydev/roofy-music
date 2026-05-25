@@ -144,3 +144,40 @@
     bottom: 0;
     left: 0;
 }
+
+:global([data-theme="retroMonochrome"]) .container {
+    grid-template-rows: 1fr;
+    gap: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .primary {
+    width: clamp(30px, 24%, 42px);
+    height: clamp(30px, 24%, 42px);
+}
+
+:global([data-theme="retroMonochrome"]) .secondary {
+    width: clamp(26px, 18%, 34px);
+    height: clamp(26px, 18%, 34px);
+}
+
+:global([data-theme="retroMonochrome"]) .left {
+    left: 22%;
+}
+
+:global([data-theme="retroMonochrome"]) .right {
+    left: 78%;
+}
+
+:global([data-theme="retroMonochrome"]) .secondary-controls {
+    right: 6px;
+    bottom: 6px;
+    gap: 4px;
+    width: auto;
+    height: auto;
+    margin: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .secondary-button {
+    padding: 4px;
+    border-radius: 0;
+}
