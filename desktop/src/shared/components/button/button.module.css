@@ -172,7 +172,16 @@
     font-weight: 700;
     transition: none;
     border-radius: 0 !important;
+}
+
+:global([data-theme="retroMonochrome"]) .root:not([data-size^="compact-"]) {
     padding: 9px 16px;
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-size^="compact-"] {
+    height: var(--button-height);
+    padding: 0 var(--button-padding-x);
+    line-height: 1;
 }
 
 :global([data-theme="retroMonochrome"]) .root[data-variant='default'] {
