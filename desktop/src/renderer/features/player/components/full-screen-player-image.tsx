@@ -118,7 +118,6 @@ export const FullScreenPlayerImage = () => {
     const videoButtonDisabled = videoUnavailable || isCheckingVideo;
     const isPlayingRadio = isRadioActive && isRadioPlaying;
     const isVideoMode = !isPlayingRadio && canPlayVideo && visualMode === 'video';
-    const showVideoFullscreen = isVideoMode && videoFullscreen && videoMetadata;
     const showVisualModeToggle = !isPlayingRadio && Boolean(currentSong?.id);
 
     const currentImageUrl = useItemImageUrl({
@@ -128,6 +127,12 @@ export const FullScreenPlayerImage = () => {
         serverId: currentSong?._serverId,
         type: 'fullScreenPlayer',
     });
+
+    const showMediaFullscreen =
+        videoFullscreen &&
+        !isPlayingRadio &&
+        ((isVideoMode && Boolean(videoMetadata)) ||
+            (!isVideoMode && Boolean(currentImageUrl)));
 
     const nextImageUrl = useItemImageUrl({
         id: nextSong?.imageId || undefined,
@@ -159,6 +164,12 @@ export const FullScreenPlayerImage = () => {
             setStore({ videoFullscreen: false, visualMode: 'image' });
         }
     }, [canPlayVideo, setStore, videoFullscreen, visualMode]);
+
+    useEffect(() => {
+        if (!showMediaFullscreen && videoFullscreen) {
+            setStore({ videoFullscreen: false });
+        }
+    }, [showMediaFullscreen, setStore, videoFullscreen]);
 
     useEffect(() => {
         if (isPlayingRadio) {
@@ -244,10 +255,13 @@ export const FullScreenPlayerImage = () => {
         ),
     };
 
-    if (showVideoFullscreen && videoMetadata) {
+    if (showMediaFullscreen) {
         return (
             <FullscreenVideoOverlay
-                metadata={videoMetadata}
+                imageExplicit={blurExplicitImages && imageState.topExplicit}
+                imageSrc={!isVideoMode ? currentImageUrl || '' : undefined}
+                metadata={isVideoMode ? videoMetadata! : undefined}
+                mode={isVideoMode ? 'video' : 'image'}
                 onExit={() => setStore({ videoFullscreen: false })}
             />
         );
@@ -353,21 +367,8 @@ export const FullScreenPlayerImage = () => {
                     )}
                 </div>
             </div>
-            <Stack
-                className={clsx(styles.metadataContainer, {
-                    [styles.metadataContainerVideo]: isVideoMode,
-                })}
-                gap="md"
-                maw="100%"
-            >
-                <Text
-                    className={styles.metadataTitle}
-                    fw={900}
-                    lh="1.25"
-                    overflow={isVideoMode ? 'visible' : 'hidden'}
-                    size="4xl"
-                    w="100%"
-                >
+            <Stack className={styles.metadataContainer} gap="md" maw="100%">
+                <Text fw={900} lh="1.25" overflow="hidden" size="4xl" w="100%">
                     {isPlayingRadio
                         ? radioMetadata?.title || stationName || 'Radio'
                         : currentSong?.name}

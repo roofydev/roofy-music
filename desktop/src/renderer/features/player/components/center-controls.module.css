@@ -26,6 +26,12 @@
     gap: 0.5rem;
 }
 
-:global([data-theme="retroMonochrome"]) .controls-container {
+:global(#default-layout.retro) .controls-container {
     height: auto;
+}
+
+:global([data-theme="retroMonochrome"]) .controls-container,
+:global([data-video-fullscreen]) .controls-container {
+    height: auto;
+    min-height: 48px;
 }

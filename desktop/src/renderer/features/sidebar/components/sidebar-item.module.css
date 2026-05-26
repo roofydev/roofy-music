@@ -54,37 +54,41 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .root {
-    min-height: var(--retro-sidebar-row-height, 38px);
-    padding-right: 12px;
-    padding-left: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    border-bottom: 1px solid rgb(255 255 255 / 14%);
+    min-height: var(--retro-sidebar-row-height, 40px);
+    padding-right: 8px;
+    padding-left: 8px;
+    letter-spacing: 0.02em;
+    border-bottom: none;
 }
 
 :global([data-theme="retroMonochrome"]) .link {
-    min-height: var(--retro-sidebar-row-height, 38px);
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
-    font-weight: 600;
-    color: #a6a6a6;
-    border: 0;
+    min-height: var(--retro-sidebar-row-height, 40px);
+    padding: 0 10px;
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--rm-text-secondary, #b8b8b8);
+    border: none !important;
     border-radius: 0;
-    transition: none;
+    box-shadow: none !important;
+    transition: background 120ms ease, color 120ms ease;
 }
 
 :global([data-theme="retroMonochrome"]) .link.active {
-    color: #fff !important;
-    background: rgb(255 255 255 / 12%);
-    border-left: 3px solid #fff;
+    color: var(--rm-text, #f4f4f4) !important;
+    background: rgb(255 255 255 / 8%) !important;
+    border: none !important;
+    border-left: 2px solid var(--rm-text, #f4f4f4) !important;
 }
 
 :global([data-theme="retroMonochrome"]) .link:hover {
-    color: #f2f2f2;
-    background: rgb(255 255 255 / 8%);
+    color: var(--rm-text, #f4f4f4);
+    background: rgb(255 255 255 / 4.5%);
+    border: none !important;
 }
 
 :global([data-theme="retroMonochrome"]) .label {
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
 }

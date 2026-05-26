@@ -33,31 +33,29 @@
 
 :global([data-theme="retroMonochrome"]) .auto-dj-button {
     min-width: 72px;
-    color: #f2f2f2 !important;
+    height: 32px;
+    color: var(--rm-text, #f4f4f4) !important;
     background: transparent;
-    border: 1px solid rgb(255 255 255 / 28%);
+    border: 1px solid var(--rm-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-sm, 4px);
 }
 
 :global([data-theme="retroMonochrome"]) .auto-dj-button:hover {
-    color: #fff !important;
-    background: rgb(255 255 255 / 10%);
-    border-color: rgb(255 255 255 / 65%);
+    color: var(--rm-text, #f4f4f4) !important;
+    background: rgb(255 255 255 / 4.5%);
+    border-color: var(--rm-border-strong, rgb(255 255 255 / 28%));
 }
 
 :global([data-theme="retroMonochrome"]) .auto-dj-button[data-enabled='true'] {
-    color: #f2f2f2 !important;
-    background: rgb(255 255 255 / 16%);
-    border-color: #f2f2f2;
-}
-
-:global([data-theme="retroMonochrome"]) .auto-dj-button-inner,
-:global([data-theme="retroMonochrome"]) .auto-dj-button-label {
-    color: inherit !important;
+    color: var(--rm-text, #f4f4f4) !important;
+    background: rgb(255 255 255 / 8%);
+    border-color: var(--rm-text, #f4f4f4);
 }
 
 :global([data-theme="retroMonochrome"]) .auto-dj-button-label {
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
     font-size: 11px;
-    line-height: 1;
-    letter-spacing: 0;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }

@@ -266,10 +266,11 @@ export const VideoModeOverlay = ({ metadata }: VideoModeOverlayProps) => {
 
 export interface VideoPlayerToolbarProps {
     isDownloading?: boolean;
-    metadata: NonNullable<LocalVideoMetadata>;
+    metadata?: NonNullable<LocalVideoMetadata>;
     onDownload?: () => void;
     onEnterFullscreen?: () => void;
     onExitFullscreen?: () => void;
+    showVideoActions?: boolean;
     variant?: 'default' | 'overlay' | 'playerbar';
 }
 
@@ -279,9 +280,10 @@ export const VideoPlayerToolbar = ({
     onDownload,
     onEnterFullscreen,
     onExitFullscreen,
+    showVideoActions = true,
     variant = 'default',
 }: VideoPlayerToolbarProps) => {
-    const isSaved = Boolean(metadata.videoFileUrl);
+    const isSaved = Boolean(metadata?.videoFileUrl);
     const statusCopy = isSaved ? 'Saved MP4' : 'Streaming video';
 
     return (
@@ -294,9 +296,11 @@ export const VideoPlayerToolbar = ({
             onClick={(e) => e.stopPropagation()}
             role="toolbar"
         >
-            <span className={styles.statusBadge} title={statusCopy}>
-                {statusCopy}
-            </span>
+            {showVideoActions && metadata && (
+                <span className={styles.statusBadge} title={statusCopy}>
+                    {statusCopy}
+                </span>
+            )}
             <div className={styles.actionGroup}>
                 {onEnterFullscreen && (
                     <button
@@ -305,13 +309,13 @@ export const VideoPlayerToolbar = ({
                             e.stopPropagation();
                             onEnterFullscreen();
                         }}
-                        title="Fullscreen video"
+                        title={showVideoActions ? 'Fullscreen video' : 'Fullscreen artwork'}
                         type="button"
                     >
                         <Icon icon="expand" size="md" />
                     </button>
                 )}
-                {metadata.sourceUrl && (
+                {showVideoActions && metadata?.sourceUrl && (
                     <button
                         className={styles.actionButton}
                         onClick={(e) => {
@@ -324,25 +328,27 @@ export const VideoPlayerToolbar = ({
                         <Icon icon="externalLink" size="md" />
                     </button>
                 )}
-                {isSaved ? (
-                    <span className={styles.savedIndicator} title="Video saved in your library">
-                        <Icon icon="check" size="md" />
-                    </span>
-                ) : (
-                    <button
-                        aria-busy={isDownloading}
-                        className={styles.actionButton}
-                        disabled={!metadata.canDownloadVideo || isDownloading}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDownload?.();
-                        }}
-                        title={isDownloading ? 'Saving MP4…' : 'Save MP4 to library'}
-                        type="button"
-                    >
-                        <Icon icon="download" size="md" />
-                    </button>
-                )}
+                {showVideoActions &&
+                    metadata &&
+                    (isSaved ? (
+                        <span className={styles.savedIndicator} title="Video saved in your library">
+                            <Icon icon="check" size="md" />
+                        </span>
+                    ) : (
+                        <button
+                            aria-busy={isDownloading}
+                            className={styles.actionButton}
+                            disabled={!metadata.canDownloadVideo || isDownloading}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDownload?.();
+                            }}
+                            title={isDownloading ? 'Saving MP4…' : 'Save MP4 to library'}
+                            type="button"
+                        >
+                            <Icon icon="download" size="md" />
+                        </button>
+                    ))}
                 {onExitFullscreen && (
                     <button
                         className={styles.actionButton}
@@ -350,7 +356,7 @@ export const VideoPlayerToolbar = ({
                             e.stopPropagation();
                             onExitFullscreen();
                         }}
-                        title="Exit fullscreen video"
+                        title="Exit fullscreen"
                         type="button"
                     >
                         <Icon icon="arrowDownS" size="md" />

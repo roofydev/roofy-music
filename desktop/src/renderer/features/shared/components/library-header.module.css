@@ -207,17 +207,18 @@
 }
 
 :global([data-theme="retroMonochrome"]) .title {
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
-    font-size: 34px;
-    font-weight: 800;
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
+    font-size: 28px;
+    font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #f2f2f2;
+    color: var(--rm-text, #f4f4f4);
 }
 
 :global([data-theme="retroMonochrome"]) .library-header {
-    gap: 24px;
+    gap: 20px;
     padding: 24px;
+    min-height: auto;
 }
 
 :global([data-theme="retroMonochrome"]) .library-header-menu {

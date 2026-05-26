@@ -435,31 +435,33 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .carousel-container {
-    background: #0b0b0b;
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: transparent;
+    border: none;
 }
 
 :global([data-theme="retroMonochrome"]) .carousel-item {
-    background: #0b0b0b;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    border: none;
 }
 
 :global([data-theme="retroMonochrome"]) .album-image-container {
     filter: none;
-    border: 1px solid rgba(255, 255, 255, 0.35);
+    border: 1px solid var(--rm-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-sm, 4px);
 }
 
 :global([data-theme="retroMonochrome"]) .title,
 :global([data-theme="retroMonochrome"]) .artist,
 :global([data-theme="retroMonochrome"]) .badge {
     text-shadow: none;
-    color: #f2f2f2;
+    color: var(--rm-text, #f4f4f4);
 }
 
 :global([data-theme="retroMonochrome"]) .nav-arrow-left,
 :global([data-theme="retroMonochrome"]) .nav-arrow-right {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    background: rgba(8, 8, 8, 0.98);
+    border: 1px solid var(--rm-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-sm, 4px);
+    background: transparent;
     backdrop-filter: none;
 }
 

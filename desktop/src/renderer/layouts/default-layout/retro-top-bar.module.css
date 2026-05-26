@@ -10,7 +10,7 @@
 }
 
 .brand {
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
     font-size: 16px;
     font-weight: 900;
     color: #f2f2f2;
@@ -18,7 +18,7 @@
 }
 
 .title {
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
     font-size: 18px;
     font-weight: 900;
     color: #f2f2f2;
@@ -47,7 +47,7 @@
     max-width: min(44vw, 680px);
     overflow: hidden;
     text-overflow: ellipsis;
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
     font-size: 11px;
     color: #707070;
     text-transform: uppercase;
@@ -56,7 +56,7 @@
 }
 
 .meta {
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
     font-size: 11px;
     color: #4a4a4a;
     text-transform: uppercase;
@@ -64,7 +64,7 @@
 }
 
 .separator {
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
     color: rgb(255 255 255 / 18%);
 }
 

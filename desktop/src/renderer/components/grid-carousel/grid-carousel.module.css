@@ -88,7 +88,23 @@
 }
 
 /* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .grid-carousel {
+    gap: 14px;
+}
+
+:global([data-theme="retroMonochrome"]) .grid {
+    gap: 16px;
+}
+
+:global([data-theme="retroMonochrome"]) .navigation :global(.fs-text-title-module-root) {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--rm-text, #f4f4f4);
+}
+
 :global([data-theme="retroMonochrome"]) .indicator-track {
-    background-color: var(--retro-border-muted, #3f3f3f);
-    border-radius: 0;
+    background-color: var(--rm-border-soft, rgb(255 255 255 / 8%));
+    border-radius: 2px;
 }

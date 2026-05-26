@@ -1,6 +1,8 @@
 .container {
     z-index: 200;
     grid-area: player;
+    height: 100%;
+    min-height: 90px;
 
     @mixin light {
         background: darken(var(--theme-colors-background), 5%);
@@ -20,15 +22,28 @@
 }
 
 /* Retro theme overrides */
+:global(#default-layout.retro) .container {
+    min-height: 108px;
+}
+
 :global([data-theme="retroMonochrome"]) .container {
     background: rgba(8, 8, 8, 0.98) !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.38);
+    border-top: 1px solid var(--rm-border-soft, rgb(255 255 255 / 8%));
     transition: none;
-    min-height: 92px;
 }
 
 :global([data-theme="retroMonochrome"]) .open-drawer {
     &:hover {
         background: rgba(255, 255, 255, 0.04);
     }
+}
+
+:global(#default-layout.retro) .open-drawer {
+    &:hover {
+        background: rgba(255, 255, 255, 0.04);
+    }
+}
+
+:global(body:has([data-video-fullscreen])) .container {
+    visibility: hidden;
 }

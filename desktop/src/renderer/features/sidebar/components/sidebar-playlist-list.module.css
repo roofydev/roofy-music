@@ -139,42 +139,42 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .row {
-    border-radius: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.14);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-    padding: 10px;
+    border-radius: var(--rm-radius-sm, 4px);
+    border: none;
+    padding: 8px 10px;
     gap: 10px;
+    margin-bottom: 2px;
 }
 
 :global([data-theme="retroMonochrome"]) .row-hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgb(255 255 255 / 4.5%);
 }
 
 :global([data-theme="retroMonochrome"]) .image-container {
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    border: 1px solid var(--rm-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-sm, 4px);
 }
 
 :global([data-theme="retroMonochrome"]) .name {
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 12px;
-    letter-spacing: 0.04em;
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.01em;
 }
 
 :global([data-theme="retroMonochrome"]) .metadata-group-item {
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
     font-size: 11px;
-    color: #707070;
+    color: var(--rm-text-muted, #777777);
 }
 
 :global([data-theme="retroMonochrome"]) .controls {
-    background: rgba(10, 10, 10, 0.96);
+    background: transparent;
 }
 
 :global([data-theme="retroMonochrome"]) .row-dragged-over {
-    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.65);
+    box-shadow: 0 0 0 1px var(--rm-border-strong, rgb(255 255 255 / 28%));
 }

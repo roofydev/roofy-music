@@ -220,11 +220,13 @@
 :global([data-theme="retroMonochrome"]) .root[data-variant='subtle'] {
     color: #f2f2f2;
     background: transparent;
+    border: none !important;
 }
 
 :global([data-theme="retroMonochrome"]) .root[data-variant='subtle']:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #f2f2f2;
+    border: none !important;
 }
 
 :global([data-theme="retroMonochrome"]) .root[data-variant='transparent'] {

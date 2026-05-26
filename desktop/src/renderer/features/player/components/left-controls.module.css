@@ -99,37 +99,38 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .image {
-    width: 64px;
-    height: 64px;
-    border: 1px solid rgb(255 255 255 / 42%);
+    width: 60px;
+    height: 60px;
+    border: 1px solid var(--rm-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-sm, 4px);
 }
 
 :global([data-theme="retroMonochrome"]) .radio-image {
-    border: 1px solid rgb(255 255 255 / 42%);
-    border-radius: 0;
+    border: 1px solid var(--rm-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-sm, 4px);
 }
 
 :global([data-theme="retroMonochrome"]) .line-item {
     max-width: 100%;
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
-    font-size: 16px;
-    font-weight: 800;
-    color: #f2f2f2;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--rm-text, #f4f4f4);
+    letter-spacing: 0.01em;
 }
 
 :global([data-theme="retroMonochrome"]) .line-item.secondary {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 400;
-    color: #a6a6a6;
+    color: var(--rm-text-secondary, #b8b8b8);
 }
 
 :global([data-theme="retroMonochrome"]) .line-item.secondary a {
-    color: #a6a6a6;
+    color: var(--rm-text-secondary, #b8b8b8);
 }
 
 :global([data-theme="retroMonochrome"]) .left-controls-container {
-    gap: 12px;
+    gap: 14px;
     align-items: center;
+    padding-left: 20px;
 }

@@ -1,6 +1,5 @@
 import clsx from 'clsx';
 import isElectron from 'is-electron';
-import { useState } from 'react';
 
 import styles from './default-layout.module.css';
 
@@ -10,7 +9,9 @@ import { PlayerBar } from '/@/renderer/layouts/default-layout/player-bar';
 import { RetroStatusBar } from '/@/renderer/layouts/default-layout/retro-status-bar';
 import { RetroTopBar } from '/@/renderer/layouts/default-layout/retro-top-bar';
 import { WindowBar } from '/@/renderer/layouts/window-bar';
-import { useSettingsStore, useThemeSettings, useWindowBarStyle } from '/@/renderer/store/settings.store';
+import { useSettingsStore, useWindowBarStyle } from '/@/renderer/store/settings.store';
+import { useAppTheme } from '/@/renderer/themes/use-app-theme';
+import { AppTheme } from '/@/shared/themes/app-theme-types';
 import { Platform, PlayerType } from '/@/shared/types/types';
 
 if (!isElectron()) {
@@ -27,17 +28,8 @@ interface DefaultLayoutProps {
 
 export const DefaultLayout = ({ shell }: DefaultLayoutProps) => {
     const windowBarStyle = useWindowBarStyle();
-    const { followSystemTheme, theme, themeDark, themeLight } = useThemeSettings();
-    const [isDarkTheme] = useState(() =>
-        window.matchMedia('(prefers-color-scheme: dark)').matches,
-    );
-
-    const activeTheme = followSystemTheme
-        ? isDarkTheme
-            ? themeDark
-            : themeLight
-        : theme;
-    const isRetro = activeTheme === 'retroMonochrome';
+    const { selectedTheme } = useAppTheme();
+    const isRetro = selectedTheme === AppTheme.RETRO_MONOCHROME;
 
     return (
         <>
@@ -45,6 +37,7 @@ export const DefaultLayout = ({ shell }: DefaultLayoutProps) => {
                 className={clsx(styles.layout, {
                     [styles.macos]: windowBarStyle === Platform.MACOS,
                     [styles.retro]: isRetro,
+                    retro: isRetro,
                     [styles.windows]: windowBarStyle === Platform.WINDOWS,
                 })}
                 id="default-layout"

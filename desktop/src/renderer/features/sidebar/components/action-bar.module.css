@@ -13,8 +13,9 @@
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .container {
     height: 54px;
-    background: rgb(10 10 10 / 96%);
-    border-bottom: 1px solid rgb(255 255 255 / 35%);
+    padding: 0 12px;
+    background: transparent;
+    border-bottom: 1px solid var(--rm-border-soft, rgb(255 255 255 / 8%));
 }
 
 :global([data-theme="retroMonochrome"]) .container :global([class*="mantine-Input-input"]) {
@@ -23,9 +24,9 @@
 }
 
 :global([data-theme="retroMonochrome"]) .container :global([class*="mantine-Button-root"]) {
-    width: 38px;
-    min-width: 38px;
-    height: 38px;
-    min-height: 38px;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
     padding: 0;
 }

@@ -13,12 +13,12 @@
 .image-container {
     position: relative;
     display: flex;
+    flex: 1 1 auto;
     align-items: flex-end;
     justify-content: center;
     width: 100%;
     max-width: 100%;
-    height: 100%;
-    aspect-ratio: 1/1;
+    min-height: 0;
     overflow: hidden;
     background: rgb(0 0 0 / 12%);
     border-radius: 5px;
@@ -29,14 +29,17 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    width: min(100%, 58vh);
+    width: min(100%, 72vw);
     max-width: 100%;
     height: 65%;
     margin-bottom: 1rem;
 }
 
-.visual-surface.video-surface {
-    width: min(100%, 72vw);
+.visual-surface .image-container {
+    aspect-ratio: 1 / 1;
+}
+
+.visual-surface.video-surface .image-container {
     aspect-ratio: 16 / 9;
 }
 
@@ -112,7 +115,10 @@
 
 .metadata-container {
     display: flex;
+    flex-shrink: 0;
     justify-content: center;
+    width: min(100%, 72vw);
+    max-width: 100%;
     padding: 1rem;
     text-align: center;
     cursor: default;

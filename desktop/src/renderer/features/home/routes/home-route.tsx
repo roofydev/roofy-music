@@ -24,6 +24,7 @@ import {
 } from '/@/renderer/store';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Stack } from '/@/shared/components/stack/stack';
+import { Text } from '/@/shared/components/text/text';
 import { TextTitle } from '/@/shared/components/text-title/text-title';
 import {
     AlbumListSort,
@@ -100,7 +101,12 @@ const HomeRoute = () => {
                     backgroundColor: 'var(--theme-colors-background)',
                     children: (
                         <LibraryHeaderBar>
-                            <LibraryHeaderBar.Title>{t('page.home.title')}</LibraryHeaderBar.Title>
+                            <Stack gap={4}>
+                                <LibraryHeaderBar.Title>{t('page.home.title')}</LibraryHeaderBar.Title>
+                                <Text isMuted size="sm">
+                                    {t('page.home.subtitle', 'Good to see you again.')}
+                                </Text>
+                            </Stack>
                         </LibraryHeaderBar>
                     ),
                     offset: 200,
@@ -111,8 +117,8 @@ const HomeRoute = () => {
                     <Stack
                         gap="2xl"
                         mb="5rem"
-                        pt={windowBarStyle === Platform.WEB ? '5rem' : '3rem'}
-                        px="2rem"
+                        pt={windowBarStyle === Platform.WEB ? '5rem' : '2rem'}
+                        px="1.5rem"
                         ref={containerQuery.ref}
                     >
                         <YoutubeMusicHomeCarousels

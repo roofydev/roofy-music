@@ -10,15 +10,26 @@ import {
     VideoModeOverlay,
     type LocalVideoMetadata,
 } from '/@/renderer/features/player/components/local-video-player';
+import { useNativeAspectRatio } from '/@/renderer/store';
 
 const CHROME_IDLE_MS = 2500;
 
 interface FullscreenVideoOverlayProps {
-    metadata: NonNullable<LocalVideoMetadata>;
+    imageExplicit?: boolean;
+    imageSrc?: string;
+    metadata?: NonNullable<LocalVideoMetadata>;
+    mode: 'image' | 'video';
     onExit: () => void;
 }
 
-export const FullscreenVideoOverlay = ({ metadata, onExit }: FullscreenVideoOverlayProps) => {
+export const FullscreenVideoOverlay = ({
+    imageExplicit = false,
+    imageSrc,
+    metadata,
+    mode,
+    onExit,
+}: FullscreenVideoOverlayProps) => {
+    const nativeAspectRatio = useNativeAspectRatio();
     const onExitRef = useRef(onExit);
     onExitRef.current = onExit;
     const [chromeVisible, setChromeVisible] = useState(true);
@@ -49,8 +60,17 @@ export const FullscreenVideoOverlay = ({ metadata, onExit }: FullscreenVideoOver
             onExitRef.current();
         });
 
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                onExitRef.current();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
         return () => {
             document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', handleKeyDown);
             unsubscribeNativeExit?.();
             if (isElectron() && window.api?.browser?.setVideoFullscreen) {
                 window.api.browser.setVideoFullscreen(false);
@@ -65,8 +85,25 @@ export const FullscreenVideoOverlay = ({ metadata, onExit }: FullscreenVideoOver
             onMouseMove={revealChrome}
             onPointerDown={revealChrome}
         >
-            <div className={styles.videoStage}>
-                <VideoModeOverlay metadata={metadata} />
+            <div className={styles.mediaStage}>
+                {mode === 'video' && metadata ? (
+                    <VideoModeOverlay metadata={metadata} />
+                ) : (
+                    imageSrc && (
+                        <img
+                            alt=""
+                            className={clsx(styles.fullscreenImage, {
+                                [styles.fullscreenImageCensored]: imageExplicit,
+                            })}
+                            draggable={false}
+                            src={imageSrc}
+                            style={{
+                                objectFit: nativeAspectRatio ? 'contain' : 'cover',
+                            }}
+                        />
+                    )
+                )}
+                <div aria-hidden className={styles.stageScrim} />
             </div>
             <div className={styles.chrome}>
                 <div

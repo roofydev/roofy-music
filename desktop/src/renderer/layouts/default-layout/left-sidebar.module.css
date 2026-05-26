@@ -20,6 +20,6 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .container {
-    background: rgba(10, 10, 10, 0.96) !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.35) !important;
+    background: var(--rm-panel, #080808) !important;
+    border-right: 1px solid var(--rm-border-soft, rgb(255 255 255 / 8%)) !important;
 }

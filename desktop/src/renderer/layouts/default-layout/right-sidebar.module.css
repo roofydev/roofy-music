@@ -22,3 +22,9 @@
 .queue-drawer {
     border-radius: var(--theme-radius-lg);
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .right-sidebar-container {
+    background: var(--rm-panel, #080808) !important;
+    border-left: 1px solid var(--rm-border-soft, rgb(255 255 255 / 8%)) !important;
+}

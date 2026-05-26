@@ -85,41 +85,39 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .container {
-    --retro-sidebar-row-height: 38px;
-    --retro-sidebar-inline-height: 22px;
+    --retro-sidebar-row-height: 40px;
 
     gap: 0;
-    background: rgb(10 10 10 / 96%) !important;
-    border-right: 1px solid rgb(255 255 255 / 35%);
+    background: var(--rm-panel, #080808) !important;
+    border-right: 1px solid var(--rm-border-soft, rgb(255 255 255 / 8%));
 }
 
 :global([data-theme="retroMonochrome"]) .scroll-area {
-    padding: 0;
-    scrollbar-color: rgb(255 255 255 / 28%) rgb(10 10 10 / 96%);
+    padding: 8px 12px 16px;
+    scrollbar-color: rgb(255 255 255 / 16%) #080808;
     scrollbar-width: thin;
 }
 
 :global([data-theme="retroMonochrome"]) .scroll-area :global(.os-scrollbar-vertical) {
-    --os-size: 8px;
+    --os-size: 6px;
 }
 
 :global([data-theme="retroMonochrome"]) .accordion-control {
-    min-height: var(--retro-sidebar-row-height);
-    height: var(--retro-sidebar-row-height);
-    max-height: var(--retro-sidebar-row-height);
-    padding: 0 8px;
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
-    font-size: 12px;
-    font-weight: 800;
+    min-height: 32px;
+    height: auto;
+    max-height: none;
+    padding: 16px 4px 8px;
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
+    font-size: 11px;
+    font-weight: 600;
     line-height: 1;
-    color: #f2f2f2;
+    color: var(--rm-text-muted, #777777);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    border-bottom: 1px solid rgb(255 255 255 / 25%);
+    border-bottom: none;
     border-radius: 0;
 }
 
-/* Mantine adds vertical padding on the label span; remove it so row height stays fixed */
 :global([data-theme="retroMonochrome"]) .accordion-control > span:nth-child(2) {
     display: flex;
     align-items: center;
@@ -129,16 +127,17 @@
 }
 
 :global([data-theme="retroMonochrome"]) .accordion-control:hover {
-    color: #fff;
-    background: rgb(255 255 255 / 8%);
+    color: var(--rm-text-secondary, #b8b8b8);
+    background: transparent;
 }
 
 :global([data-theme="retroMonochrome"]) .accordion-content {
-    background: rgb(10 10 10 / 96%) !important;
+    background: transparent !important;
 }
 
 :global([data-theme="retroMonochrome"]) .sidebar-image {
-    border: 1px solid rgb(255 255 255 / 35%);
+    border: 1px solid var(--rm-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-sm, 4px);
 }
 
 .youtube-music-header {
