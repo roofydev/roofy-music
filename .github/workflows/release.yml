@@ -58,8 +58,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
-          cache-dependency-path: desktop/pnpm-lock.yaml
 
       - name: Download Windows sidecar binaries
         shell: pwsh
@@ -153,8 +151,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
-          cache-dependency-path: desktop/pnpm-lock.yaml
 
       - name: Download macOS sidecar binaries
         run: |
