@@ -108,6 +108,16 @@ jobs:
           Write-Host '--- Bundled binaries ---'
           Get-ChildItem -Path $outDir | ForEach-Object { Write-Host $_.Name }
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: desktop/scripts/requirements.txt
+
+      - name: Install icon generation dependencies
+        run: pip install -r desktop/scripts/requirements.txt
+
       - name: Install dependencies
         working-directory: desktop
         run: pnpm install --no-frozen-lockfile
@@ -208,6 +218,16 @@ jobs:
 
           echo '--- Bundled binaries ---'
           find desktop/resources/bin/darwin -type f
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: desktop/scripts/requirements.txt
+
+      - name: Install icon generation dependencies
+        run: pip install -r desktop/scripts/requirements.txt
 
       - name: Install dependencies
         working-directory: desktop
