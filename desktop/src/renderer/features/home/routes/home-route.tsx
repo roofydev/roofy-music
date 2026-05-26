@@ -9,7 +9,6 @@ import { AlbumInfiniteSingleFeatureCarousel } from '/@/renderer/features/home/co
 import { FeaturedGenres } from '/@/renderer/features/home/components/featured-genres';
 import { AnimatedPage } from '/@/renderer/features/shared/components/animated-page';
 import { LibraryContainer } from '/@/renderer/features/shared/components/library-container';
-import { LibraryHeaderBar } from '/@/renderer/features/shared/components/library-header-bar';
 import { PageErrorBoundary } from '/@/renderer/features/shared/components/page-error-boundary';
 import { SongInfiniteCarousel } from '/@/renderer/features/songs/components/song-infinite-carousel';
 import { YoutubeMusicHomeCarousels } from '/@/renderer/features/youtube-music/components/youtube-music-home-carousels';
@@ -24,7 +23,6 @@ import {
 } from '/@/renderer/store';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Stack } from '/@/shared/components/stack/stack';
-import { Text } from '/@/shared/components/text/text';
 import { TextTitle } from '/@/shared/components/text-title/text-title';
 import {
     AlbumListSort,
@@ -96,23 +94,7 @@ const HomeRoute = () => {
 
     return (
         <AnimatedPage>
-            <NativeScrollArea
-                pageHeaderProps={{
-                    backgroundColor: 'var(--theme-colors-background)',
-                    children: (
-                        <LibraryHeaderBar>
-                            <Stack gap={4}>
-                                <LibraryHeaderBar.Title>{t('page.home.title')}</LibraryHeaderBar.Title>
-                                <Text isMuted size="sm">
-                                    {t('page.home.subtitle', 'Good to see you again.')}
-                                </Text>
-                            </Stack>
-                        </LibraryHeaderBar>
-                    ),
-                    offset: 200,
-                }}
-                ref={scrollAreaRef}
-            >
+            <NativeScrollArea ref={scrollAreaRef}>
                 <LibraryContainer>
                     <Stack
                         gap="2xl"
