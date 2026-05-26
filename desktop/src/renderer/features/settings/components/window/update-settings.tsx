@@ -10,8 +10,8 @@ import { useSettingsStoreActions, useWindowSettings } from '/@/renderer/store';
 import { Select } from '/@/shared/components/select/select';
 import { Switch } from '/@/shared/components/switch/switch';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
-const utils = isElectron() ? window.api.utils : null;
+const localSettings = window.api?.localSettings ?? null;
+const utils = window.api?.utils ?? null;
 
 function disableAutoUpdates(): boolean {
     return Boolean(!isElectron() || utils?.disableAutoUpdates());

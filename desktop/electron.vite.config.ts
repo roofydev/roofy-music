@@ -13,7 +13,7 @@ const config: UserConfig = {
     main: {
         build: {
             rollupOptions: {
-                external: ['source-map-support'],
+                external: ['source-map-support', 'youtubei.js'],
             },
             sourcemap: false,
         },

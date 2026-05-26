@@ -65,29 +65,32 @@ export type QueryHookArgs<T> = {
     serverId: string;
 };
 
+type AnyQueryOptions = QueryOptions<any, any, any, any>;
+type AnyUseQueryOptions = UseQueryOptions<any, any, any, any>;
+
 type UseQueryHookOptions = {
     enabled?: boolean;
-    gcTime?: QueryOptions['gcTime'];
-    // initialData?: UseQueryOptions['initialData'];
-    // initialDataUpdatedAt?: UseQueryOptions['initialDataUpdatedAt'];
-    meta?: UseQueryOptions['meta'];
-    networkMode?: UseQueryOptions['networkMode'];
-    notifyOnChangeProps?: UseQueryOptions['notifyOnChangeProps'];
+    gcTime?: AnyQueryOptions['gcTime'];
+    // initialData?: AnyUseQueryOptions['initialData'];
+    // initialDataUpdatedAt?: AnyUseQueryOptions['initialDataUpdatedAt'];
+    meta?: AnyUseQueryOptions['meta'];
+    networkMode?: AnyUseQueryOptions['networkMode'];
+    notifyOnChangeProps?: AnyUseQueryOptions['notifyOnChangeProps'];
     placeholderData?: (prev: any) => any;
-    // queryFn?: UseQueryOptions['queryFn'];
-    queryKey?: UseQueryOptions['queryKey'];
-    queryKeyHashFn?: UseQueryOptions['queryKeyHashFn'];
+    // queryFn?: AnyUseQueryOptions['queryFn'];
+    queryKey?: AnyUseQueryOptions['queryKey'];
+    queryKeyHashFn?: AnyUseQueryOptions['queryKeyHashFn'];
     refetchInterval?: number;
-    refetchIntervalInBackground?: UseQueryOptions['refetchIntervalInBackground'];
+    refetchIntervalInBackground?: AnyUseQueryOptions['refetchIntervalInBackground'];
     refetchOnMount?: boolean;
     refetchOnReconnect?: boolean;
     refetchOnWindowFocus?: boolean;
-    retry?: UseQueryOptions['retry'];
-    retryDelay?: UseQueryOptions['retryDelay'];
-    retryOnMount?: UseQueryOptions['retryOnMount'];
-    // select?: UseQueryOptions['select'];
+    retry?: AnyUseQueryOptions['retry'];
+    retryDelay?: AnyUseQueryOptions['retryDelay'];
+    retryOnMount?: AnyUseQueryOptions['retryOnMount'];
+    // select?: AnyUseQueryOptions['select'];
     staleTime?: number;
-    structuralSharing?: UseQueryOptions['structuralSharing'];
-    subscribed?: UseQueryOptions['subscribed'];
+    structuralSharing?: AnyUseQueryOptions['structuralSharing'];
+    subscribed?: AnyUseQueryOptions['subscribed'];
     throwOnError?: boolean;
 };

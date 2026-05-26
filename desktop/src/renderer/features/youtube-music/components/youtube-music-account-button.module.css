@@ -1,0 +1,143 @@
+.login-button,
+.account,
+.auth-button {
+    -webkit-app-region: no-drag;
+}
+
+.account {
+    min-width: 0;
+    max-width: 260px;
+    padding: 0 0.25rem;
+}
+
+.avatar {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    overflow: hidden;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: white;
+    background: #2f7d8c;
+    border: 1px solid alpha(var(--theme-colors-border), 0.6);
+    border-radius: 999px;
+}
+
+.avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.name {
+    max-width: 120px;
+}
+
+.compact .name {
+    display: none;
+}
+
+.auth-button {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 62px;
+    height: 30px;
+    overflow: visible;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--theme-colors-foreground);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid alpha(var(--theme-colors-border), 0.6);
+}
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .avatar {
+    width: var(--retro-sidebar-inline-height, 22px);
+    height: var(--retro-sidebar-inline-height, 22px);
+    background: rgb(255 255 255 / 12%);
+    border: 1px solid rgb(255 255 255 / 42%);
+    border-radius: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .account {
+    flex-shrink: 0;
+    align-items: center;
+    max-width: 138px;
+    height: auto;
+    max-height: 100%;
+}
+
+:global([data-theme="retroMonochrome"]) .login-button {
+    box-sizing: border-box;
+    min-width: 52px;
+    height: var(--retro-sidebar-inline-height, 22px);
+    min-height: var(--retro-sidebar-inline-height, 22px);
+    padding: 0 6px;
+    overflow: visible;
+    font-size: 10px;
+    line-height: 1;
+}
+
+:global([data-theme="retroMonochrome"]) .auth-button {
+    box-sizing: border-box;
+    width: auto;
+    min-width: 52px;
+    height: var(--retro-sidebar-inline-height, 22px);
+    padding: 0 6px;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 10px;
+    line-height: 1;
+    color: #f2f2f2;
+    background: transparent;
+    border: 1px solid rgb(255 255 255 / 35%);
+}
+
+:global([data-theme="retroMonochrome"]) .auth-button:hover,
+:global([data-theme="retroMonochrome"]) .auth-button:focus-visible {
+    color: #fff;
+    background: rgb(255 255 255 / 12%);
+    border-color: rgb(255 255 255 / 65%);
+}
+
+:global([data-theme="retroMonochrome"]) .auth-button[aria-disabled='true'] {
+    color: #555;
+    pointer-events: none;
+    border-color: rgb(255 255 255 / 10%);
+    opacity: 0.55;
+}
+
+:global([data-theme="retroMonochrome"]) .account button {
+    box-sizing: border-box;
+    flex-shrink: 0;
+    width: auto;
+    min-width: 52px;
+    max-width: none;
+    height: var(--retro-sidebar-inline-height, 22px);
+    min-height: var(--retro-sidebar-inline-height, 22px);
+    padding: 0 6px;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 10px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+:global([data-theme="retroMonochrome"]) .login-button :global([class*="mantine-Button-inner"]),
+:global([data-theme="retroMonochrome"]) .account button :global([class*="mantine-Button-inner"]),
+:global([data-theme="retroMonochrome"]) .login-button :global([class*="mantine-Button-label"]),
+:global([data-theme="retroMonochrome"]) .account button :global([class*="mantine-Button-label"]) {
+    min-width: 0;
+    overflow: visible;
+    text-overflow: clip;
+}

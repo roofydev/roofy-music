@@ -1,3 +1,4 @@
+import { useIsFetching } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import { MouseEvent } from 'react';
@@ -32,10 +33,12 @@ import { ActionIcon } from '/@/shared/components/action-icon/action-icon';
 import { Center } from '/@/shared/components/center/center';
 import { Group } from '/@/shared/components/group/group';
 import { Icon } from '/@/shared/components/icon/icon';
+import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Text } from '/@/shared/components/text/text';
 import { Tooltip } from '/@/shared/components/tooltip/tooltip';
 import { PlaybackSelectors } from '/@/shared/constants/playback-selectors';
-import { LibraryItem } from '/@/shared/types/domain-types';
+import { LibraryItem, ServerType } from '/@/shared/types/domain-types';
+import { isYoutubeMusicEntityId } from '/@/shared/types/youtube-music-types';
 
 export const LeftControls = () => {
     const { t } = useTranslation();
@@ -65,6 +68,16 @@ export const LeftControls = () => {
     const isSongDefined = Boolean(currentSong?.id) && !isRadioMode;
     const title = currentSong?.name;
     const artists = currentSong?.artists;
+    const isYoutubeMusicSong =
+        currentSong?._serverType === ServerType.YOUTUBE_MUSIC ||
+        isYoutubeMusicEntityId(currentSong?.id);
+    const isResolvingYoutubeStream = Boolean(
+        useIsFetching({
+            queryKey: currentSong
+                ? [currentSong._serverId, 'stream-url', currentSong.id]
+                : ['inactive-youtube-stream'],
+        }),
+    );
 
     const handleToggleFullScreenPlayer = (e?: KeyboardEvent | MouseEvent<HTMLDivElement>) => {
         // don't toggle if right click
@@ -168,6 +181,7 @@ export const LeftControls = () => {
                                             id={currentSong?.imageId}
                                             itemType={LibraryItem.SONG}
                                             serverId={currentSong?._serverId}
+                                            src={currentSong?.imageUrl ?? undefined}
                                             type="table"
                                         />
                                     )}
@@ -191,6 +205,11 @@ export const LeftControls = () => {
                                             openDelay: 0,
                                         }}
                                     />
+                                )}
+                                {isYoutubeMusicSong && isResolvingYoutubeStream && (
+                                    <div className={styles.streamLoading}>
+                                        <Spinner size={24} />
+                                    </div>
                                 )}
                             </motion.div>
                         </div>
@@ -280,22 +299,25 @@ export const LeftControls = () => {
                                 )}
                                 onClick={stopPropagation}
                             >
-                                <Text
-                                    component={Link}
-                                    fw={500}
-                                    isLink
-                                    overflow="hidden"
-                                    size="md"
-                                    to={
-                                        currentSong?.albumId
-                                            ? generatePath(AppRoute.LIBRARY_ALBUMS_DETAIL, {
-                                                  albumId: currentSong.albumId,
-                                              })
-                                            : ''
-                                    }
-                                >
-                                    {currentSong?.album || '—'}
-                                </Text>
+                                {currentSong?.albumId &&
+                                !isYoutubeMusicEntityId(currentSong.albumId) ? (
+                                    <Text
+                                        component={Link}
+                                        fw={500}
+                                        isLink
+                                        overflow="hidden"
+                                        size="md"
+                                        to={generatePath(AppRoute.LIBRARY_ALBUMS_DETAIL, {
+                                            albumId: currentSong.albumId,
+                                        })}
+                                    >
+                                        {currentSong?.album || '—'}
+                                    </Text>
+                                ) : (
+                                    <Text component="span" fw={500} overflow="hidden" size="md">
+                                        {currentSong?.album || '—'}
+                                    </Text>
+                                )}
                             </div>
                         </>
                     )}

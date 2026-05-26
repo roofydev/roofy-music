@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 const CHECK_FOR_UPDATES_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
-const utils = isElectron() ? window.api?.utils : null;
+const utils = window.api?.utils ?? null;
 
 export const useCheckForUpdates = () => {
     const [enablePeriodicCheck, setEnablePeriodicCheck] = useState(false);

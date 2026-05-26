@@ -92,28 +92,48 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .bar {
-    background-color: var(--retro-border, #7a7a7a);
+    background-color: var(--rm-text, #f4f4f4);
     transition: none;
 }
 
 :global([data-theme="retroMonochrome"]) .root:hover .bar,
 :global([data-theme="retroMonochrome"]) .root:focus .bar {
-    background-color: var(--retro-border-bright, #b8b8b8);
+    background-color: var(--rm-text, #f4f4f4);
 }
 
 :global([data-theme="retroMonochrome"]) .thumb {
-    border-color: var(--retro-border-bright, #b8b8b8);
-    border-radius: 0;
-    width: 4px;
-    height: 14px;
+    border: none;
+    border-radius: 50%;
+    width: 10px;
+    height: 10px;
     opacity: 1;
     transition: none;
+    background: var(--rm-text, #f4f4f4);
 }
 
 :global([data-theme="retroMonochrome"]) .label {
-    background: var(--retro-panel, #0b0b0b);
-    color: var(--retro-text, #d0d0d0);
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    background: var(--rm-panel, #080808);
+    color: var(--rm-text, #f4f4f4);
+    border: 1px solid var(--rm-border-soft, rgb(255 255 255 / 8%));
     box-shadow: none;
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
+}
+
+:global([data-theme="retroMonochrome"]) .track {
+    height: 4px;
+    background: var(--rm-border-soft, rgb(255 255 255 / 8%));
+    border-radius: 2px;
+}
+
+:global([data-theme="retroMonochrome"]) .slider-container {
+    height: 20px;
+}
+
+:global([data-theme="retroMonochrome"]) .slider-value-wrapper,
+:global([data-theme="retroMonochrome"]) .slider-value-wrapper-elapsed {
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--rm-text-muted, #777777);
+    letter-spacing: 0.02em;
 }

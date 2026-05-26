@@ -24,12 +24,17 @@ const quit = () => {
     ipcRenderer.invoke('discord-rpc-quit');
 };
 
+const uploadArtwork = (args: { cacheKey?: string; imageUrl: string; webhookUrl?: string }) => {
+    return ipcRenderer.invoke('discord-rpc-upload-artwork', args) as Promise<null | string>;
+};
+
 export const discordRpc = {
     clearActivity,
     initialize,
     isConnected,
     quit,
     setActivity,
+    uploadArtwork,
 };
 
 export type DiscordRpc = typeof discordRpc;

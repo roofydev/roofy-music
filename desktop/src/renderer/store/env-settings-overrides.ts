@@ -383,6 +383,12 @@ const ENV_SETTING_SPECS: EnvSettingSpec[] = [
         type: 'string',
     },
     {
+        key: 'FS_DISCORD_ARTWORK_WEBHOOK_URL',
+        path: ['discord', 'artworkWebhookUrl'],
+        skipIfEmpty: true,
+        type: 'string',
+    },
+    {
         enumSet: DISCORD_DISPLAY_TYPES,
         key: 'FS_DISCORD_DISPLAY_TYPE',
         path: ['discord', 'displayType'],

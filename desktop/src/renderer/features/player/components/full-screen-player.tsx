@@ -86,13 +86,17 @@ const BackgroundImage = memo(({ dynamicBackground, dynamicIsImage }: BackgroundI
 
     const currentImageUrl = useItemImageUrl({
         id: currentSong?.imageId || undefined,
+        imageUrl: currentSong?.imageUrl,
         itemType: LibraryItem.SONG,
+        serverId: currentSong?._serverId,
         type: 'itemCard',
     });
 
     const nextImageUrl = useItemImageUrl({
         id: nextSong?.imageId || undefined,
+        imageUrl: nextSong?.imageUrl,
         itemType: LibraryItem.SONG,
+        serverId: nextSong?._serverId,
         type: 'itemCard',
     });
 
@@ -109,6 +113,23 @@ const BackgroundImage = memo(({ dynamicBackground, dynamicIsImage }: BackgroundI
     useEffect(() => {
         imageStateRef.current = imageState;
     }, [imageState]);
+
+    useEffect(() => {
+        const isTop = imageStateRef.current.current === 0;
+        const activeImage = isTop
+            ? imageStateRef.current.topImage
+            : imageStateRef.current.bottomImage;
+
+        if (activeImage === currentImageUrl) {
+            return;
+        }
+
+        setImageState((state) =>
+            isTop
+                ? { ...state, topImage: currentImageUrl }
+                : { ...state, bottomImage: currentImageUrl },
+        );
+    }, [currentImageUrl]);
 
     // Update images when song changes
     useEffect(() => {
@@ -243,8 +264,19 @@ const Controls = () => {
     const displaySettings = useLyricsDisplaySettings('default');
     const lyricConfig = { ...lyricsSettings, ...displaySettings };
 
+    const videoFullscreen = useFullScreenPlayerStore((state) => state.videoFullscreen);
+
     const handleToggleFullScreenPlayer = () => {
-        setStore({ expanded: !expanded, visualizerExpanded: false });
+        if (videoFullscreen) {
+            setStore({ videoFullscreen: false });
+            return;
+        }
+
+        setStore({
+            expanded: !expanded,
+            videoFullscreen: false,
+            visualizerExpanded: false,
+        });
     };
 
     const handleLyricsSettings = (property: string, value: any) => {
@@ -635,11 +667,17 @@ export const FullScreenPlayer = () => {
 
     useLayoutEffect(() => {
         if (isOpenedRef.current !== null) {
-            setStore({ expanded: false });
+            setStore({ expanded: false, videoFullscreen: false });
         }
 
         isOpenedRef.current = true;
     }, [location, setStore]);
+
+    useEffect(() => {
+        return () => {
+            setStore({ videoFullscreen: false });
+        };
+    }, [setStore]);
 
     return (
         <PlayerContainer

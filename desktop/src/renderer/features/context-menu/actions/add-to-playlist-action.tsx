@@ -1,6 +1,7 @@
 import { openContextModal } from '@mantine/modals';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Fuse from 'fuse.js';
+import isElectron from 'is-electron';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -16,7 +17,7 @@ import {
 import { playlistsQueries } from '/@/renderer/features/playlists/api/playlists-api';
 import { useRecentPlaylists } from '/@/renderer/features/playlists/hooks/use-recent-playlists';
 import { useAddToPlaylist } from '/@/renderer/features/playlists/mutations/add-to-playlist-mutation';
-import { useCurrentServer, useCurrentServerId } from '/@/renderer/store';
+import { useCurrentServer, useCurrentServerId, useImportJobActions } from '/@/renderer/store';
 import { Checkbox } from '/@/shared/components/checkbox/checkbox';
 import { ContextMenu } from '/@/shared/components/context-menu/context-menu';
 import { Icon } from '/@/shared/components/icon/icon';
@@ -25,17 +26,32 @@ import { TextInput } from '/@/shared/components/text-input/text-input';
 import { toast } from '/@/shared/components/toast/toast';
 import { Tooltip } from '/@/shared/components/tooltip/tooltip';
 import { useLocalStorage } from '/@/shared/hooks/use-local-storage';
-import { LibraryItem, PlaylistListSort, SortOrder } from '/@/shared/types/domain-types';
+import {
+    LibraryItem,
+    Playlist,
+    PlaylistListSort,
+    ServerType,
+    Song,
+    SortOrder,
+} from '/@/shared/types/domain-types';
 
 interface AddToPlaylistActionProps {
     items: string[];
     itemType: LibraryItem;
+    playlists?: Playlist[];
+    songs?: Song[];
 }
 
-export const AddToPlaylistAction = ({ items, itemType }: AddToPlaylistActionProps) => {
+export const AddToPlaylistAction = ({
+    items,
+    itemType,
+    playlists: sourcePlaylists = [],
+    songs = [],
+}: AddToPlaylistActionProps) => {
     const { t } = useTranslation();
     const server = useCurrentServer();
     const serverId = useCurrentServerId();
+    const { setJob } = useImportJobActions();
     const queryClient = useQueryClient();
     const [searchTerm, setSearchTerm] = useState('');
     const [skipDuplicates, setSkipDuplicates] = useLocalStorage({
@@ -169,6 +185,78 @@ export const AddToPlaylistAction = ({ items, itemType }: AddToPlaylistActionProp
             if (items.length === 0 || !serverId) return;
 
             try {
+                const youtubeSongs = songs.filter(
+                    (song) =>
+                        song._serverType === ServerType.YOUTUBE_MUSIC &&
+                        Boolean(song.youtubeMusic?.videoId),
+                );
+                const youtubePlaylists = sourcePlaylists.filter(
+                    (playlist) =>
+                        playlist._serverType === ServerType.YOUTUBE_MUSIC &&
+                        Boolean(playlist.youtubeMusic?.playlistId),
+                );
+                const isYoutubeOnlySelection =
+                    youtubeSongs.length > 0 &&
+                    youtubeSongs.length === items.length &&
+                    (itemType === LibraryItem.SONG ||
+                        itemType === LibraryItem.PLAYLIST_SONG ||
+                        itemType === LibraryItem.QUEUE_SONG);
+
+                if (isYoutubeOnlySelection) {
+                    if (!isElectron() || !window.api?.youtubeMusic?.importTrack) {
+                        toast.error({
+                            message: 'Import to playlist is only available in the desktop app.',
+                            title: t('error.genericError'),
+                        });
+                        return;
+                    }
+
+                    for (const song of youtubeSongs) {
+                        const job = await window.api.youtubeMusic.importTrack({
+                            album: song.album || undefined,
+                            artist: song.artistName || song.albumArtistName || 'Unknown Artist',
+                            imageUrl: song.imageUrl || undefined,
+                            sourceTrackId: song.id,
+                            targetPlaylistIds: [playlistId],
+                            targetPlaylistNames: [playlistName],
+                            title: song.name,
+                            videoId: song.youtubeMusic!.videoId!,
+                        });
+                        setJob(job);
+                    }
+
+                    return;
+                }
+
+                const isYoutubePlaylistSelection =
+                    youtubePlaylists.length > 0 &&
+                    youtubePlaylists.length === items.length &&
+                    itemType === LibraryItem.PLAYLIST;
+
+                if (isYoutubePlaylistSelection) {
+                    if (!isElectron() || !window.api?.youtubeMusic?.importPlaylist) {
+                        toast.error({
+                            message: 'Import to playlist is only available in the desktop app.',
+                            title: t('error.genericError'),
+                        });
+                        return;
+                    }
+
+                    for (const playlist of youtubePlaylists) {
+                        const sourcePlaylistId = playlist.youtubeMusic!.playlistId!;
+                        const job = await window.api.youtubeMusic.importPlaylist({
+                            createPlaylist: false,
+                            playlistId: sourcePlaylistId,
+                            playlistName: playlist.name,
+                            targetPlaylistIds: [playlistId],
+                            targetPlaylistNames: [playlistName],
+                        });
+                        setJob(job);
+                    }
+
+                    return;
+                }
+
                 let allSongIds: string[] = [];
 
                 if (itemType === LibraryItem.SONG || itemType === LibraryItem.PLAYLIST_SONG) {
@@ -292,7 +380,10 @@ export const AddToPlaylistAction = ({ items, itemType }: AddToPlaylistActionProp
             items,
             queryClient,
             serverId,
+            setJob,
             skipDuplicates,
+            songs,
+            sourcePlaylists,
             t,
         ],
     );
@@ -385,7 +476,9 @@ export const AddToPlaylistAction = ({ items, itemType }: AddToPlaylistActionProp
                     onSelect={handleOpenModal}
                     rightIcon="arrowRightS"
                 >
-                    {t('page.contextMenu.addToPlaylist')}
+                    {songs.some((song) => song._serverType === ServerType.YOUTUBE_MUSIC)
+                        ? 'Import to playlist'
+                        : t('page.contextMenu.addToPlaylist')}
                 </ContextMenu.Item>
             </ContextMenu.SubmenuTarget>
             <ContextMenu.SubmenuContent stickyContent={searchInput}>

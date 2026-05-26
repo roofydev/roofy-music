@@ -42,9 +42,11 @@ import { useForm } from '/@/shared/hooks/use-form';
 import { AuthenticationResponse, ServerListItemWithCredential } from '/@/shared/types/domain-types';
 import { ServerType, toServerType } from '/@/shared/types/types';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
-const SERVER_NAMES: Record<ServerType, string> = {
+type LoginServerType = Exclude<ServerType, ServerType.YOUTUBE_MUSIC>;
+
+const SERVER_NAMES: Record<LoginServerType, string> = {
     [ServerType.JELLYFIN]: 'Jellyfin',
     [ServerType.NAVIDROME]: 'Navidrome',
     [ServerType.SUBSONIC]: 'OpenSubsonic',
@@ -102,27 +104,6 @@ const LoginRoute = () => {
             username: '',
         },
     });
-
-    // If server lock is not enabled, or we already have a server, redirect to home
-    if (currentServer) {
-        return <Navigate replace to={AppRoute.HOME} />;
-    }
-
-    // If any of the config values are invalid, show error
-    if (config.some((c) => !c.isValid)) {
-        return (
-            <AnimatedPage>
-                <PageHeader />
-                <Center style={{ height: '100%', width: '100vw' }}>
-                    <Stack>
-                        <TextTitle fw={600}>{t('error.genericError')}</TextTitle>
-                        <Text fw={500}>{t('error.serverNotSelectedError')}</Text>
-                        <Code block>{JSON.stringify(config, null, 2)}</Code>
-                    </Stack>
-                </Center>
-            </AnimatedPage>
-        );
-    }
 
     const connectLocalServer = async (values: { password: string; username: string }) => {
         const authFunction = api.controller.authenticate;
@@ -251,7 +232,29 @@ const LoginRoute = () => {
         return () => {
             cancelled = true;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentServer, serverLock, serverType]);
+
+    // If server lock is not enabled, or we already have a server, redirect to home
+    if (currentServer) {
+        return <Navigate replace to={AppRoute.HOME} />;
+    }
+
+    // If any of the config values are invalid, show error
+    if (config.some((c) => !c.isValid)) {
+        return (
+            <AnimatedPage>
+                <PageHeader />
+                <Center style={{ height: '100%', width: '100vw' }}>
+                    <Stack>
+                        <TextTitle fw={600}>{t('error.genericError')}</TextTitle>
+                        <Text fw={500}>{t('error.serverNotSelectedError')}</Text>
+                        <Code block>{JSON.stringify(config, null, 2)}</Code>
+                    </Stack>
+                </Center>
+            </AnimatedPage>
+        );
+    }
 
     const isSubmitDisabled = !form.values.username || !form.values.password;
     const serverIcon = getServerLogo({

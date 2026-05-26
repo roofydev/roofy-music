@@ -87,9 +87,15 @@ const SearchRoute = lazy(() => import('/@/renderer/features/search/routes/search
 
 const FavoritesRoute = lazy(() => import('/@/renderer/features/favorites/routes/favorites-route'));
 
+const ImportsRoute = lazy(() => import('/@/renderer/features/imports/routes/imports-route'));
+
 const SettingsRoute = lazy(() => import('/@/renderer/features/settings/routes/settings-route'));
 
 const StatsRoute = lazy(() => import('/@/renderer/features/stats/routes/stats-route'));
+
+const YoutubeMusicRoute = lazy(
+    () => import('/@/renderer/features/youtube-music/routes/youtube-music-route'),
+);
 
 const LazyLyricsSettingsContextModal = lazy(() =>
     import('/@/renderer/features/lyrics/components/lyrics-settings-modal').then((module) => ({
@@ -219,6 +225,11 @@ export const AppRouter = () => {
                                             path={AppRoute.SETTINGS}
                                         />
                                         <Route element={<StatsRoute />} path={AppRoute.STATS} />
+                                        <Route element={<ImportsRoute />} path={AppRoute.IMPORTS} />
+                                        <Route
+                                            element={<YoutubeMusicRoute />}
+                                            path={AppRoute.YOUTUBE_MUSIC}
+                                        />
                                         <Route
                                             element={<NowPlayingRoute />}
                                             path={AppRoute.NOW_PLAYING}

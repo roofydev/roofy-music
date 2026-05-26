@@ -1,12 +1,25 @@
 .container {
     position: relative;
+    display: flex;
+    flex-direction: column;
     grid-area: sidebar;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
     background: var(--theme-colors-background-alternate);
     border-right: 1px solid alpha(var(--theme-colors-border), 0.5);
 }
 
+.container > :last-child {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+}
+
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .container {
-    background: var(--retro-bg-2, #080808) !important;
-    border-right: 1px solid var(--retro-border, #7a7a7a) !important;
+    background: var(--rm-panel, #080808) !important;
+    border-right: 1px solid var(--rm-border-soft, rgb(255 255 255 / 8%)) !important;
 }

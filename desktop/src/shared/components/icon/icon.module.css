@@ -84,6 +84,11 @@ img.size-5xl {
 }
 
 .fill {
+    display: block;
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    margin: 0;
     fill: transparent;
 }
 

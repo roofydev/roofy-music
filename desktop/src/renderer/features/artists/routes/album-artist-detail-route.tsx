@@ -18,8 +18,13 @@ import { LibraryHeaderBar } from '/@/renderer/features/shared/components/library
 import { PageErrorBoundary } from '/@/renderer/features/shared/components/page-error-boundary';
 import { useFastAverageColor } from '/@/renderer/hooks';
 import { useArtistBackground, useCurrentServer, useCurrentServerId } from '/@/renderer/store';
+import { Center } from '/@/shared/components/center/center';
+import { Icon } from '/@/shared/components/icon/icon';
 import { Spinner } from '/@/shared/components/spinner/spinner';
+import { Stack } from '/@/shared/components/stack/stack';
+import { Text } from '/@/shared/components/text/text';
 import { AlbumListSort, LibraryItem, SortOrder } from '/@/shared/types/domain-types';
+import { isYoutubeMusicEntityId } from '/@/shared/types/youtube-music-types';
 
 const AlbumArtistDetailRouteContent = () => {
     const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -124,6 +129,20 @@ const AlbumArtistDetailRouteContent = () => {
     );
 };
 
+const YoutubeMusicArtistPlaceholder = ({ id }: { id: string }) => (
+    <AnimatedPage key={`album-artist-detail-${id}`}>
+        <Center style={{ padding: '3rem' }}>
+            <Stack align="center" gap="sm">
+                <Icon icon="artist" size="xl" />
+                <Text size="lg" weight={700}>
+                    YouTube Music Artist
+                </Text>
+                <Text isMuted>Artist details are not available for YouTube Music.</Text>
+            </Stack>
+        </Center>
+    </AnimatedPage>
+);
+
 const AlbumArtistDetailRoute = () => {
     const { albumArtistId, artistId } = useParams() as {
         albumArtistId?: string;
@@ -133,7 +152,11 @@ const AlbumArtistDetailRoute = () => {
 
     return (
         <Suspense fallback={<Spinner container />} key={`album-artist-detail-suspense-${routeId}`}>
-            <AlbumArtistDetailRouteContent />
+            {isYoutubeMusicEntityId(routeId) ? (
+                <YoutubeMusicArtistPlaceholder id={routeId} />
+            ) : (
+                <AlbumArtistDetailRouteContent />
+            )}
         </Suspense>
     );
 };

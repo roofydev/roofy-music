@@ -1,453 +1,583 @@
 /* stylelint-disable selector-class-pattern */
 
 /* ============================================================
-   Retro Monochrome Theme — Global Overrides
-   Forces zero radius, monochrome palette, and terminal styling
-   across all Mantine and app components.
+   Retro Monochrome Theme — Modern dark monochrome UI
    ============================================================ */
 
-/* --- Global resets when retro theme is active --- */
 [data-theme="retroMonochrome"] {
-    --retro-bg: #050505;
-    --retro-bg-2: #080808;
-    --retro-bg-3: #0d0d0d;
-    --retro-panel: #0b0b0b;
-    --retro-panel-2: #101010;
-    --retro-panel-3: #151515;
-    --retro-border-bright: #b8b8b8;
-    --retro-border: #7a7a7a;
-    --retro-border-muted: #3f3f3f;
-    --retro-border-dark: #222222;
-    --retro-text-hot: #f1f1f1;
-    --retro-text: #d0d0d0;
-    --retro-text-soft: #a0a0a0;
-    --retro-text-muted: #707070;
-    --retro-text-dim: #4a4a4a;
-    --retro-active: #d8d8a0;
-    --retro-active-muted: #9a9a72;
+    --rm-font: Inter, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --rm-bg: #050505;
+    --rm-panel: #080808;
+    --rm-panel-raised: #0d0d0d;
+    --rm-hover: #151515;
+    --rm-active: #1a1a1a;
+    --rm-border-soft: rgb(255 255 255 / 8%);
+    --rm-border: rgb(255 255 255 / 16%);
+    --rm-border-strong: rgb(255 255 255 / 28%);
+    --rm-text: #f4f4f4;
+    --rm-text-secondary: #b8b8b8;
+    --rm-text-muted: #777777;
+    --rm-text-disabled: #4d4d4d;
+    --rm-radius-sm: 4px;
+    --rm-radius-md: 6px;
+    --rm-transition: 120ms ease;
+    --retro-bg: var(--rm-bg);
+    --retro-bg-2: #070707;
+    --retro-bg-3: #0a0a0a;
+    --retro-panel: var(--rm-panel);
+    --retro-panel-2: var(--rm-panel-raised);
+    --retro-panel-3: var(--rm-hover);
+    --retro-border-bright: var(--rm-border-strong);
+    --retro-border: var(--rm-border);
+    --retro-border-muted: var(--rm-border-soft);
+    --retro-border-dark: var(--rm-border-soft);
+    --retro-text-hot: var(--rm-text);
+    --retro-text: var(--rm-text);
+    --retro-text-soft: var(--rm-text-secondary);
+    --retro-text-muted: var(--rm-text-muted);
+    --retro-text-dim: var(--rm-text-disabled);
+    --retro-active: rgb(255 255 255 / 8%);
+    --retro-active-muted: rgb(255 255 255 / 5%);
+    --retro-hover: rgb(255 255 255 / 4.5%);
+    --mantine-font-family: var(--rm-font) !important;
+    --mantine-font-family-headings: var(--rm-font) !important;
+    --theme-content-font-family: var(--rm-font) !important;
+    --theme-heading-font-family: var(--rm-font) !important;
 
-    --theme-content-font-family: "IBM Plex Mono", "Courier New", monospace !important;
-
+    scrollbar-color: rgb(255 255 255 / 16%) #080808;
     scrollbar-width: thin;
-    scrollbar-color: var(--retro-border-muted) var(--retro-bg);
 }
 
-/* WebKit scrollbars */
+[data-theme="retroMonochrome"] body,
+[data-theme="retroMonochrome"] html {
+    font-family: var(--rm-font) !important;
+    color: var(--rm-text) !important;
+    letter-spacing: 0.01em;
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgb(255 255 255 / 1.5%) 0,
+            rgb(255 255 255 / 1.5%) 1px,
+            transparent 1px,
+            transparent 4px
+        ),
+        var(--rm-bg) !important;
+    text-rendering: optimizelegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
 [data-theme="retroMonochrome"] ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
 }
 
 [data-theme="retroMonochrome"] ::-webkit-scrollbar-track {
-    background: var(--retro-bg);
+    background: #080808;
 }
 
 [data-theme="retroMonochrome"] ::-webkit-scrollbar-thumb {
-    background: var(--retro-border-muted);
-    border: 1px solid var(--retro-border);
+    background: rgb(255 255 255 / 16%);
+    border-radius: var(--rm-radius-sm);
 }
 
 [data-theme="retroMonochrome"] ::-webkit-scrollbar-thumb:hover {
-    background: var(--retro-border);
+    background: rgb(255 255 255 / 28%);
 }
 
-/* --- Kill all rounded corners globally --- */
+[data-theme="retroMonochrome"] .os-scrollbar.os-scrollbar-auto-hide-hidden {
+    pointer-events: none !important;
+    opacity: 0 !important;
+}
+
 [data-theme="retroMonochrome"] *,
 [data-theme="retroMonochrome"] *::before,
 [data-theme="retroMonochrome"] *::after {
-    border-radius: 0 !important;
-}
-
-/* --- Kill all box shadows globally --- */
-[data-theme="retroMonochrome"] * {
+    font-family: var(--rm-font) !important;
     box-shadow: none !important;
-}
-
-/* --- Kill all backdrop-filter blur globally --- */
-[data-theme="retroMonochrome"] * {
     backdrop-filter: none !important;
 }
 
-/* --- Kill drop-shadow filters on images/cards --- */
 [data-theme="retroMonochrome"] .fs-feature-carousel-module-album-image-container,
 [data-theme="retroMonochrome"] .fs-item-card-module-image-container img,
 [data-theme="retroMonochrome"] .fs-image-module-image {
     filter: none !important;
 }
 
-/* --- Body / root background --- */
-[data-theme="retroMonochrome"] body,
-[data-theme="retroMonochrome"] html {
-    background: var(--retro-bg) !important;
-    color: var(--retro-text) !important;
-    font-family: "IBM Plex Mono", "Courier New", monospace !important;
-    -webkit-font-smoothing: none;
-    text-rendering: geometricPrecision;
-    letter-spacing: 0.025em;
-}
-
 /* --- Mantine component overrides --- */
 
-/* Buttons */
 [data-theme="retroMonochrome"] .mantine-Button-root {
+    font-family: var(--rm-font) !important;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--rm-text) !important;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    border: 1px solid var(--retro-border) !important;
-    background: var(--retro-panel) !important;
-    color: var(--retro-text) !important;
-    font-family: var(--theme-content-font-family) !important;
-    transition: none !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: var(--rm-radius-sm) !important;
+    transition: background var(--rm-transition), border-color var(--rm-transition), color var(--rm-transition) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Button-root[data-variant='default'],
+[data-theme="retroMonochrome"] .mantine-Button-root[data-variant='outline'],
+[data-theme="retroMonochrome"] .mantine-Button-root[data-variant='filled'],
+[data-theme="retroMonochrome"] .mantine-Button-root[data-variant='secondary'] {
+    border: 1px solid var(--rm-border) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Button-root:not([data-size^="compact-"]) {
+    padding: 9px 16px;
+}
+
+[data-theme="retroMonochrome"] .mantine-Button-root[data-size^="compact-"] {
+    height: var(--button-height);
+    padding: 0 var(--button-padding-x);
+    line-height: 1;
 }
 
 [data-theme="retroMonochrome"] .mantine-Button-root:hover {
-    background: var(--retro-panel-2) !important;
-    border-color: var(--retro-border-bright) !important;
-    color: var(--retro-text-hot) !important;
+    color: var(--rm-text) !important;
+    background: var(--retro-hover) !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Button-root[data-variant='default']:hover,
+[data-theme="retroMonochrome"] .mantine-Button-root[data-variant='outline']:hover,
+[data-theme="retroMonochrome"] .mantine-Button-root[data-variant='filled']:hover,
+[data-theme="retroMonochrome"] .mantine-Button-root[data-variant='secondary']:hover {
+    border-color: var(--rm-border-strong) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Button-root:active {
-    transform: translateY(1px) !important;
-    background: var(--retro-panel-3) !important;
+    background: var(--retro-active) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Button-root[data-disabled="true"] {
-    color: var(--retro-text-dim) !important;
-    border-color: var(--retro-border-dark) !important;
+    color: var(--rm-text-disabled) !important;
+    border-color: var(--rm-border-soft) !important;
+    opacity: 0.55;
 }
 
-/* Inputs */
 [data-theme="retroMonochrome"] .mantine-Input-input,
 [data-theme="retroMonochrome"] .mantine-TextInput-input,
 [data-theme="retroMonochrome"] .mantine-Textarea-input,
 [data-theme="retroMonochrome"] .mantine-Select-input,
 [data-theme="retroMonochrome"] .mantine-MultiSelect-input {
-    background: var(--retro-bg) !important;
-    color: var(--retro-text) !important;
-    border: 1px solid var(--retro-border) !important;
-    font-family: var(--theme-content-font-family) !important;
+    height: 38px;
+    font-family: var(--rm-font) !important;
+    font-size: 13px;
+    color: var(--rm-text) !important;
+    background: var(--rm-panel) !important;
+    border: 1px solid var(--rm-border) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Input-input:focus,
 [data-theme="retroMonochrome"] .mantine-TextInput-input:focus,
 [data-theme="retroMonochrome"] .mantine-Textarea-input:focus {
-    border-color: var(--retro-border-bright) !important;
     outline: none !important;
-    box-shadow: inset 0 0 0 1px var(--retro-border-muted) !important;
+    border-color: var(--rm-border-strong) !important;
+    box-shadow: 0 0 0 1px var(--rm-border-strong) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Input-input::placeholder {
-    color: var(--retro-text-dim) !important;
+    color: var(--rm-text-muted) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 12px;
 }
 
-/* Modals */
 [data-theme="retroMonochrome"] .mantine-Modal-content {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border-bright) !important;
-    color: var(--retro-text) !important;
+    color: var(--rm-text) !important;
+    background: var(--rm-panel-raised) !important;
+    border: 1px solid var(--rm-border) !important;
+    border-radius: var(--rm-radius-md) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Modal-header {
-    background: var(--retro-panel) !important;
-    border-bottom: 1px solid var(--retro-border) !important;
+    font-family: var(--rm-font) !important;
+    font-weight: 700;
     text-transform: uppercase;
-    font-family: var(--theme-content-font-family) !important;
+    letter-spacing: 0.04em;
+    background: var(--rm-panel) !important;
+    border-bottom: 1px solid var(--rm-border-soft) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Modal-overlay {
-    background: rgba(0, 0, 0, 0.85) !important;
-    backdrop-filter: none !important;
+    background: rgb(0 0 0 / 75%) !important;
 }
 
-/* Checkbox / Switch */
 [data-theme="retroMonochrome"] .mantine-Checkbox-input {
-    background: var(--retro-bg) !important;
-    border: 1px solid var(--retro-border-muted) !important;
-    width: 24px;
-    height: 24px;
+    width: 18px;
+    height: 18px;
+    background: var(--rm-bg) !important;
+    border: 1px solid var(--rm-border) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Checkbox-input:checked {
-    background: var(--retro-panel-2) !important;
-    border-color: var(--retro-border-bright) !important;
+    background: var(--rm-panel-raised) !important;
+    border-color: var(--rm-border-strong) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Checkbox-icon {
-    color: var(--retro-text-hot) !important;
+    color: var(--rm-text) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Switch-track {
-    background: var(--retro-bg) !important;
-    border: 1px solid var(--retro-border-muted) !important;
     width: 40px;
-    height: 24px;
+    height: 22px;
+    background: var(--rm-bg) !important;
+    border: 1px solid var(--rm-border) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Switch-track[data-checked="true"] {
-    background: var(--retro-panel-2) !important;
-    border-color: var(--retro-border-bright) !important;
+    background: var(--rm-panel-raised) !important;
+    border-color: var(--rm-border-strong) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Switch-thumb {
-    background: var(--retro-border) !important;
-    border: 1px solid var(--retro-border-bright) !important;
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
+    background: var(--rm-text-secondary) !important;
+    border: 1px solid var(--rm-border-strong) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
-/* Slider */
 [data-theme="retroMonochrome"] .mantine-Slider-track {
-    background: var(--retro-bg) !important;
-    border: 1px solid var(--retro-border-muted) !important;
-    height: 16px;
+    height: 4px;
+    background: var(--rm-border-soft) !important;
+    border: none !important;
+    border-radius: 2px !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Slider-bar {
-    background: var(--retro-border) !important;
+    background: var(--rm-text) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Slider-thumb {
-    background: var(--retro-border-bright) !important;
-    border: 1px solid var(--retro-border-bright) !important;
-    width: 4px;
-    height: 14px;
-    border-radius: 0 !important;
+    width: 10px;
+    height: 10px;
+    background: var(--rm-text) !important;
+    border: none !important;
+    border-radius: 50% !important;
 }
 
-/* Table */
 [data-theme="retroMonochrome"] .mantine-Table-table {
     border-collapse: collapse;
-    background: var(--retro-panel);
-    border: 1px solid var(--retro-border);
+    background: transparent;
+    border: none;
 }
 
 [data-theme="retroMonochrome"] .mantine-Table-th {
-    background: var(--retro-panel-2) !important;
-    color: var(--retro-text-hot) !important;
+    font-family: var(--rm-font) !important;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--rm-text-muted) !important;
     text-transform: uppercase;
-    font-size: 12px;
-    border-bottom: 1px solid var(--retro-border-dark) !important;
-    border-right: 1px solid var(--retro-border-dark) !important;
-    font-family: var(--theme-content-font-family) !important;
+    letter-spacing: 0.06em;
+    background: transparent !important;
+    border-bottom: 1px solid var(--rm-border-soft) !important;
+    padding: 10px 12px !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Table-td {
-    color: var(--retro-text) !important;
     font-size: 13px;
-    border-bottom: 1px solid var(--retro-border-dark) !important;
-    border-right: 1px solid var(--retro-border-dark) !important;
+    color: var(--rm-text) !important;
+    border-bottom: 1px solid var(--rm-border-soft) !important;
+    padding: 8px 12px !important;
 }
 
-/* Tabs */
 [data-theme="retroMonochrome"] .mantine-Tabs-tab {
-    background: var(--retro-panel) !important;
-    color: var(--retro-text-soft) !important;
-    border: 1px solid var(--retro-border) !important;
-    border-right: 1px solid var(--retro-border-muted) !important;
+    padding: 10px 14px;
+    font-family: var(--rm-font) !important;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--rm-text-muted) !important;
     text-transform: uppercase;
-    font-family: var(--theme-content-font-family) !important;
-    transition: none !important;
+    letter-spacing: 0.06em;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important;
+    transition: color var(--rm-transition), border-color var(--rm-transition) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Tabs-tab[data-active="true"] {
-    color: var(--retro-active) !important;
-    background: rgba(216, 216, 160, 0.08) !important;
+    color: var(--rm-text) !important;
+    background: transparent !important;
+    border-bottom-color: var(--rm-text) !important;
 }
 
-/* Tooltip */
+[data-theme="retroMonochrome"] .mantine-Tabs-tab:hover {
+    color: var(--rm-text-secondary) !important;
+    background: transparent !important;
+}
+
+[data-theme="retroMonochrome"] .mantine-Tabs-list {
+    border-bottom: 1px solid var(--rm-border-soft) !important;
+    gap: 4px !important;
+}
+
 [data-theme="retroMonochrome"] .mantine-Tooltip-tooltip {
-    background: var(--retro-panel-2) !important;
-    border: 1px solid var(--retro-border-muted) !important;
-    color: var(--retro-text) !important;
-    font-family: var(--theme-content-font-family) !important;
+    font-family: var(--rm-font) !important;
+    font-size: 12px;
+    color: var(--rm-text) !important;
+    background: var(--rm-panel-raised) !important;
+    border: 1px solid var(--rm-border) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
-/* Badge */
 [data-theme="retroMonochrome"] .mantine-Badge-root {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border-muted) !important;
-    color: var(--retro-text-soft) !important;
+    font-family: var(--rm-font) !important;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--rm-text-secondary) !important;
     text-transform: uppercase;
-    font-family: var(--theme-content-font-family) !important;
+    letter-spacing: 0.04em;
+    background: transparent !important;
+    border: 1px solid var(--rm-border) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
-/* Paper / Card surfaces */
 [data-theme="retroMonochrome"] .mantine-Paper-root {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
-    color: var(--retro-text) !important;
+    color: var(--rm-text) !important;
+    background: var(--rm-panel) !important;
+    border: 1px solid var(--rm-border-soft) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
-/* Popover / Dropdown */
 [data-theme="retroMonochrome"] .mantine-Popover-dropdown,
 [data-theme="retroMonochrome"] .mantine-Menu-dropdown {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
-    color: var(--retro-text) !important;
+    color: var(--rm-text) !important;
+    background: var(--rm-panel-raised) !important;
+    border: 1px solid var(--rm-border) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
-/* Divider */
 [data-theme="retroMonochrome"] .mantine-Divider-root {
-    border-color: var(--retro-border-muted) !important;
+    border-color: var(--rm-border-soft) !important;
 }
 
-/* Notifications */
 [data-theme="retroMonochrome"] .mantine-Notification-root {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
-    color: var(--retro-text) !important;
+    color: var(--rm-text) !important;
+    background: var(--rm-panel-raised) !important;
+    border: 1px solid var(--rm-border) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
-/* SegmentedControl */
 [data-theme="retroMonochrome"] .mantine-SegmentedControl-root {
-    background: var(--retro-bg) !important;
-    border: 1px solid var(--retro-border) !important;
+    background: var(--rm-bg) !important;
+    border: 1px solid var(--rm-border-soft) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-SegmentedControl-indicator {
-    background: var(--retro-panel-2) !important;
-    border: 1px solid var(--retro-border-bright) !important;
+    background: var(--retro-active) !important;
+    border: 1px solid var(--rm-border) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-SegmentedControl-label {
-    color: var(--retro-text-soft) !important;
-    font-family: var(--theme-content-font-family) !important;
+    font-family: var(--rm-font) !important;
+    color: var(--rm-text-muted) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-SegmentedControl-label[data-active="true"] {
-    color: var(--retro-text-hot) !important;
+    color: var(--rm-text) !important;
 }
 
-/* Accordion */
 [data-theme="retroMonochrome"] .mantine-Accordion-item {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
-    border-bottom: 0 !important;
-}
-
-[data-theme="retroMonochrome"] .mantine-Accordion-item:last-child {
-    border-bottom: 1px solid var(--retro-border) !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--rm-border-soft) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Accordion-control {
-    color: var(--retro-text) !important;
-    font-family: var(--theme-content-font-family) !important;
+    font-family: var(--rm-font) !important;
+    color: var(--rm-text-muted) !important;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
-/* Progress bar */
 [data-theme="retroMonochrome"] .mantine-Progress-section {
-    background: var(--retro-border) !important;
+    background: var(--rm-text-secondary) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Progress-track {
-    background: var(--retro-bg) !important;
-    border: 1px solid var(--retro-border-muted) !important;
+    background: var(--rm-border-soft) !important;
+    border: none !important;
+    border-radius: 2px !important;
 }
 
-/* Skeleton loader */
 [data-theme="retroMonochrome"] .mantine-Skeleton-root {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border-dark) !important;
+    background: var(--rm-panel) !important;
+    border: 1px solid var(--rm-border-soft) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
 [data-theme="retroMonochrome"] .mantine-Skeleton-root::after {
     background: linear-gradient(
         90deg,
         transparent,
-        var(--retro-panel-2),
+        var(--rm-panel-raised),
         transparent
     ) !important;
 }
 
+[data-theme="retroMonochrome"] *:focus-visible {
+    outline: 1px solid var(--rm-border-strong) !important;
+    outline-offset: 2px !important;
+}
+
 /* --- App-specific overrides --- */
 
-/* Sidebar */
 [data-theme="retroMonochrome"] .fs-sidebar-module-container {
-    background: var(--retro-bg-2) !important;
-    border-right: 1px solid var(--retro-border) !important;
+    background: var(--rm-panel) !important;
+    border-right: 1px solid var(--rm-border-soft) !important;
 }
 
 [data-theme="retroMonochrome"] .fs-sidebar-module-accordion-content a {
-    color: var(--retro-text-soft) !important;
-    border-bottom: 1px solid var(--retro-border-dark) !important;
+    min-height: 38px;
+    padding: 0 14px;
+    font-family: var(--rm-font) !important;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--rm-text-secondary) !important;
+    letter-spacing: 0.02em;
+    border: none !important;
+}
+
+[data-theme="retroMonochrome"] #left-sidebar .mantine-Button-root,
+[data-theme="retroMonochrome"] .fs-sidebar-module-container .mantine-Button-root[data-variant='subtle'],
+[data-theme="retroMonochrome"] .fs-sidebar-module-container .mantine-Button-root[data-variant='transparent'] {
+    border: none !important;
+    box-shadow: none !important;
     text-transform: uppercase;
-    font-family: var(--theme-content-font-family) !important;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+[data-theme="retroMonochrome"] #left-sidebar .mantine-Button-root:hover,
+[data-theme="retroMonochrome"] .fs-sidebar-module-container .mantine-Button-root[data-variant='subtle']:hover {
+    border: none !important;
 }
 
 [data-theme="retroMonochrome"] .fs-sidebar-module-accordion-content a[data-active="true"] {
-    color: var(--retro-active) !important;
-    background: rgba(216, 216, 160, 0.08) !important;
-    box-shadow: inset 3px 0 0 var(--retro-active-muted) !important;
+    color: var(--rm-text) !important;
+    background: var(--retro-active) !important;
+    border-left: 2px solid var(--rm-text) !important;
 }
 
-/* Player bar */
+[data-theme="retroMonochrome"] .fs-sidebar-module-accordion-content a:hover {
+    background: var(--retro-hover) !important;
+    color: var(--rm-text) !important;
+}
+
 [data-theme="retroMonochrome"] .fs-player-bar-module-container {
-    background: var(--retro-bg) !important;
-    border-top: 1px solid var(--retro-border) !important;
+    background: var(--rm-panel) !important;
+    border-top: 1px solid var(--rm-border-soft) !important;
 }
 
-/* Main content */
+[data-theme="retroMonochrome"] [data-video-fullscreen] .fs-playerbar-module-container {
+    background: transparent !important;
+    border-top: none !important;
+}
+
+[data-theme="retroMonochrome"] #default-layout.retro .fs-player-bar-module-container {
+    min-height: 108px;
+}
+
 [data-theme="retroMonochrome"] .fs-main-content-module-main-content-container {
-    background: var(--retro-bg) !important;
+    background: var(--rm-bg) !important;
 }
 
-/* Item cards / images */
 [data-theme="retroMonochrome"] .fs-item-card-module-image-container img,
 [data-theme="retroMonochrome"] .fs-image-module-image,
 [data-theme="retroMonochrome"] .mantine-Center-root img {
-    border: 1px solid var(--retro-border-muted) !important;
-    background: var(--retro-bg) !important;
+    background: var(--rm-bg) !important;
+    border: 1px solid var(--rm-border) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
-/* Window bar */
 [data-theme="retroMonochrome"] .fs-window-bar-module-window-bar {
-    background: var(--retro-bg-2) !important;
-    border-bottom: 1px solid var(--retro-border) !important;
+    background: var(--rm-bg) !important;
+    border-bottom: 1px solid var(--rm-border-soft) !important;
 }
 
-/* Page headers / overlays */
 [data-theme="retroMonochrome"] .fs-page-header-module-container {
-    background: var(--retro-bg) !important;
+    background: var(--rm-bg) !important;
+    border-bottom: 1px solid var(--rm-border-soft) !important;
 }
 
-/* Context menu */
 [data-theme="retroMonochrome"] .fs-context-menu-module-content {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
+    background: var(--rm-panel-raised) !important;
+    border: 1px solid var(--rm-border) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
-/* Command palette / search */
 [data-theme="retroMonochrome"] [cmdk-item][data-selected] {
-    background: var(--retro-panel-2) !important;
-    color: var(--retro-text-hot) !important;
+    color: var(--rm-text) !important;
+    background: var(--retro-active) !important;
 }
 
 [data-theme="retroMonochrome"] [cmdk-list] {
-    background: var(--retro-panel) !important;
+    background: var(--rm-panel) !important;
 }
 
-/* Expanded list item */
 [data-theme="retroMonochrome"] .fs-expanded-list-item-module-container {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--rm-border-soft) !important;
 }
 
-/* Action bar */
 [data-theme="retroMonochrome"] .fs-action-bar-module-container {
-    background: var(--retro-panel) !important;
-    border: 1px solid var(--retro-border) !important;
+    background: transparent !important;
+    border: none !important;
 }
 
-/* Full-screen player */
 [data-theme="retroMonochrome"] .fs-full-screen-player-module-container {
-    background: var(--retro-bg) !important;
+    background: var(--rm-bg) !important;
 }
 
 [data-theme="retroMonochrome"] .fs-full-screen-player-image-module-image {
-    border: 1px solid var(--retro-border-muted) !important;
+    border: 1px solid var(--rm-border) !important;
+    border-radius: var(--rm-radius-sm) !important;
 }
 
-/* Drawer / side panels */
 [data-theme="retroMonochrome"] .mantine-Drawer-content {
-    background: var(--retro-panel) !important;
-    border-left: 1px solid var(--retro-border) !important;
+    background: var(--rm-panel) !important;
+    border-left: 1px solid var(--rm-border-soft) !important;
+}
+
+[data-theme="retroMonochrome"] #sidebar-queue {
+    background: var(--rm-panel) !important;
+    border-left: 1px solid var(--rm-border-soft) !important;
+}
+
+[data-theme="retroMonochrome"] .fs-grid-carousel-module-navigation :global(.mantine-ActionIcon-root) {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    border: 1px solid var(--rm-border) !important;
+    border-radius: var(--rm-radius-sm) !important;
+    background: transparent !important;
+    color: var(--rm-text-secondary) !important;
+}
+
+[data-theme="retroMonochrome"] .fs-grid-carousel-module-navigation :global(.mantine-ActionIcon-root):hover {
+    background: var(--retro-hover) !important;
+    border-color: var(--rm-border-strong) !important;
+    color: var(--rm-text) !important;
+}
+
+[data-theme="retroMonochrome"] .fs-text-title-module-root {
+    font-weight: 700;
+    letter-spacing: 0.04em;
 }

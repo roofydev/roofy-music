@@ -26,7 +26,7 @@ import { Group } from '/@/shared/components/group/group';
 import { Icon } from '/@/shared/components/icon/icon';
 import { toast } from '/@/shared/components/toast/toast';
 
-const browser = isElectron() ? window.api.browser : null;
+const browser = window.api?.browser ?? null;
 
 interface BaseMenuItem {
     id: string;

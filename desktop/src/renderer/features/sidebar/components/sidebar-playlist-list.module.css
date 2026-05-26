@@ -136,3 +136,45 @@
     min-width: 3rem;
     height: 3rem;
 }
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .row {
+    border-radius: var(--rm-radius-sm, 4px);
+    border: none;
+    padding: 8px 10px;
+    gap: 10px;
+    margin-bottom: 2px;
+}
+
+:global([data-theme="retroMonochrome"]) .row-hover {
+    background: rgb(255 255 255 / 4.5%);
+}
+
+:global([data-theme="retroMonochrome"]) .image-container {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    border: 1px solid var(--rm-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-sm, 4px);
+}
+
+:global([data-theme="retroMonochrome"]) .name {
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.01em;
+}
+
+:global([data-theme="retroMonochrome"]) .metadata-group-item {
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
+    font-size: 11px;
+    color: var(--rm-text-muted, #777777);
+}
+
+:global([data-theme="retroMonochrome"]) .controls {
+    background: transparent;
+}
+
+:global([data-theme="retroMonochrome"]) .row-dragged-over {
+    box-shadow: 0 0 0 1px var(--rm-border-strong, rgb(255 255 255 / 28%));
+}

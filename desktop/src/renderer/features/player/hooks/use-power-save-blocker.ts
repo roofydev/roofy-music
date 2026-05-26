@@ -4,7 +4,7 @@ import React, { useCallback, useEffect } from 'react';
 import { usePlayerStatus, useSettingsStore, useWindowSettings } from '/@/renderer/store';
 import { PlayerStatus } from '/@/shared/types/types';
 
-const ipc = isElectron() ? window.api.ipc : null;
+const ipc = window.api?.ipc ?? null;
 
 export const usePowerSaveBlocker = () => {
     const status = usePlayerStatus();

@@ -3,7 +3,7 @@ import isElectron from 'is-electron';
 
 import { toast } from '/@/shared/components/toast/toast';
 
-const ipc = isElectron() ? window.api.ipc : null;
+const ipc = window.api?.ipc ?? null;
 
 export const openRestartRequiredToast = (message?: string) => {
     return toast.warn({

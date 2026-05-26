@@ -22,7 +22,7 @@ import {
     ServerType,
 } from '/@/shared/types/domain-types';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
 export const ServerRequired = () => {
     const serverList = useServerList();

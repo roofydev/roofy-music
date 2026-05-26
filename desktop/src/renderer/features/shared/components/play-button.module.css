@@ -48,7 +48,7 @@
 .wide-text-button {
     padding-right: var(--theme-spacing-xl);
     padding-left: var(--theme-spacing-xl);
-    background: white;
+    background: transparent;
     border-radius: var(--theme-radius-xl);
     transition: background-color 0.2s ease-in-out !important;
 
@@ -106,15 +106,31 @@
 .wide-text-button-label {
     font-size: var(--theme-font-size-md);
     font-weight: 600;
-    color: black;
-
-    @mixin light {
-        color: white;
-    }
+    color: var(--theme-colors-foreground);
 
     svg {
+        color: var(--theme-colors-foreground);
+        fill: var(--theme-colors-foreground);
+    }
+}
+
+.wide-text-button.unthemed .wide-text-button-label {
+    @mixin light {
+        color: white;
+
+        svg {
+            color: white;
+            fill: white;
+        }
+    }
+
+    @mixin dark {
         color: black;
-        fill: black;
+
+        svg {
+            color: black;
+            fill: black;
+        }
     }
 }
 
@@ -200,6 +216,92 @@
         opacity: 0.8;
         transform: translate(-50%, -50%) scale(1.05);
     }
+}
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .play-button {
+    background-color: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 0 !important;
+    width: 52px;
+    height: 52px;
+}
+
+:global([data-theme="retroMonochrome"]) .play-button svg {
+    stroke: #f2f2f2;
+}
+
+:global([data-theme="retroMonochrome"]) .play-button.fill svg {
+    fill: #f2f2f2;
+}
+
+:global([data-theme="retroMonochrome"]) .play-button::before {
+    background-color: rgba(255, 255, 255, 0.18);
+    border-radius: 0 !important;
+}
+
+:global([data-theme="retroMonochrome"]) .text-button {
+    border-radius: 0 !important;
+}
+
+:global([data-theme="retroMonochrome"]) .text-button.unthemed {
+    color: #f2f2f2;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+:global([data-theme="retroMonochrome"]) .text-button.unthemed svg {
+    color: #f2f2f2;
+    fill: #f2f2f2;
+}
+
+:global([data-theme="retroMonochrome"]) .text-button.unthemed:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.65);
+}
+
+:global([data-theme="retroMonochrome"]) .wide-text-button {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 0 !important;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 9px 16px;
+}
+
+:global([data-theme="retroMonochrome"]) .wide-text-button-label,
+:global([data-theme="retroMonochrome"]) .wide-text-button.unthemed .wide-text-button-label {
+    color: #f2f2f2;
+    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
+}
+
+:global([data-theme="retroMonochrome"]) .wide-text-button svg,
+:global([data-theme="retroMonochrome"]) .wide-text-button.unthemed .wide-text-button-label svg {
+    color: #f2f2f2;
+    fill: #f2f2f2;
+}
+
+:global([data-theme="retroMonochrome"]) .wide-text-button:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.65);
+}
+
+:global([data-theme="retroMonochrome"]) .wide-text-button.unthemed {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+:global([data-theme="retroMonochrome"]) .wide-text-button.unthemed svg {
+    color: #f2f2f2;
+    fill: #f2f2f2;
+}
+
+:global([data-theme="retroMonochrome"]) .wide-text-button.unthemed:hover,
+:global([data-theme="retroMonochrome"]) .wide-text-button.unthemed:active,
+:global([data-theme="retroMonochrome"]) .wide-text-button.unthemed:focus-visible {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.65);
 }
 
 .play-button.disabled,

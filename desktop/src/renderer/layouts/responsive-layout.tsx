@@ -43,7 +43,7 @@ export const ResponsiveLayout = ({ shell }: ResponsiveLayoutProps) => {
     );
 };
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
 const LayoutHotkeys = () => {
     const navigate = useNavigate();

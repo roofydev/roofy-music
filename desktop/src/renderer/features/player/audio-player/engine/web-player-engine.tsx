@@ -26,6 +26,8 @@ interface WebPlayerEngineProps {
     onEndedPlayer1: () => void;
     onEndedPlayer2: () => void;
     onErrorPause: () => void;
+    onNetworkErrorPlayer1?: () => void;
+    onNetworkErrorPlayer2?: () => void;
     onProgressPlayer1: (e: PlayerOnProgressProps) => void;
     onProgressPlayer2: (e: PlayerOnProgressProps) => void;
     onStartedPlayer1: (player: ReactPlayer) => void;
@@ -58,6 +60,8 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
         onEndedPlayer1,
         onEndedPlayer2,
         onErrorPause,
+        onNetworkErrorPlayer1,
+        onNetworkErrorPlayer2,
         onProgressPlayer1,
         onProgressPlayer2,
         onStartedPlayer1,
@@ -140,15 +144,33 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
             };
         },
         seekTo(seekTo: number) {
-            let type: 'fraction' | 'seconds' | undefined = undefined;
-
-            if (seekTo < 1) {
-                type = 'seconds';
+            const target = playerNum === 1 ? player1Ref.current : player2Ref.current;
+            if (!target) return;
+            const internal = target.getInternalPlayer() as HTMLAudioElement | null;
+            console.debug('[WebPlayer] seekTo requested:', {
+                currentSrc: internal?.currentSrc || internal?.src,
+                playerNum,
+                requestedTime: seekTo,
+                seekable: internal?.seekable?.length
+                    ? Array.from({ length: internal.seekable.length }, (_, i) => ({
+                          end: internal.seekable.end(i),
+                          start: internal.seekable.start(i),
+                      }))
+                    : null,
+            });
+            try {
+                target.seekTo(seekTo, 'seconds');
+            } catch (error) {
+                console.error('[WebPlayer] seekTo failed:', error);
             }
-
-            playerNum === 1
-                ? player1Ref.current?.seekTo(seekTo, type)
-                : player2Ref.current?.seekTo(seekTo, type);
+            setTimeout(() => {
+                const afterInternal = target.getInternalPlayer() as HTMLAudioElement | null;
+                console.debug('[WebPlayer] seekTo completed:', {
+                    actualTime: afterInternal?.currentTime,
+                    currentSrc: afterInternal?.currentSrc || afterInternal?.src,
+                    paused: afterInternal?.paused,
+                });
+            }, 300);
         },
         setVolume(volume: number) {
             setInternalVolume1(volume / 100 || 0);
@@ -175,6 +197,7 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
         onEnded: () => void,
         onErrorPause: () => void,
         networkRetryCountRef: React.RefObject<number>,
+        onNetworkError?: () => void,
     ) => {
         return ({ target }: ErrorEvent) => {
             const { current: player } = playerRef;
@@ -195,9 +218,18 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
                 error?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED;
 
             if (isNetworkError) {
+                // If an upstream handler exists, let it refresh the URL via React Query
+                // instead of blindly retrying the same expired URL.
+                if (networkRetryCountRef.current === 0 && onNetworkError) {
+                    networkRetryCountRef.current += 1;
+                    onNetworkError();
+                    return;
+                }
+
                 if (networkRetryCountRef.current < MAX_NETWORK_RETRIES) {
                     networkRetryCountRef.current += 1;
                     const audio = target;
+
                     setTimeout(() => {
                         pauseBothPlayers();
                         audio.load();
@@ -299,6 +331,7 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
                     () => onEndedPlayer1(),
                     onErrorPause,
                     networkRetryCount1,
+                    onNetworkErrorPlayer1,
                 )}
                 onProgress={onProgressPlayer1}
                 onReady={handleOnReadyPlayer1}
@@ -324,6 +357,7 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
                     () => onEndedPlayer2(),
                     onErrorPause,
                     networkRetryCount2,
+                    onNetworkErrorPlayer2,
                 )}
                 onProgress={onProgressPlayer2}
                 onReady={handleOnReadyPlayer2}

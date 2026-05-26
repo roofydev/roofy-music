@@ -11,7 +11,7 @@ import { TextInput } from '/@/shared/components/text-input/text-input';
 import { Text } from '/@/shared/components/text/text';
 import { toast } from '/@/shared/components/toast/toast';
 
-const remote = isElectron() ? window.api.remote : null;
+const remote = window.api?.remote ?? null;
 
 export const RemoteSettings = memo(() => {
     const { t } = useTranslation();

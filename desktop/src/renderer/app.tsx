@@ -15,7 +15,15 @@ import { useCheckForUpdates } from '/@/renderer/hooks/use-check-for-updates';
 import { useNativeMenuSync } from '/@/renderer/hooks/use-native-menu-sync';
 import { useSyncSettingsToMain } from '/@/renderer/hooks/use-sync-settings-to-main';
 import { AppRouter } from '/@/renderer/router/app-router';
-import { useCssSettings, useHotkeySettings, useLanguage } from '/@/renderer/store';
+import {
+    useCssSettings,
+    useCurrentServer,
+    useHotkeySettings,
+    useImportJobActions,
+    useLanguage,
+} from '/@/renderer/store';
+import { queryClient } from '/@/renderer/lib/react-query';
+import { queryKeys } from '/@/renderer/api/query-keys';
 import { CrtOverlay } from '/@/renderer/components/crt-overlay/crt-overlay';
 import { useAppTheme } from '/@/renderer/themes/use-app-theme';
 import { sanitizeCss } from '/@/renderer/utils/sanitize';
@@ -24,6 +32,7 @@ import '/@/shared/styles/global.css';
 import { PlayerProvider } from '/@/renderer/features/player/context/player-context';
 import { AudioPlayers } from '/@/renderer/features/player/components/audio-players';
 import { ReleaseNotesModal } from '/@/renderer/release-notes-modal';
+import { ImportNotifications } from '/@/renderer/features/imports/components/import-notifications';
 
 const UpdateAvailableDialog = lazy(() =>
     import('./update-available-dialog').then((module) => ({
@@ -31,7 +40,7 @@ const UpdateAvailableDialog = lazy(() =>
     })),
 );
 
-const ipc = isElectron() ? window.api.ipc : null;
+const ipc = window.api?.ipc ?? null;
 
 export const App = () => {
     return <ThemedApp />;
@@ -69,8 +78,8 @@ const AppShell = memo(function AppShell() {
         <>
             <AppEffects />
             <Notifications
-                containerWidth="300px"
-                position="bottom-center"
+                containerWidth="min(440px, calc(100vw - 32px))"
+                position="bottom-right"
                 styles={notificationStyles}
                 zIndex={50000}
             />
@@ -80,6 +89,7 @@ const AppShell = memo(function AppShell() {
                     <AppRouter />
                 </PlayerProvider>
             </WebAudioContext.Provider>
+            <ImportNotifications />
             <ReleaseNotesModal />
             <Suspense fallback={null}>
                 <UpdateAvailableDialog />
@@ -96,6 +106,7 @@ const AppEffects = () => (
         <GlobalShortcutsEffect />
         <LanguageEffect />
         <NativeMenuSyncEffect />
+        <ImportJobsEffect />
     </>
 );
 
@@ -170,6 +181,48 @@ const LanguageEffect = () => {
 
 const NativeMenuSyncEffect = () => {
     useNativeMenuSync();
+
+    return null;
+};
+
+const ImportJobsEffect = () => {
+    const { setJob } = useImportJobActions();
+    const server = useCurrentServer();
+
+    useEffect(() => {
+        if (!isElectron() || !window.api?.youtubeMusic?.onImportJobUpdated) return;
+
+        window.api.localFirst?.status?.().then((status) => {
+            for (const job of status.imports || []) {
+                setJob(job);
+            }
+        });
+
+        const removeUpdated = window.api.youtubeMusic.onImportJobUpdated((_event, job) => {
+            setJob(job);
+        });
+        const removeCompleted = window.api.youtubeMusic.onImportJobCompleted((_event, job) => {
+            setJob(job);
+        });
+        const removeFailed = window.api.youtubeMusic.onImportJobFailed((_event, job) => {
+            setJob(job);
+        });
+
+        const removePlaylistImported = window.api.localFirst?.onPlaylistImported?.(() => {
+            if (server?.id) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.playlists.root(server.id) });
+                queryClient.invalidateQueries({ queryKey: queryKeys.playlists.list(server.id) });
+                queryClient.invalidateQueries({ queryKey: queryKeys.songs.root(server.id) });
+            }
+        });
+
+        return () => {
+            removeUpdated();
+            removeCompleted();
+            removeFailed();
+            removePlaylistImported?.();
+        };
+    }, [setJob, server?.id]);
 
     return null;
 };

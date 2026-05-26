@@ -9,17 +9,23 @@ import {
     PlaylistListQuery,
     PlaylistSongListQuery,
 } from '/@/shared/types/domain-types';
+import { YOUTUBE_MUSIC_SOURCE_ID } from '/@/shared/types/youtube-music-types';
+
+const getPlaylistQueryServerId = (serverId: string | undefined, playlistId: string) => {
+    return playlistId.startsWith('ytm-playlist:') ? YOUTUBE_MUSIC_SOURCE_ID : serverId || '';
+};
 
 export const playlistsQueries = {
     detail: (args: QueryHookArgs<PlaylistDetailQuery>) => {
+        const serverId = getPlaylistQueryServerId(args.serverId, args.query.id);
         return queryOptions({
             queryFn: ({ signal }) => {
                 return api.controller.getPlaylistDetail({
-                    apiClientProps: { serverId: args.serverId, signal },
+                    apiClientProps: { serverId, signal },
                     query: args.query,
                 });
             },
-            queryKey: queryKeys.playlists.detail(args.serverId, args.query.id, args.query),
+            queryKey: queryKeys.playlists.detail(serverId, args.query.id, args.query),
             ...args.options,
         });
     },
@@ -54,14 +60,15 @@ export const playlistsQueries = {
         });
     },
     songList: (args: QueryHookArgs<PlaylistSongListQuery>) => {
+        const serverId = getPlaylistQueryServerId(args.serverId, args.query.id);
         return queryOptions({
             queryFn: ({ signal }) => {
                 return api.controller.getPlaylistSongList({
-                    apiClientProps: { serverId: args.serverId, signal },
+                    apiClientProps: { serverId, signal },
                     query: args.query,
                 });
             },
-            queryKey: queryKeys.playlists.songList(args.serverId || '', args.query.id),
+            queryKey: queryKeys.playlists.songList(serverId || '', args.query.id),
             ...args.options,
         });
     },

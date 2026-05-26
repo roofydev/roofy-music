@@ -9,7 +9,7 @@ import { WindowSettings } from '/@/renderer/features/settings/components/window/
 import { Divider } from '/@/shared/components/divider/divider';
 import { Stack } from '/@/shared/components/stack/stack';
 
-const utils = isElectron() ? window.api.utils : null;
+const utils = window.api?.utils ?? null;
 
 const sections = [
     { component: WindowSettings, key: 'window' },

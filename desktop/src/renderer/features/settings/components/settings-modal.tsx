@@ -9,8 +9,17 @@ export const SettingsContextModal = () => {
 
     return (
         <SettingSearchContext.Provider value={search}>
-            <SettingsHeader setSearch={setSearch} />
-            <SettingsContent />
+            <div
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    maxHeight: '82vh',
+                    minHeight: 0,
+                }}
+            >
+                <SettingsHeader setSearch={setSearch} />
+                <SettingsContent />
+            </div>
         </SettingSearchContext.Provider>
     );
 };

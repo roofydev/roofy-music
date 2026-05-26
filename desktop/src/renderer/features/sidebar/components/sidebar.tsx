@@ -1,12 +1,18 @@
 import clsx from 'clsx';
+import isElectron from 'is-electron';
 import { AnimatePresence, motion } from 'motion/react';
-import { MouseEvent, useMemo } from 'react';
+import { MouseEvent, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router';
 
 import styles from './sidebar.module.css';
 
 import { useItemImageUrl } from '/@/renderer/components/item-image/item-image';
 import { ContextMenuController } from '/@/renderer/features/context-menu/context-menu-controller';
+import {
+    useSongVideoAvailability,
+    VideoModeOverlay,
+} from '/@/renderer/features/player/components/local-video-player';
 import {
     useIsRadioActive,
     useRadioPlayer,
@@ -19,11 +25,14 @@ import {
     SidebarPlaylistList,
     SidebarSharedPlaylistList,
 } from '/@/renderer/features/sidebar/components/sidebar-playlist-list';
+import { YoutubeMusicAccountButton } from '/@/renderer/features/youtube-music/components/youtube-music-account-button';
+import { YoutubeMusicIcon } from '/@/renderer/features/youtube-music/components/youtube-music-icon';
 import { AppRoute } from '/@/renderer/router/routes';
 import {
     useAppStore,
     useAppStoreActions,
     useFullScreenPlayerStore,
+    useFullScreenPlayerStoreActions,
     useGeneralSettings,
     usePlayerSong,
     useSetFullScreenPlayerStore,
@@ -50,6 +59,7 @@ export const Sidebar = () => {
     const { t } = useTranslation();
 
     const sidebarPlaylistList = useSidebarPlaylistList();
+    const location = useLocation();
 
     const translatedSidebarItemMap = useMemo(
         () => ({
@@ -94,12 +104,26 @@ export const Sidebar = () => {
 
     /* Library accordion: only items with a route (exclude Collections section) */
     const libraryItemsWithRoute = useMemo(
-        () => sidebarItemsWithRoute.filter((item) => item.id !== 'Collections' && item.route),
+        () =>
+            sidebarItemsWithRoute.filter(
+                (item) => item.id !== 'Collections' && item.id !== 'Home' && item.route,
+            ),
+        [sidebarItemsWithRoute],
+    );
+    const homeItem = useMemo(
+        () => sidebarItemsWithRoute.find((item) => item.id === 'Home' && item.route),
         [sidebarItemsWithRoute],
     );
 
     const isCustomWindowBar =
         windowBarStyle === Platform.WINDOWS || windowBarStyle === Platform.MACOS;
+    const showYoutubeMusic = isElectron();
+    const youtubeMusicItems = [
+        { label: 'Browse', search: '?view=browse' },
+        { label: 'Search', search: '?view=search' },
+        { label: 'My Songs', search: '?view=songs' },
+        { label: 'My Playlists', search: '?view=playlists' },
+    ];
 
     return (
         <div
@@ -111,7 +135,15 @@ export const Sidebar = () => {
             <Group grow id="global-search-container" style={{ flexShrink: 0 }}>
                 <ActionBar />
             </Group>
-            <ScrollArea allowDragScroll className={styles.scrollArea}>
+            <ScrollArea allowDragScroll className={styles.scrollArea} scrollbarsAutoHide="leave">
+                {homeItem && (
+                    <SidebarItem to={homeItem.route}>
+                        <Group gap="md">
+                            <SidebarIcon route={homeItem.route} />
+                            {homeItem.label}
+                        </Group>
+                    </SidebarItem>
+                )}
                 <Accordion
                     classNames={{
                         content: styles.accordionContent,
@@ -119,7 +151,7 @@ export const Sidebar = () => {
                         item: styles.accordionItem,
                         root: styles.accordionRoot,
                     }}
-                    defaultValue={['library', 'collections', 'playlists']}
+                    defaultValue={['library', 'youtube-music', 'collections', 'playlists']}
                     multiple
                 >
                     <Accordion.Item value="library">
@@ -141,6 +173,47 @@ export const Sidebar = () => {
                             })}
                         </Accordion.Panel>
                     </Accordion.Item>
+                    {showYoutubeMusic && (
+                        <Accordion.Item value="youtube-music">
+                            <Accordion.Control>
+                                <Group
+                                    align="center"
+                                    className={styles.youtubeMusicHeader}
+                                    gap="xs"
+                                    justify="space-between"
+                                    wrap="nowrap"
+                                >
+                                    <Group align="center" gap="xs" wrap="nowrap">
+                                        <YoutubeMusicIcon size="1rem" />
+                                        <Text fw={500} variant="secondary">
+                                            YT Music
+                                        </Text>
+                                    </Group>
+                                    <YoutubeMusicAccountButton compact labelMode="auth-only" />
+                                </Group>
+                            </Accordion.Control>
+                            <Accordion.Panel>
+                                {youtubeMusicItems.map((item) => {
+                                    const to = `${AppRoute.YOUTUBE_MUSIC}${item.search}`;
+                                    return (
+                                        <SidebarItem key={item.search} to={to}>
+                                            <Group gap="md">
+                                                <SidebarIcon
+                                                    active={
+                                                        location.pathname ===
+                                                            AppRoute.YOUTUBE_MUSIC &&
+                                                        location.search === item.search
+                                                    }
+                                                    route={AppRoute.YOUTUBE_MUSIC}
+                                                />
+                                                {item.label}
+                                            </Group>
+                                        </SidebarItem>
+                                    );
+                                })}
+                            </Accordion.Panel>
+                        </Accordion.Item>
+                    )}
                     <SidebarCollectionList />
                     {sidebarPlaylistList && (
                         <>
@@ -161,12 +234,16 @@ const SidebarImage = () => {
     const { t } = useTranslation();
     const { setSideBar } = useAppStoreActions();
     const currentSong = usePlayerSong();
+    const { canPlayVideo, isCheckingVideo, metadata: videoMetadata, videoUnavailable } =
+        useSongVideoAvailability();
+    const videoButtonDisabled = videoUnavailable || isCheckingVideo;
     const isRadioActive = useIsRadioActive();
     const { currentStationArt, isPlaying: isRadioPlaying } = useRadioPlayer();
     const { blurExplicitImages } = useGeneralSettings();
 
     const imageUrl = useItemImageUrl({
         id: currentSong?.imageId || undefined,
+        imageUrl: currentSong?.imageUrl,
         itemType: LibraryItem.SONG,
         serverId: currentSong?._serverId,
         type: 'sidebar',
@@ -184,7 +261,22 @@ const SidebarImage = () => {
     const isSongDefined = Boolean(currentSong?.id);
 
     const setFullScreenPlayerStore = useSetFullScreenPlayerStore();
-    const { expanded: isFullScreenPlayerExpanded } = useFullScreenPlayerStore();
+    const {
+        expanded: isFullScreenPlayerExpanded,
+        videoFullscreen,
+        visualMode,
+    } = useFullScreenPlayerStore();
+    const { setStore } = useFullScreenPlayerStoreActions();
+    const showVideo =
+        !isPlayingRadio && canPlayVideo && visualMode === 'video' && !videoFullscreen;
+    const showVisualModeToggle = !isPlayingRadio && isSongDefined;
+
+    useEffect(() => {
+        if (!canPlayVideo && visualMode === 'video') {
+            setStore({ visualMode: 'image' });
+        }
+    }, [canPlayVideo, setStore, visualMode]);
+
     const expandFullScreenPlayer = () => {
         setFullScreenPlayerStore({ expanded: !isFullScreenPlayerExpanded });
     };
@@ -219,7 +311,9 @@ const SidebarImage = () => {
             transition={{ duration: 0.3, ease: 'easeInOut' }}
         >
             <Tooltip label={t('player.toggleFullscreenPlayer')}>
-                {isRadioActive && radioImageUrl ? (
+                {showVideo && videoMetadata ? (
+                    <VideoModeOverlay metadata={videoMetadata} />
+                ) : isRadioActive && radioImageUrl ? (
                     <img className={styles.sidebarImage} loading="eager" src={radioImageUrl} />
                 ) : isRadioActive ? (
                     <Center
@@ -247,6 +341,43 @@ const SidebarImage = () => {
                     <ImageUnloader icon="emptySongImage" />
                 )}
             </Tooltip>
+            {showVisualModeToggle && (
+                <div className={styles.sidebarVisualToggle}>
+                    <button
+                        className={styles.sidebarVisualButton}
+                        data-active={!showVideo}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setStore({ visualMode: 'image' });
+                        }}
+                        title="Show artwork"
+                        type="button"
+                    >
+                        <Icon icon="image" size="md" />
+                    </button>
+                    <button
+                        className={clsx(styles.sidebarVisualButton, {
+                            [styles.sidebarVisualButtonDisabled]: videoButtonDisabled,
+                        })}
+                        data-active={showVideo}
+                        disabled={videoButtonDisabled}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setStore({ visualMode: 'video' });
+                        }}
+                        title={
+                            videoButtonDisabled
+                                ? isCheckingVideo
+                                    ? 'Checking for video…'
+                                    : 'No video available for this track'
+                                : 'Show video'
+                        }
+                        type="button"
+                    >
+                        <Icon icon="mediaPlay" size="md" />
+                    </button>
+                </div>
+            )}
             <ActionIcon
                 icon="arrowDownS"
                 iconProps={{

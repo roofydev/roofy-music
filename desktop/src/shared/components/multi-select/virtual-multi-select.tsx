@@ -67,7 +67,7 @@ export function VirtualMultiSelect<T>({
             overflow: { x: 'hidden', y: 'scroll' },
             paddingAbsolute: true,
             scrollbars: {
-                autoHide: 'leave',
+                autoHide: 'scroll',
                 autoHideDelay: 500,
                 pointers: ['mouse', 'pen', 'touch'],
                 theme: 'roofy-os-scrollbar',

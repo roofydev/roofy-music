@@ -5,6 +5,7 @@ import { DownloadAction } from '/@/renderer/features/context-menu/actions/downlo
 import { GetInfoAction } from '/@/renderer/features/context-menu/actions/get-info-action';
 import { GoToAction } from '/@/renderer/features/context-menu/actions/go-to-action';
 import { MoveQueueItemsAction } from '/@/renderer/features/context-menu/actions/move-queue-items-action';
+import { OpenYoutubeSourceAction } from '/@/renderer/features/context-menu/actions/open-youtube-source-action';
 import { PlayTrackRadioAction } from '/@/renderer/features/context-menu/actions/play-track-radio-action';
 import { RemoveFromQueueAction } from '/@/renderer/features/context-menu/actions/remove-from-queue-action';
 import { SetFavoriteAction } from '/@/renderer/features/context-menu/actions/set-favorite-action';
@@ -37,12 +38,13 @@ export const QueueContextMenu = ({ items }: QueueContextMenuProps) => {
             <ContextMenu.Divider />
             <PlayTrackRadioAction disabled={items.length > 1} song={items[0]} />
             <ContextMenu.Divider />
-            <AddToPlaylistAction items={ids} itemType={LibraryItem.SONG} />
+            <AddToPlaylistAction items={ids} itemType={LibraryItem.SONG} songs={items} />
             <ContextMenu.Divider />
-            <SetFavoriteAction ids={ids} itemType={LibraryItem.SONG} />
-            <SetRatingAction ids={ids} itemType={LibraryItem.SONG} />
+            <SetFavoriteAction ids={ids} itemType={LibraryItem.SONG} songs={items} />
+            <SetRatingAction ids={ids} itemType={LibraryItem.SONG} songs={items} />
             <ContextMenu.Divider />
-            <DownloadAction ids={ids} />
+            <DownloadAction ids={ids} songs={items} />
+            <OpenYoutubeSourceAction songs={items} />
             <ShareAction ids={ids} itemType={LibraryItem.SONG} />
             <ContextMenu.Divider />
             <GoToAction items={items} />

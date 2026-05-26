@@ -13,8 +13,8 @@ import { toast } from '/@/shared/components/toast/toast';
 import { LibraryItem } from '/@/shared/types/domain-types';
 import { PlayerShuffle } from '/@/shared/types/types';
 
-const remote = isElectron() ? window.api.remote : null;
-const ipc = isElectron() ? window.api.ipc : null;
+const remote = window.api?.remote ?? null;
+const ipc = window.api?.ipc ?? null;
 
 export const useRemote = () => {
     const { mediaSkipForward, setVolume } = usePlayerActions();

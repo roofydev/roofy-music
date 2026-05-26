@@ -5,6 +5,7 @@
     container-type: inline-size;
     overflow: hidden;
     border-radius: var(--theme-radius-md);
+    min-height: 240px;
 }
 
 .carousel {
@@ -434,31 +435,33 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .carousel-container {
-    background: var(--retro-panel, #0b0b0b);
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    background: transparent;
+    border: none;
 }
 
 :global([data-theme="retroMonochrome"]) .carousel-item {
-    background: var(--retro-panel, #0b0b0b);
-    border: 1px solid var(--retro-border-dark, #222222);
+    background: transparent;
+    border: none;
 }
 
 :global([data-theme="retroMonochrome"]) .album-image-container {
     filter: none;
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    border: 1px solid var(--rm-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-sm, 4px);
 }
 
 :global([data-theme="retroMonochrome"]) .title,
 :global([data-theme="retroMonochrome"]) .artist,
 :global([data-theme="retroMonochrome"]) .badge {
     text-shadow: none;
-    color: var(--retro-text, #d0d0d0);
+    color: var(--rm-text, #f4f4f4);
 }
 
 :global([data-theme="retroMonochrome"]) .nav-arrow-left,
 :global([data-theme="retroMonochrome"]) .nav-arrow-right {
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
-    background: var(--retro-panel, #0b0b0b);
+    border: 1px solid var(--rm-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-sm, 4px);
+    background: transparent;
     backdrop-filter: none;
 }
 

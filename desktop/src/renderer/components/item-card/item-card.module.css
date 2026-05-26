@@ -18,23 +18,41 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .container {
-    background-color: var(--retro-panel, #0b0b0b) !important;
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
-    padding: 10px;
+    background-color: transparent !important;
+    border: none;
+    padding: 0;
+    gap: 8px;
 }
 
 :global([data-theme="retroMonochrome"]) .container.selected {
-    outline: 1px solid var(--retro-border-bright, #b8b8b8);
-    outline-offset: 0;
+    outline: none;
 }
 
 :global([data-theme="retroMonochrome"]) .image-container {
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    border: 1px solid var(--rm-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-sm, 4px);
 }
 
 :global([data-theme="retroMonochrome"]) .favorite-badge {
-    background-color: var(--retro-border, #7a7a7a);
+    background-color: rgb(255 255 255 / 28%);
     box-shadow: none;
+}
+
+:global([data-theme="retroMonochrome"]) .detail-container {
+    padding-top: 10px;
+    gap: 4px;
+}
+
+:global([data-theme="retroMonochrome"]) .row.bold {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--rm-text, #f4f4f4);
+}
+
+:global([data-theme="retroMonochrome"]) .row.muted {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--rm-text-muted, #777777);
 }
 
 .container.dragging {

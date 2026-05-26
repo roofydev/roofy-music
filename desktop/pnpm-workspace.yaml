@@ -1,4 +1,5 @@
 allowBuilds:
   electron: true
-  electron-winstaller: set this to true or false
+  electron-winstaller: true
   esbuild: true
+storeDir: C:\Users\mejor\AppData\Local\pnpm\store\v10

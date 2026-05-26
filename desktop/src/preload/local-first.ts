@@ -14,22 +14,63 @@ const createUser = (args: {
     username: string;
 }) => ipcRenderer.invoke('roofy-local-create-user', args);
 
-const previewImport = (args: { cookieBrowser?: string; input: string }) => {
+const previewImport = (args: { cookieBrowser?: string; input: string; playlist?: boolean }) => {
     return ipcRenderer.invoke('roofy-local-preview-import', args);
 };
 
 const createImport = (args: {
+    album?: string;
+    artist?: string;
     audioFormat?: string;
     cookieBrowser?: string;
     createPlaylist?: boolean;
+    imageUrl?: string;
     input: string;
+    playlist?: boolean;
     playlistName?: string;
+    saveVideo?: boolean;
+    source?: 'youtube_music';
+    sourceTrackId?: string;
+    title?: string;
+    videoId?: string;
 }) => {
     return ipcRenderer.invoke('roofy-local-create-import', args);
 };
 
 const cancelImport = (id: string) => {
     return ipcRenderer.invoke('roofy-local-cancel-import', id);
+};
+const removeImport = (id: string) => {
+    return ipcRenderer.invoke('roofy-local-remove-import', id);
+};
+const clearImports = (status: 'completed' | 'failed') => {
+    return ipcRenderer.invoke('roofy-local-clear-imports', status);
+};
+const deleteTracks = (songIds: string[]) => {
+    return ipcRenderer.invoke('roofy-local-delete-tracks', songIds);
+};
+
+const getVideoMetadata = (args: {
+    path?: null | string;
+    songId?: string;
+    youtubeMusic?: {
+        videoId?: string;
+        watchUrl?: string;
+    };
+}) => {
+    return ipcRenderer.invoke('roofy-local-get-video-metadata', args);
+};
+
+const downloadVideoForSong = (args: {
+    path?: null | string;
+    songId: string;
+    title?: string;
+    youtubeMusic?: {
+        videoId?: string;
+        watchUrl?: string;
+    };
+}) => {
+    return ipcRenderer.invoke('roofy-local-download-video-for-song', args);
 };
 
 const onPlaylistImported = (cb: () => void) => {
@@ -41,12 +82,17 @@ const onPlaylistImported = (cb: () => void) => {
 
 export const localFirst = {
     cancelImport,
+    clearImports,
     createImport,
     createUser,
     credentials,
+    deleteTracks,
+    downloadVideoForSong,
+    getVideoMetadata,
     onPlaylistImported,
     openLibraryFolder,
     previewImport,
+    removeImport,
     selectLibrary,
     start,
     status,

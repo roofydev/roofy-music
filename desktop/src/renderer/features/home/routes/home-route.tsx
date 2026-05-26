@@ -7,12 +7,11 @@ import { AlbumInfiniteCarousel } from '/@/renderer/features/albums/components/al
 import { AlbumInfiniteFeatureCarousel } from '/@/renderer/features/home/components/album-infinite-feature-carousel';
 import { AlbumInfiniteSingleFeatureCarousel } from '/@/renderer/features/home/components/album-infinite-single-feature-carousel';
 import { FeaturedGenres } from '/@/renderer/features/home/components/featured-genres';
-import { QuickImport } from '/@/renderer/features/local-first/components/quick-import';
 import { AnimatedPage } from '/@/renderer/features/shared/components/animated-page';
 import { LibraryContainer } from '/@/renderer/features/shared/components/library-container';
-import { LibraryHeaderBar } from '/@/renderer/features/shared/components/library-header-bar';
 import { PageErrorBoundary } from '/@/renderer/features/shared/components/page-error-boundary';
 import { SongInfiniteCarousel } from '/@/renderer/features/songs/components/song-infinite-carousel';
+import { YoutubeMusicHomeCarousels } from '/@/renderer/features/youtube-music/components/youtube-music-home-carousels';
 import {
     HomeFeatureStyle,
     HomeItem,
@@ -24,6 +23,7 @@ import {
 } from '/@/renderer/store';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Stack } from '/@/shared/components/stack/stack';
+import { TextTitle } from '/@/shared/components/text-title/text-title';
 import {
     AlbumListSort,
     LibraryItem,
@@ -94,27 +94,21 @@ const HomeRoute = () => {
 
     return (
         <AnimatedPage>
-            <NativeScrollArea
-                pageHeaderProps={{
-                    backgroundColor: 'var(--theme-colors-background)',
-                    children: (
-                        <LibraryHeaderBar>
-                            <LibraryHeaderBar.Title>{t('page.home.title')}</LibraryHeaderBar.Title>
-                        </LibraryHeaderBar>
-                    ),
-                    offset: 200,
-                }}
-                ref={scrollAreaRef}
-            >
+            <NativeScrollArea ref={scrollAreaRef}>
                 <LibraryContainer>
                     <Stack
                         gap="2xl"
                         mb="5rem"
-                        pt={windowBarStyle === Platform.WEB ? '5rem' : '3rem'}
-                        px="2rem"
+                        pt={windowBarStyle === Platform.WEB ? '5rem' : '2rem'}
+                        px="1.5rem"
                         ref={containerQuery.ref}
                     >
-                        <QuickImport />
+                        <YoutubeMusicHomeCarousels
+                            containerQuery={containerQuery}
+                            maxHeight="50vh"
+                            title="YouTube Music"
+                        />
+                        <TextTitle fw={700}>Local Library</TextTitle>
                         {homeFeature && homeFeatureStyle === HomeFeatureStyle.SINGLE && (
                             <AlbumInfiniteSingleFeatureCarousel />
                         )}

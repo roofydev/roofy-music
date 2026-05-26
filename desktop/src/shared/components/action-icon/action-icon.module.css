@@ -1,4 +1,9 @@
 .root {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+
     --ai-size-xs: calc(1.875rem * var(--mantine-scale));
     --ai-size-sm: calc(2.25rem * var(--mantine-scale));
     --ai-size-md: calc(2.625rem * var(--mantine-scale));
@@ -134,4 +139,64 @@
         height: var(--ai-size-compact-md);
         min-height: var(--ai-size-compact-md);
     }
+
+    & svg {
+        display: block;
+        flex-shrink: 0;
+        margin: 0;
+    }
+}
+
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .root {
+    border-radius: 0 !important;
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='default'] {
+    color: #f2f2f2;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='default']:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.65);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='filled'] {
+    background: rgba(255, 255, 255, 0.12);
+    color: #f2f2f2;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='filled']:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='outline'] {
+    color: #f2f2f2;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='outline'] svg {
+    color: #f2f2f2;
+    fill: #f2f2f2;
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='subtle'] {
+    color: #f2f2f2;
+    background: transparent;
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='subtle']:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f2f2f2;
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='transparent'] {
+    color: #a6a6a6;
+}
+
+:global([data-theme="retroMonochrome"]) .root[data-variant='transparent']:hover {
+    color: #f2f2f2;
 }

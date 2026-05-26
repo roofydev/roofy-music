@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { t } from 'i18next';
-import { forwardRef, ReactNode } from 'react';
+import { forwardRef, PointerEvent, ReactNode, useRef } from 'react';
 
 import styles from './player-button.module.css';
 
@@ -63,9 +63,19 @@ interface PlayButtonProps extends Omit<ActionIconProps, 'icon' | 'variant'> {
 
 export const MainPlayButton = forwardRef<HTMLButtonElement, PlayButtonProps>(
     ({ isPaused, onClick, ...props }: PlayButtonProps, ref) => {
+        const lastPointerActivationTimeRef = useRef(0);
         const playerStateClass = isPaused
             ? PlaybackSelectors.playerStatePaused
             : PlaybackSelectors.playerStatePlaying;
+
+        const handlePointerDown = (e: PointerEvent<HTMLButtonElement>) => {
+            if (e.button !== 0) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            lastPointerActivationTimeRef.current = Date.now();
+            onClick?.(e);
+        };
 
         return (
             <ActionIcon
@@ -76,8 +86,12 @@ export const MainPlayButton = forwardRef<HTMLButtonElement, PlayButtonProps>(
                 }}
                 onClick={(e) => {
                     e.stopPropagation();
+                    if (Date.now() - lastPointerActivationTimeRef.current < 500) {
+                        return;
+                    }
                     onClick?.(e);
                 }}
+                onPointerDown={handlePointerDown}
                 ref={ref}
                 tooltip={{
                     label: isPaused ? (t('player.play') as string) : (t('player.pause') as string),

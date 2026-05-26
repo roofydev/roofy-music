@@ -52,13 +52,14 @@ export const PlayTextButton = ({
     const button = (
         <Button
             className={clsx(styles.wideTextButton, className, {
-                [styles.unthemed]: variant !== 'filled',
+                // Filled play buttons use inverted colors; subtle buttons stay on theme foreground.
+                [styles.unthemed]: variant === 'filled',
             })}
             classNames={{
                 label: styles.wideTextButtonLabel,
                 root: styles.wideTextButton,
             }}
-            variant="subtle"
+            variant={variant === 'filled' ? 'filled' : 'subtle'}
             {...props}
         >
             {props.children || (

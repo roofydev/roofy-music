@@ -41,6 +41,31 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .container {
-    background: var(--retro-bg, #050505) !important;
-    border-top: 1px solid var(--retro-border, #7a7a7a) !important;
+    background: var(--rm-panel, #080808) !important;
+    border-top: 1px solid var(--rm-border-soft, rgb(255 255 255 / 8%)) !important;
+}
+
+:global([data-video-fullscreen]) .container {
+    background: transparent !important;
+    border-top: none !important;
+    min-height: 108px;
+}
+
+:global([data-video-fullscreen]) .center-grid-item {
+    overflow: visible;
+}
+
+:global([data-video-fullscreen]) .controls-grid {
+    padding: 12px 20px;
+}
+
+:global(#default-layout.retro) .controls-grid {
+    grid-template-columns: minmax(260px, 1.15fr) minmax(320px, 1.25fr) minmax(240px, 0.9fr);
+    gap: 1rem;
+    padding: 12px 20px;
+}
+
+:global(#default-layout.retro) .center-grid-item {
+    gap: 0.25rem;
+    justify-content: center;
 }

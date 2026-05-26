@@ -11,9 +11,9 @@ import { usePlaybackSettings, useSettingsStoreActions } from '/@/renderer/store/
 import { Switch } from '/@/shared/components/switch/switch';
 import { PlayerType } from '/@/shared/types/types';
 
-const isLinux = isElectron() ? window.api.utils.isLinux() : false;
+const isLinux = window.api?.utils?.isLinux() ?? false;
 const isDesktop = isElectron();
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
 export const MediaSessionSettings = memo(() => {
     const { t } = useTranslation();

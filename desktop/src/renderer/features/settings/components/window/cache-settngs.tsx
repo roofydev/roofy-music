@@ -12,7 +12,7 @@ import { Button } from '/@/shared/components/button/button';
 import { ConfirmModal } from '/@/shared/components/modal/modal';
 import { toast } from '/@/shared/components/toast/toast';
 
-const browser = isElectron() ? window.api.browser : null;
+const browser = window.api?.browser ?? null;
 
 export const CacheSettings = memo(() => {
     const [isClearing, setIsClearing] = useState(false);

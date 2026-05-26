@@ -1,6 +1,5 @@
 import { initClient, initContract } from '@ts-rest/core';
 import axios, { AxiosError, AxiosResponse, isAxiosError, Method } from 'axios';
-import isElectron from 'is-electron';
 import debounce from 'lodash/debounce';
 import omitBy from 'lodash/omitBy';
 import qs from 'qs';
@@ -14,7 +13,7 @@ import { resultWithHeaders } from '/@/shared/api/utils';
 import { toast } from '/@/shared/components/toast/toast';
 import { ServerListItemWithCredential } from '/@/shared/types/domain-types';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
 const c = initContract();
 

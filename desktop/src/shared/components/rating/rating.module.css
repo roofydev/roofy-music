@@ -43,3 +43,11 @@
         }
     }
 }
+
+:global([data-theme="retroMonochrome"]) .root.xs {
+    --rating-size: 10px !important;
+
+    gap: 1px;
+    padding-right: 0;
+    padding-left: 0;
+}

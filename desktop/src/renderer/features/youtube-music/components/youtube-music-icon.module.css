@@ -1,0 +1,6 @@
+.wrapper {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    color: #ff0000;
+}

@@ -18,6 +18,8 @@ interface FullScreenPlayerState {
     expanded: boolean;
     opacity: number;
     useImageAspectRatio: boolean;
+    videoFullscreen: boolean;
+    visualMode: 'image' | 'video';
     visualizerExpanded: boolean;
 }
 
@@ -37,23 +39,43 @@ export const useFullScreenPlayerStore = createWithEqualityFn<FullScreenPlayerSli
                 expanded: false,
                 opacity: 60,
                 useImageAspectRatio: false,
+                videoFullscreen: false,
+                visualMode: 'image',
                 visualizerExpanded: false,
             })),
             { name: 'store_full_screen_player' },
         ),
         {
             merge: (persistedState, currentState) => {
-                return merge(currentState, persistedState);
+                return merge(currentState, persistedState, { videoFullscreen: false });
             },
             migrate: (persistedState, version) => {
-                if (version <= 2) {
+                if (version <= 3) {
                     return {} as FullScreenPlayerState;
+                }
+
+                if (version <= 4) {
+                    return {
+                        ...(persistedState as FullScreenPlayerState),
+                        videoFullscreen: false,
+                    };
                 }
 
                 return persistedState;
             },
             name: 'store_full_screen_player',
-            version: 3,
+            partialize: (state) => ({
+                activeTab: state.activeTab,
+                dynamicBackground: state.dynamicBackground,
+                dynamicImageBlur: state.dynamicImageBlur,
+                dynamicIsImage: state.dynamicIsImage,
+                expanded: state.expanded,
+                opacity: state.opacity,
+                useImageAspectRatio: state.useImageAspectRatio,
+                visualMode: state.visualMode,
+                visualizerExpanded: state.visualizerExpanded,
+            }),
+            version: 5,
         },
     ),
 );

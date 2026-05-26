@@ -17,11 +17,30 @@ import { LibraryHeaderBar } from '/@/renderer/features/shared/components/library
 import { PageErrorBoundary } from '/@/renderer/features/shared/components/page-error-boundary';
 import { useFastAverageColor } from '/@/renderer/hooks';
 import { useAlbumBackground, useCurrentServerId } from '/@/renderer/store';
+import { Center } from '/@/shared/components/center/center';
+import { Icon } from '/@/shared/components/icon/icon';
+import { Stack } from '/@/shared/components/stack/stack';
+import { Text } from '/@/shared/components/text/text';
 import { LibraryItem } from '/@/shared/types/domain-types';
+import { isYoutubeMusicEntityId } from '/@/shared/types/youtube-music-types';
 
 const ALBUM_DETAIL_BG_FALLBACK = 'var(--theme-colors-foreground-muted)';
 
-const AlbumDetailRoute = () => {
+const YoutubeMusicAlbumPlaceholder = ({ id }: { id: string }) => (
+    <AnimatedPage key={`album-detail-${id}`}>
+        <Center style={{ padding: '3rem' }}>
+            <Stack align="center" gap="sm">
+                <Icon icon="album" size="xl" />
+                <Text size="lg" weight={700}>
+                    YouTube Music Album
+                </Text>
+                <Text isMuted>Album details are not available for YouTube Music.</Text>
+            </Stack>
+        </Center>
+    </AnimatedPage>
+);
+
+const AlbumDetailRouteInner = () => {
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const headerRef = useRef<HTMLDivElement>(null);
     const { albumBackground, albumBackgroundBlur } = useAlbumBackground();
@@ -86,6 +105,16 @@ const AlbumDetailRoute = () => {
             </NativeScrollArea>
         </AnimatedPage>
     );
+};
+
+const AlbumDetailRoute = () => {
+    const { albumId } = useParams() as { albumId: string };
+
+    if (isYoutubeMusicEntityId(albumId)) {
+        return <YoutubeMusicAlbumPlaceholder id={albumId} />;
+    }
+
+    return <AlbumDetailRouteInner />;
 };
 
 const AlbumDetailRouteWithBoundary = () => {

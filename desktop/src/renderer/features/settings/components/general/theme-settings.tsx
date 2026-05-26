@@ -19,7 +19,7 @@ import { Switch } from '/@/shared/components/switch/switch';
 import { getAppTheme } from '/@/shared/themes/app-theme';
 import { AppTheme } from '/@/shared/themes/app-theme-types';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
 const getThemeSwatchColors = (theme: AppTheme) => {
     const themeConfig = getAppTheme(theme);

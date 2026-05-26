@@ -14,7 +14,7 @@ import { Table } from '/@/shared/components/table/table';
 import { useDisclosure } from '/@/shared/hooks/use-disclosure';
 import { ServerListItem as ServerItem } from '/@/shared/types/domain-types';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
 interface ServerListItemProps {
     server: ServerItem;

@@ -29,12 +29,12 @@
         'main-content'
         'player'
         'status-bar';
-    grid-template-rows: 30px 64px calc(100vh - 212px) 90px 28px;
-    grid-template-rows: 30px 64px calc(100dvh - 212px) 90px 28px;
+    grid-template-rows: 30px 58px calc(100vh - 226px) 108px 28px;
+    grid-template-rows: 30px 58px calc(100dvh - 226px) 108px 28px;
 }
 
 .retro.windows,
 .retro.macos {
-    grid-template-rows: 30px 64px calc(100vh - 212px) 90px 28px;
-    grid-template-rows: 30px 64px calc(100dvh - 212px) 90px 28px;
+    grid-template-rows: 30px 58px calc(100vh - 226px) 108px 28px;
+    grid-template-rows: 30px 58px calc(100dvh - 226px) 108px 28px;
 }

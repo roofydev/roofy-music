@@ -18,5 +18,14 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .header-container {
-    border-bottom: 1px solid var(--retro-border-dark, #222222);
+    border-bottom: none;
+    padding: 0;
+    gap: 8px;
+}
+
+:global([data-theme="retroMonochrome"]) .header-container :global(.fs-text-title-module-root) {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }

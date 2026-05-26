@@ -26,8 +26,8 @@ import { Text } from '/@/shared/components/text/text';
 import { Textarea } from '/@/shared/components/textarea/textarea';
 import { PlayerType } from '/@/shared/types/types';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
-const mpvPlayer = isElectron() ? window.api.mpvPlayer : null;
+const localSettings = window.api?.localSettings ?? null;
+const mpvPlayer = window.api?.mpvPlayer ?? null;
 
 export const MpvSettings = memo(() => {
     const { t } = useTranslation();

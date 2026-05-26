@@ -6,7 +6,7 @@ import { Group } from '/@/shared/components/group/group';
 import { Switch } from '/@/shared/components/switch/switch';
 import { useLocalStorage } from '/@/shared/hooks/use-local-storage';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
 export function IgnoreCorsSslSwitches() {
     const { t } = useTranslation();

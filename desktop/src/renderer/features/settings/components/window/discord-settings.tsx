@@ -64,7 +64,7 @@ export const DiscordSettings = memo(() => {
             ),
             description: t('setting.discordApplicationId', {
                 context: 'description',
-                defaultId: '1165957668758900787',
+                defaultId: '1507206067015254097',
                 discord: 'Discord',
             }),
             isHidden: !isElectron(),
@@ -231,6 +231,31 @@ export const DiscordSettings = memo(() => {
             }),
             isHidden: !isElectron(),
             title: t('setting.discordServeImage', {
+                discord: 'Discord',
+            }),
+        },
+        {
+            control: (
+                <TextInput
+                    defaultValue={settings.artworkWebhookUrl}
+                    onBlur={(e) => {
+                        setSettings({
+                            discord: {
+                                artworkWebhookUrl: e.currentTarget.value,
+                            },
+                        });
+                    }}
+                    placeholder={t('setting.discordArtworkWebhook', {
+                        context: 'placeholder',
+                    })}
+                />
+            ),
+            description: t('setting.discordArtworkWebhook', {
+                context: 'description',
+                discord: 'Discord',
+            }),
+            isHidden: !isElectron(),
+            title: t('setting.discordArtworkWebhook', {
                 discord: 'Discord',
             }),
         },

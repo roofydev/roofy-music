@@ -393,6 +393,7 @@ export const SidebarPlaylistList = () => {
     const playlistsQuery = useQuery(
         playlistsQueries.list({
             query: {
+                limit: 10000,
                 sortBy: PlaylistListSort.NAME,
                 sortOrder: SortOrder.ASC,
                 startIndex: 0,
@@ -647,6 +648,7 @@ export const SidebarSharedPlaylistList = () => {
     const playlistsQuery = useQuery(
         playlistsQueries.list({
             query: {
+                limit: 10000,
                 sortBy: PlaylistListSort.NAME,
                 sortOrder: SortOrder.ASC,
                 startIndex: 0,

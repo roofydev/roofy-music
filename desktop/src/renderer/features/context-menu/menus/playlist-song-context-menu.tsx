@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { AddToPlaylistAction } from '/@/renderer/features/context-menu/actions/add-to-playlist-action';
+import { DeleteLocalTrackAction } from '/@/renderer/features/context-menu/actions/delete-local-track-action';
 import { DownloadAction } from '/@/renderer/features/context-menu/actions/download-action';
 import { GetInfoAction } from '/@/renderer/features/context-menu/actions/get-info-action';
 import { GoToAction } from '/@/renderer/features/context-menu/actions/go-to-action';
@@ -35,12 +36,13 @@ export const PlaylistSongContextMenu = ({ items, type }: PlaylistSongContextMenu
             <ContextMenu.Divider />
             <RemoveFromPlaylistAction items={items} />
             <ContextMenu.Divider />
-            <AddToPlaylistAction items={ids} itemType={type} />
+            <AddToPlaylistAction items={ids} itemType={type} songs={items} />
             <ContextMenu.Divider />
             <SetFavoriteAction ids={ids} itemType={type} />
             <SetRatingAction ids={ids} itemType={type} />
             <ContextMenu.Divider />
-            <DownloadAction ids={ids} />
+            <DownloadAction ids={ids} songs={items} />
+            <DeleteLocalTrackAction items={items} />
             <ShareAction ids={ids} itemType={type} />
             <ContextMenu.Divider />
             <GoToAction items={items} />

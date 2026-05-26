@@ -18,7 +18,7 @@ import { logMsg } from '/@/renderer/utils/logger-message';
 import { toast } from '/@/shared/components/toast/toast';
 import { AuthState, ServerType } from '/@/shared/types/types';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
 const MIN_AUTH_DELAY_MS = 1000;
 const MAX_NETWORK_RETRIES = 1;

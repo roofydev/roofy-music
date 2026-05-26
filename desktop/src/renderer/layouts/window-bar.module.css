@@ -147,27 +147,27 @@
 }
 
 /* Retro theme overrides */
-:global([data-theme="retroMonochrome"]) .windows-container {
-    background: var(--retro-bg-2, #080808) !important;
-    border-bottom: 1px solid var(--retro-border, #7a7a7a) !important;
+:global([data-theme='retroMonochrome']) .windows-container {
+    background: rgb(5 5 5 / 98%) !important;
+    border-bottom: 1px solid rgb(255 255 255 / 35%) !important;
 }
 
-:global([data-theme="retroMonochrome"]) .macos-container {
-    background: var(--retro-bg-2, #080808) !important;
-    border-bottom: 1px solid var(--retro-border, #7a7a7a) !important;
+:global([data-theme='retroMonochrome']) .macos-container {
+    background: rgb(5 5 5 / 98%) !important;
+    border-bottom: 1px solid rgb(255 255 255 / 35%) !important;
 }
 
-:global([data-theme="retroMonochrome"]) .windows-button {
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
-    color: var(--retro-text-soft, #a0a0a0);
+:global([data-theme='retroMonochrome']) .windows-button {
+    color: #a6a6a6;
+    border: 1px solid rgb(255 255 255 / 18%);
 }
 
-:global([data-theme="retroMonochrome"]) .windows-button:hover {
-    background: var(--retro-panel-2, #101010);
-    color: var(--retro-text-hot, #f1f1f1);
+:global([data-theme='retroMonochrome']) .windows-button:hover {
+    color: #f2f2f2;
+    background: rgb(255 255 255 / 12%);
 }
 
-:global([data-theme="retroMonochrome"]) .windows-button.exit:hover {
-    background: var(--retro-panel-2, #101010);
-    color: var(--retro-text-hot, #f1f1f1);
+:global([data-theme='retroMonochrome']) .windows-button.exit:hover {
+    color: #a6a6a6;
+    background: rgb(255 255 255 / 8%);
 }

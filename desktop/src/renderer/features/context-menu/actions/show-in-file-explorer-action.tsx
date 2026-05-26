@@ -10,7 +10,7 @@ interface ShowInFileExplorerActionProps {
     items: QueueSong[] | Song[];
 }
 
-const utils = isElectron() ? window.api.utils : null;
+const utils = window.api?.utils ?? null;
 
 export const ShowInFileExplorerAction = ({ items }: ShowInFileExplorerActionProps) => {
     const { t } = useTranslation();

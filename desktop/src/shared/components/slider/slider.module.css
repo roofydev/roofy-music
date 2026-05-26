@@ -18,22 +18,22 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .track {
-    background: var(--retro-bg, #050505);
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
-    height: 16px;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    height: 6px;
 }
 
 :global([data-theme="retroMonochrome"]) .thumb {
-    background: var(--retro-border-bright, #b8b8b8);
+    background: #f2f2f2;
     border-radius: 0;
-    width: 4px;
+    width: 8px;
     height: 14px;
 }
 
 :global([data-theme="retroMonochrome"]) .label {
-    background: var(--retro-panel, #0b0b0b);
-    color: var(--retro-text, #d0d0d0);
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    background: #0b0b0b;
+    color: #f2f2f2;
+    border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow: none;
     font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
 }

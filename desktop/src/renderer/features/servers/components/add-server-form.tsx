@@ -30,8 +30,10 @@ import { useForm } from '/@/shared/hooks/use-form';
 import { AuthenticationResponse, ServerListItemWithCredential } from '/@/shared/types/domain-types';
 import { DiscoveredServerItem, ServerType, toServerType } from '/@/shared/types/types';
 
-const autodiscover = isElectron() ? window.api.autodiscover : null;
-const localSettings = isElectron() ? window.api.localSettings : null;
+const autodiscover = window.api?.autodiscover ?? null;
+const localSettings = window.api?.localSettings ?? null;
+
+type AddableServerType = Exclude<ServerType, ServerType.YOUTUBE_MUSIC>;
 
 interface AddServerFormProps {
     onCancel: (() => void) | null;
@@ -70,7 +72,7 @@ function useAutodiscovery() {
     return { isDone, servers };
 }
 
-const SERVER_TYPES: Record<ServerType, ServerDetails> = {
+const SERVER_TYPES: Record<AddableServerType, ServerDetails> = {
     [ServerType.JELLYFIN]: {
         icon: JellyfinIcon,
         name: 'Jellyfin',

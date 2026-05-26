@@ -36,6 +36,7 @@ import { Text } from '/@/shared/components/text/text';
 import { toast } from '/@/shared/components/toast/toast';
 import { LibraryItem, ServerType } from '/@/shared/types/domain-types';
 import { ItemListKey } from '/@/shared/types/types';
+import { YOUTUBE_MUSIC_SOURCE_ID } from '/@/shared/types/youtube-music-types';
 
 const PlaylistSongListFiltersSidebar = () => {
     const { t } = useTranslation();
@@ -74,9 +75,12 @@ const PlaylistDetailSongListRoute = () => {
     const navigate = useNavigate();
     const { playlistId } = useParams() as { playlistId: string };
     const server = useCurrentServer();
+    const playlistServerId = playlistId.startsWith('ytm-playlist:')
+        ? YOUTUBE_MUSIC_SOURCE_ID
+        : server?.id;
 
     const detailQuery = useSuspenseQuery({
-        ...playlistsQueries.detail({ query: { id: playlistId }, serverId: server?.id }),
+        ...playlistsQueries.detail({ query: { id: playlistId }, serverId: playlistServerId }),
     });
     const deletePlaylistMutation = useDeletePlaylist({});
     const updatePlaylistMutation = useUpdatePlaylist({});

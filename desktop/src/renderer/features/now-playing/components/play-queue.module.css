@@ -35,17 +35,58 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .group-row {
-    color: var(--retro-text-soft, #a0a0a0);
-    font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
-    border-bottom: 1px solid var(--retro-border-dark, #222222);
+    color: var(--rm-text-muted, #777777);
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--rm-border-soft, rgb(255 255 255 / 8%));
 }
 
 :global([data-theme="retroMonochrome"]) .drop-zone {
-    background-color: var(--retro-bg, #050505);
-    border: 1px solid var(--retro-border-muted, #3f3f3f);
+    background-color: transparent;
+    border: none;
 }
 
 :global([data-theme="retroMonochrome"]) .drop-zone.dragged-over {
-    outline: 1px solid var(--retro-border-bright, #b8b8b8);
-    outline-offset: 0;
+    outline: 1px dashed var(--rm-border-strong, rgb(255 255 255 / 28%));
+    outline-offset: -8px;
+    background: rgb(255 255 255 / 2%);
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 32px 24px;
+    text-align: center;
+    pointer-events: none;
+}
+
+.empty-icon {
+    display: grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    color: var(--rm-text-muted, #777777);
+    border: 1px dashed var(--rm-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-sm, 4px);
+}
+
+.empty-title {
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--rm-text, #f4f4f4);
+}
+
+.empty-subtitle {
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--rm-text-muted, #777777);
+    max-width: 220px;
 }

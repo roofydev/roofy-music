@@ -1,6 +1,7 @@
 import type { Dispatch } from 'react';
 import type ReactPlayer from 'react-player';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -9,7 +10,7 @@ import {
     WebPlayerEngineHandle,
 } from '/@/renderer/features/player/audio-player/engine/web-player-engine';
 import { usePlayerEvents } from '/@/renderer/features/player/audio-player/hooks/use-player-events';
-import { useSongUrl } from '/@/renderer/features/player/audio-player/hooks/use-stream-url';
+import { invalidateYtStream, useSongUrl } from '/@/renderer/features/player/audio-player/hooks/use-stream-url';
 import { PlayerOnProgressProps } from '/@/renderer/features/player/audio-player/types';
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
 import { useWebAudio } from '/@/renderer/features/player/hooks/use-webaudio';
@@ -24,7 +25,7 @@ import {
     usePlayerVolume,
 } from '/@/renderer/store';
 import { toast } from '/@/shared/components/toast/toast';
-import { QueueSong } from '/@/shared/types/domain-types';
+import { QueueSong, ServerType } from '/@/shared/types/domain-types';
 import { CrossfadeStyle, PlayerStatus, PlayerStyle } from '/@/shared/types/types';
 
 const PLAY_PAUSE_FADE_DURATION = 300;
@@ -240,17 +241,8 @@ export function WebPlayer() {
                     }
                 }
 
-                let type: 'fraction' | 'seconds' | undefined = undefined;
-
-                if (timestamp < 1) {
-                    type = 'seconds';
-                }
-
-                if (num === 1) {
-                    playerRef.current?.player1()?.ref?.seekTo(timestamp, type);
-                } else {
-                    playerRef.current?.player2()?.ref?.seekTo(timestamp, type);
-                }
+                playerRef.current?.seekTo(timestamp);
+                setTimestamp(timestamp);
             },
             onPlayerStatus: async (properties) => {
                 setIsTransitioning(false);
@@ -298,7 +290,7 @@ export function WebPlayer() {
                 player.mediaStop();
             },
         },
-        [volume, num, isTransitioning, transitionType, audioFadeOnStatusChange],
+        [volume, num, isTransitioning, transitionType, audioFadeOnStatusChange, setTimestamp],
     );
 
     // Cleanup fade interval on unmount
@@ -422,8 +414,27 @@ export function WebPlayer() {
         }
     }, [calculateReplayGain, num, player1, player2Source, player2, volume, webAudio]);
 
+    const queryClient = useQueryClient();
     const player1Url = useSongUrl(player1, num === 1, transcode);
     const player2Url = useSongUrl(player2, num === 2, transcode);
+
+    const handleNetworkErrorPlayer1 = useCallback(() => {
+        if (player1?._serverType === ServerType.YOUTUBE_MUSIC) {
+            invalidateYtStream(player1);
+            queryClient.invalidateQueries({
+                queryKey: [player1._serverId, 'stream-url', player1.id],
+            });
+        }
+    }, [player1, queryClient]);
+
+    const handleNetworkErrorPlayer2 = useCallback(() => {
+        if (player2?._serverType === ServerType.YOUTUBE_MUSIC) {
+            invalidateYtStream(player2);
+            queryClient.invalidateQueries({
+                queryKey: [player2._serverId, 'stream-url', player2.id],
+            });
+        }
+    }, [player2, queryClient]);
 
     const handlePlayer1Start = useCallback(
         async (player: ReactPlayer) => {
@@ -481,6 +492,8 @@ export function WebPlayer() {
             onEndedPlayer1={handleOnEndedPlayer1}
             onEndedPlayer2={handleOnEndedPlayer2}
             onErrorPause={handleOnErrorPause}
+            onNetworkErrorPlayer1={handleNetworkErrorPlayer1}
+            onNetworkErrorPlayer2={handleNetworkErrorPlayer2}
             onProgressPlayer1={onProgressPlayer1}
             onProgressPlayer2={onProgressPlayer2}
             onStartedPlayer1={handlePlayer1Start}

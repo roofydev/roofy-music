@@ -1,0 +1,61 @@
+.rating-row {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.auto-dj-button {
+    flex-shrink: 0;
+}
+
+.auto-dj-button-inner,
+.auto-dj-button-label {
+    min-width: max-content;
+    overflow: visible;
+    color: inherit;
+}
+
+.auto-dj-button-label {
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
+:global([data-theme="retroMonochrome"]) .rating-row {
+    justify-content: flex-end;
+    width: 100%;
+}
+
+:global([data-theme="retroMonochrome"]) .rating-row :global([class*="mantine-Rating-root"]) {
+    flex-shrink: 1;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+:global([data-theme="retroMonochrome"]) .auto-dj-button {
+    min-width: 72px;
+    height: 32px;
+    color: var(--rm-text, #f4f4f4) !important;
+    background: transparent;
+    border: 1px solid var(--rm-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-sm, 4px);
+}
+
+:global([data-theme="retroMonochrome"]) .auto-dj-button:hover {
+    color: var(--rm-text, #f4f4f4) !important;
+    background: rgb(255 255 255 / 4.5%);
+    border-color: var(--rm-border-strong, rgb(255 255 255 / 28%));
+}
+
+:global([data-theme="retroMonochrome"]) .auto-dj-button[data-enabled='true'] {
+    color: var(--rm-text, #f4f4f4) !important;
+    background: rgb(255 255 255 / 8%);
+    border-color: var(--rm-text, #f4f4f4);
+}
+
+:global([data-theme="retroMonochrome"]) .auto-dj-button-label {
+    font-family: var(--theme-content-font-family, Inter, sans-serif);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}

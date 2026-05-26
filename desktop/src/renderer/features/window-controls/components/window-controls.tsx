@@ -5,7 +5,7 @@ import { RiCheckboxBlankLine, RiCloseLine, RiSubtractLine } from 'react-icons/ri
 
 import styles from './window-controls.module.css';
 
-const browser = isElectron() ? window.api.browser : null;
+const browser = window.api?.browser ?? null;
 
 const close = () => browser?.exit();
 

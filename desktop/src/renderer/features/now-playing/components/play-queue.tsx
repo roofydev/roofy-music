@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import styles from './play-queue.module.css';
 
@@ -28,7 +29,9 @@ import {
     usePlayerStore,
 } from '/@/renderer/store';
 import { Flex } from '/@/shared/components/flex/flex';
+import { Icon } from '/@/shared/components/icon/icon';
 import { LoadingOverlay } from '/@/shared/components/loading-overlay/loading-overlay';
+import { Text } from '/@/shared/components/text/text';
 import { useDebouncedValue } from '/@/shared/hooks/use-debounced-value';
 import { useFocusWithin } from '/@/shared/hooks/use-focus-within';
 import { useMergedRef } from '/@/shared/hooks/use-merged-ref';
@@ -212,6 +215,7 @@ export const PlayQueue = forwardRef<ItemListHandle, QueueProps>(
 
 const EmptyQueueDropZone = () => {
     const playerContext = usePlayer();
+    const { t } = useTranslation();
 
     const { isDraggedOver, ref } = useDragDrop<HTMLDivElement>({
         drop: {
@@ -372,6 +376,16 @@ const EmptyQueueDropZone = () => {
             justify="center"
             ref={ref}
             w="100%"
-        />
+        >
+            <div className={styles.emptyState}>
+                <div className={styles.emptyIcon}>
+                    <Icon icon="track" size="xl" />
+                </div>
+                <Text className={styles.emptyTitle}>{t('page.queue.emptyTitle', 'Queue is empty')}</Text>
+                <Text className={styles.emptySubtitle}>
+                    {t('page.queue.emptySubtitle', 'Add some tracks to get started.')}
+                </Text>
+            </div>
+        </Flex>
     );
 };

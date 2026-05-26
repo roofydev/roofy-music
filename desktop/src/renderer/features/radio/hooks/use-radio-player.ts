@@ -140,9 +140,9 @@ export const useRadioControls = () => {
     };
 };
 
-const mpvPlayer = isElectron() ? window.api.mpvPlayer : null;
-const mpvPlayerListener = isElectron() ? window.api.mpvPlayerListener : null;
-const ipc = isElectron() ? window.api.ipc : null;
+const mpvPlayer = window.api?.mpvPlayer ?? null;
+const mpvPlayerListener = window.api?.mpvPlayerListener ?? null;
+const ipc = window.api?.ipc ?? null;
 
 export const useRadioAudioInstance = () => {
     const { actions } = useRadioStore();

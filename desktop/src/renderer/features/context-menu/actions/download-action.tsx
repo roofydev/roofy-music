@@ -3,21 +3,59 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '/@/renderer/api';
-import { useCurrentServer } from '/@/renderer/store';
+import { useCurrentServer, useImportJobActions } from '/@/renderer/store';
 import { ContextMenu } from '/@/shared/components/context-menu/context-menu';
+import { toast } from '/@/shared/components/toast/toast';
+import { ServerType, Song } from '/@/shared/types/domain-types';
 
 interface DownloadActionProps {
     ids: string[];
+    songs?: Song[];
 }
 
-const utils = isElectron() ? window.api.utils : null;
+const utils = window.api?.utils ?? null;
 
-export const DownloadAction = ({ ids }: DownloadActionProps) => {
+export const DownloadAction = ({ ids, songs = [] }: DownloadActionProps) => {
     const { t } = useTranslation();
     const server = useCurrentServer();
+    const { setJob } = useImportJobActions();
+    const youtubeSongs = songs.filter(
+        (song) => song._serverType === ServerType.YOUTUBE_MUSIC && song.youtubeMusic?.videoId,
+    );
+    const isYoutubeOnlySelection = youtubeSongs.length > 0 && youtubeSongs.length === songs.length;
+
+    const queueYoutubeImports = useCallback(
+        async (saveVideo: boolean) => {
+            if (!isElectron() || !window.api?.youtubeMusic?.downloadTrack) {
+                toast.error({
+                    message: 'Import to Roofy Music is only available in the desktop app.',
+                });
+                return;
+            }
+
+            for (const song of youtubeSongs) {
+                const job = await window.api.youtubeMusic.downloadTrack({
+                    album: song.album || undefined,
+                    artist: song.artistName || song.albumArtistName || 'Unknown Artist',
+                    imageUrl: song.imageUrl || undefined,
+                    saveVideo,
+                    sourceTrackId: song.id,
+                    title: song.name,
+                    videoId: song.youtubeMusic!.videoId!,
+                });
+                setJob(job);
+            }
+        },
+        [setJob, youtubeSongs],
+    );
 
     const onSelect = useCallback(async () => {
         try {
+            if (isYoutubeOnlySelection) {
+                await queueYoutubeImports(false);
+                return;
+            }
+
             for (const id of ids) {
                 const downloadUrl = api.controller.getDownloadUrl({
                     apiClientProps: { serverId: server.id },
@@ -32,11 +70,41 @@ export const DownloadAction = ({ ids }: DownloadActionProps) => {
             }
         } catch (error) {
             console.error('Failed to download items:', error);
+            toast.error({ message: (error as Error).message });
         }
-    }, [ids, server]);
+    }, [ids, isYoutubeOnlySelection, queueYoutubeImports, server.id]);
 
-    return (
-        <ContextMenu.Item disabled={ids.length > 1} leftIcon="download" onSelect={onSelect}>
+    const onSelectWithVideo = useCallback(async () => {
+        try {
+            await queueYoutubeImports(true);
+        } catch (error) {
+            console.error('Failed to download items:', error);
+            toast.error({ message: (error as Error).message });
+        }
+    }, [queueYoutubeImports]);
+
+    return isYoutubeOnlySelection ? (
+        <ContextMenu.Submenu>
+            <ContextMenu.SubmenuTarget>
+                <ContextMenu.Item leftIcon="download" onSelect={onSelect} rightIcon="arrowRightS">
+                    Import to Roofy Music
+                </ContextMenu.Item>
+            </ContextMenu.SubmenuTarget>
+            <ContextMenu.SubmenuContent>
+                <ContextMenu.Item leftIcon="download" onSelect={onSelect}>
+                    Audio only
+                </ContextMenu.Item>
+                <ContextMenu.Item leftIcon="mediaPlay" onSelect={onSelectWithVideo}>
+                    Audio + MP4 video
+                </ContextMenu.Item>
+            </ContextMenu.SubmenuContent>
+        </ContextMenu.Submenu>
+    ) : (
+        <ContextMenu.Item
+            disabled={!isYoutubeOnlySelection && ids.length > 1}
+            leftIcon="download"
+            onSelect={onSelect}
+        >
             {t('page.contextMenu.download')}
         </ContextMenu.Item>
     );

@@ -1,0 +1,64 @@
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: min-content;
+    gap: var(--theme-spacing-sm);
+    row-gap: var(--theme-spacing-xs);
+    align-content: start;
+    align-items: start;
+    padding: var(--theme-spacing-md);
+    overflow-y: auto;
+    height: 100%;
+}
+
+/*
+ * ItemCard uses height: 100%. When the grid fills the panel, rows stretch and cards
+ * grow, leaving empty space below titles. Size rows and cards to content instead.
+ */
+.grid > * {
+    height: auto;
+    min-height: 0;
+    align-self: start;
+}
+
+@media (min-width: 600px) {
+    .grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 768px) {
+    .grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (min-width: 960px) {
+    .grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+@media (min-width: 1200px) {
+    .grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+
+@media (min-width: 1440px) {
+    .grid {
+        grid-template-columns: repeat(7, 1fr);
+    }
+}
+
+@media (min-width: 1920px) {
+    .grid {
+        grid-template-columns: repeat(8, 1fr);
+    }
+}
+
+@media (min-width: 2560px) {
+    .grid {
+        grid-template-columns: repeat(10, 1fr);
+    }
+}

@@ -15,7 +15,7 @@ import { MutationHookArgs } from '/@/renderer/lib/react-query';
 import { toast } from '/@/shared/components/toast/toast';
 import { FavoriteArgs, FavoriteResponse, LibraryItem } from '/@/shared/types/domain-types';
 
-const remote = isElectron() ? window.api.remote : null;
+const remote = window.api?.remote ?? null;
 
 const deleteFavoriteMutationKey = ['set-favorite', false];
 

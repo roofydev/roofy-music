@@ -16,9 +16,9 @@ import { usePlayerTimestamp } from '/@/renderer/store/timestamp.store';
 import { FullLyricsMetadata, SynchronizedLyricsArray } from '/@/shared/types/domain-types';
 import { PlayerStatus, PlayerType } from '/@/shared/types/types';
 
-const mpvPlayer = isElectron() ? window.api.mpvPlayer : null;
-const utils = isElectron() ? window.api.utils : null;
-const mpris = isElectron() && utils?.isLinux() ? window.api.mpris : null;
+const mpvPlayer = window.api?.mpvPlayer ?? null;
+const utils = window.api?.utils ?? null;
+const mpris = utils?.isLinux() ? (window.api?.mpris ?? null) : null;
 
 export interface SynchronizedLyricsProps extends Omit<FullLyricsMetadata, 'lyrics'> {
     lyrics: SynchronizedLyricsArray;

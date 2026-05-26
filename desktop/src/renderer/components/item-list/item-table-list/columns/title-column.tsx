@@ -13,8 +13,9 @@ import {
 } from '/@/renderer/components/item-list/item-table-list/item-table-list-column';
 import { useIsActiveRow } from '/@/renderer/components/item-list/item-table-list/item-table-list-context';
 import { ExplicitIndicator } from '/@/shared/components/explicit-indicator/explicit-indicator';
+import { SourceBadge } from '/@/shared/components/source-badge/source-badge';
 import { Text } from '/@/shared/components/text/text';
-import { LibraryItem, QueueSong } from '/@/shared/types/domain-types';
+import { LibraryItem, QueueSong, ServerType } from '/@/shared/types/domain-types';
 
 const TitleColumnBase = (props: ItemTableListInnerColumn) => {
     const { itemType } = props;
@@ -115,6 +116,9 @@ function QueueSongTitleColumn(props: ItemTableListInnerColumn) {
                     {...titleLinkProps}
                 >
                     <ExplicitIndicator explicitStatus={song?.explicitStatus} />
+                    {song?._serverType === ServerType.YOUTUBE_MUSIC && (
+                        <SourceBadge serverType={ServerType.YOUTUBE_MUSIC} />
+                    )}
                     {row}
                     {song?.trackSubtitle && props.itemType !== LibraryItem.QUEUE_SONG && (
                         <Text

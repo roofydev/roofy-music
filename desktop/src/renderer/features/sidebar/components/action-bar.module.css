@@ -12,6 +12,21 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .container {
-    background: var(--retro-bg-2, #080808);
-    border-bottom: 1px solid var(--retro-border-dark, #222222);
+    height: 54px;
+    padding: 0 12px;
+    background: transparent;
+    border-bottom: 1px solid var(--rm-border-soft, rgb(255 255 255 / 8%));
+}
+
+:global([data-theme="retroMonochrome"]) .container :global([class*="mantine-Input-input"]) {
+    height: 38px;
+    min-height: 38px;
+}
+
+:global([data-theme="retroMonochrome"]) .container :global([class*="mantine-Button-root"]) {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0;
 }

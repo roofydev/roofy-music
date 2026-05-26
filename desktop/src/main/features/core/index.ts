@@ -5,3 +5,5 @@ import './player';
 import './remote';
 import './settings';
 import './discord-rpc';
+import './youtube-music';
+import '../downloads';

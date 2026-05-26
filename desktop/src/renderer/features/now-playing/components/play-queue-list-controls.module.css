@@ -2,6 +2,7 @@
     width: 100%;
     min-width: 0;
     container-type: inline-size;
+    border-bottom: 1px solid var(--theme-colors-border) !important;
 }
 
 .restore-section {
@@ -14,4 +15,9 @@
     }
 }
 
-
+/* Retro theme overrides */
+:global([data-theme="retroMonochrome"]) .toolbar {
+    padding: 10px 12px !important;
+    border-bottom: 1px solid var(--rm-border-soft, rgb(255 255 255 / 8%)) !important;
+    background: transparent;
+}
