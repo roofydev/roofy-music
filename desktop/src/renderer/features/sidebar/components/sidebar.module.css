@@ -86,6 +86,7 @@
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .container {
     --retro-sidebar-row-height: 38px;
+    --retro-sidebar-inline-height: 22px;
 
     gap: 0;
     background: rgb(10 10 10 / 96%) !important;
@@ -104,16 +105,27 @@
 
 :global([data-theme="retroMonochrome"]) .accordion-control {
     min-height: var(--retro-sidebar-row-height);
+    height: var(--retro-sidebar-row-height);
+    max-height: var(--retro-sidebar-row-height);
     padding: 0 8px;
     font-family: var(--theme-content-font-family, "IBM Plex Mono", monospace);
     font-size: 12px;
     font-weight: 800;
-    line-height: var(--retro-sidebar-row-height);
+    line-height: 1;
     color: #f2f2f2;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     border-bottom: 1px solid rgb(255 255 255 / 25%);
     border-radius: 0;
+}
+
+/* Mantine adds vertical padding on the label span; remove it so row height stays fixed */
+:global([data-theme="retroMonochrome"]) .accordion-control > span:nth-child(2) {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding-top: 0;
+    padding-bottom: 0;
 }
 
 :global([data-theme="retroMonochrome"]) .accordion-control:hover {
@@ -135,5 +147,9 @@
 }
 
 :global([data-theme="retroMonochrome"]) .youtube-music-header {
-    height: var(--retro-sidebar-row-height);
+    flex: 1;
+    align-items: center;
+    min-width: 0;
+    height: 100%;
+    max-height: 100%;
 }

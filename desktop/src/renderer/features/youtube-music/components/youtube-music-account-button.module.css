@@ -62,8 +62,8 @@
 
 /* Retro theme overrides */
 :global([data-theme="retroMonochrome"]) .avatar {
-    width: 30px;
-    height: 30px;
+    width: var(--retro-sidebar-inline-height, 22px);
+    height: var(--retro-sidebar-inline-height, 22px);
     background: rgb(255 255 255 / 12%);
     border: 1px solid rgb(255 255 255 / 42%);
     border-radius: 0;
@@ -71,27 +71,33 @@
 
 :global([data-theme="retroMonochrome"]) .account {
     flex-shrink: 0;
+    align-items: center;
     max-width: 138px;
-    height: var(--retro-sidebar-row-height, 38px);
-    overflow: hidden;
+    height: auto;
+    max-height: 100%;
 }
 
 :global([data-theme="retroMonochrome"]) .login-button {
-    min-width: 62px;
-    min-height: var(--retro-sidebar-row-height, 38px);
-    padding: 0 8px;
+    box-sizing: border-box;
+    min-width: 52px;
+    height: var(--retro-sidebar-inline-height, 22px);
+    min-height: var(--retro-sidebar-inline-height, 22px);
+    padding: 0 6px;
     overflow: visible;
-    font-size: 11px;
+    font-size: 10px;
     line-height: 1;
 }
 
 :global([data-theme="retroMonochrome"]) .auth-button {
-    width: 62px;
-    height: var(--retro-sidebar-row-height, 38px);
-    padding: 0;
+    box-sizing: border-box;
+    width: auto;
+    min-width: 52px;
+    height: var(--retro-sidebar-inline-height, 22px);
+    padding: 0 6px;
     overflow: visible;
     text-overflow: clip;
     font-size: 10px;
+    line-height: 1;
     color: #f2f2f2;
     background: transparent;
     border: 1px solid rgb(255 255 255 / 35%);
@@ -112,14 +118,17 @@
 }
 
 :global([data-theme="retroMonochrome"]) .account button {
+    box-sizing: border-box;
     flex-shrink: 0;
-    width: 78px;
+    width: auto;
+    min-width: 52px;
     max-width: none;
-    min-height: var(--retro-sidebar-row-height, 38px);
-    padding: 0 8px;
+    height: var(--retro-sidebar-inline-height, 22px);
+    min-height: var(--retro-sidebar-inline-height, 22px);
+    padding: 0 6px;
     overflow: visible;
     text-overflow: clip;
-    font-size: 11px;
+    font-size: 10px;
     line-height: 1;
     white-space: nowrap;
 }
