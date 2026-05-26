@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import isElectron from 'is-electron';
 import { AnimatePresence, motion } from 'motion/react';
-import { MouseEvent, useMemo } from 'react';
+import { MouseEvent, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
 
@@ -9,6 +9,10 @@ import styles from './sidebar.module.css';
 
 import { useItemImageUrl } from '/@/renderer/components/item-image/item-image';
 import { ContextMenuController } from '/@/renderer/features/context-menu/context-menu-controller';
+import {
+    useSongVideoAvailability,
+    VideoModeOverlay,
+} from '/@/renderer/features/player/components/local-video-player';
 import {
     useIsRadioActive,
     useRadioPlayer,
@@ -28,6 +32,7 @@ import {
     useAppStore,
     useAppStoreActions,
     useFullScreenPlayerStore,
+    useFullScreenPlayerStoreActions,
     useGeneralSettings,
     usePlayerSong,
     useSetFullScreenPlayerStore,
@@ -229,12 +234,16 @@ const SidebarImage = () => {
     const { t } = useTranslation();
     const { setSideBar } = useAppStoreActions();
     const currentSong = usePlayerSong();
+    const { canPlayVideo, isCheckingVideo, metadata: videoMetadata, videoUnavailable } =
+        useSongVideoAvailability();
+    const videoButtonDisabled = videoUnavailable || isCheckingVideo;
     const isRadioActive = useIsRadioActive();
     const { currentStationArt, isPlaying: isRadioPlaying } = useRadioPlayer();
     const { blurExplicitImages } = useGeneralSettings();
 
     const imageUrl = useItemImageUrl({
         id: currentSong?.imageId || undefined,
+        imageUrl: currentSong?.imageUrl,
         itemType: LibraryItem.SONG,
         serverId: currentSong?._serverId,
         type: 'sidebar',
@@ -252,7 +261,22 @@ const SidebarImage = () => {
     const isSongDefined = Boolean(currentSong?.id);
 
     const setFullScreenPlayerStore = useSetFullScreenPlayerStore();
-    const { expanded: isFullScreenPlayerExpanded } = useFullScreenPlayerStore();
+    const {
+        expanded: isFullScreenPlayerExpanded,
+        videoFullscreen,
+        visualMode,
+    } = useFullScreenPlayerStore();
+    const { setStore } = useFullScreenPlayerStoreActions();
+    const showVideo =
+        !isPlayingRadio && canPlayVideo && visualMode === 'video' && !videoFullscreen;
+    const showVisualModeToggle = !isPlayingRadio && isSongDefined;
+
+    useEffect(() => {
+        if (!canPlayVideo && visualMode === 'video') {
+            setStore({ visualMode: 'image' });
+        }
+    }, [canPlayVideo, setStore, visualMode]);
+
     const expandFullScreenPlayer = () => {
         setFullScreenPlayerStore({ expanded: !isFullScreenPlayerExpanded });
     };
@@ -287,7 +311,9 @@ const SidebarImage = () => {
             transition={{ duration: 0.3, ease: 'easeInOut' }}
         >
             <Tooltip label={t('player.toggleFullscreenPlayer')}>
-                {isRadioActive && radioImageUrl ? (
+                {showVideo && videoMetadata ? (
+                    <VideoModeOverlay metadata={videoMetadata} />
+                ) : isRadioActive && radioImageUrl ? (
                     <img className={styles.sidebarImage} loading="eager" src={radioImageUrl} />
                 ) : isRadioActive ? (
                     <Center
@@ -315,6 +341,43 @@ const SidebarImage = () => {
                     <ImageUnloader icon="emptySongImage" />
                 )}
             </Tooltip>
+            {showVisualModeToggle && (
+                <div className={styles.sidebarVisualToggle}>
+                    <button
+                        className={styles.sidebarVisualButton}
+                        data-active={!showVideo}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setStore({ visualMode: 'image' });
+                        }}
+                        title="Show artwork"
+                        type="button"
+                    >
+                        <Icon icon="image" size="md" />
+                    </button>
+                    <button
+                        className={clsx(styles.sidebarVisualButton, {
+                            [styles.sidebarVisualButtonDisabled]: videoButtonDisabled,
+                        })}
+                        data-active={showVideo}
+                        disabled={videoButtonDisabled}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setStore({ visualMode: 'video' });
+                        }}
+                        title={
+                            videoButtonDisabled
+                                ? isCheckingVideo
+                                    ? 'Checking for video…'
+                                    : 'No video available for this track'
+                                : 'Show video'
+                        }
+                        type="button"
+                    >
+                        <Icon icon="mediaPlay" size="md" />
+                    </button>
+                </div>
+            )}
             <ActionIcon
                 icon="arrowDownS"
                 iconProps={{

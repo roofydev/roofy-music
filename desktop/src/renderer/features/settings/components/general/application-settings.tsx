@@ -36,8 +36,8 @@ import { Switch } from '/@/shared/components/switch/switch';
 import { toast } from '/@/shared/components/toast/toast';
 import { FontType } from '/@/shared/types/types';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
-const ipc = isElectron() ? window.api.ipc : null;
+const localSettings = window.api?.localSettings ?? null;
+const ipc = window.api?.ipc ?? null;
 // Electron 32+ removed file.path, use this which is exposed in preload to get real path
 const webUtils = isElectron() ? window.electron.webUtils : null;
 

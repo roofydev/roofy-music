@@ -9,7 +9,7 @@ import { Text } from '/@/shared/components/text/text';
 import { toast } from '/@/shared/components/toast/toast';
 import { Tooltip } from '/@/shared/components/tooltip/tooltip';
 
-const util = isElectron() ? window.api.utils : null;
+const util = window.api?.utils ?? null;
 
 export type SongPathProps = {
     path: null | string;

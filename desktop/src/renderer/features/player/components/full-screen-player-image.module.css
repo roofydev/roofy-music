@@ -42,7 +42,7 @@
 
 .visual-mode-toggle {
     position: absolute;
-    top: -2.65rem;
+    top: -3.25rem;
     right: 50%;
     z-index: 4;
     display: flex;
@@ -55,6 +55,48 @@
     box-shadow: 0 10px 30px rgb(0 0 0 / 28%);
     backdrop-filter: blur(8px);
     transform: translateX(50%);
+}
+
+.visual-mode-button {
+    all: unset;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    line-height: 0;
+    color: var(--theme-colors-foreground);
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    transition: none;
+}
+
+.visual-mode-button:hover:not(:disabled) {
+    background: rgb(255 255 255 / 10%);
+    border-color: var(--theme-colors-border);
+}
+
+.visual-mode-button:focus-visible {
+    outline: 1px solid var(--theme-colors-foreground);
+    outline-offset: 2px;
+}
+
+.visual-mode-button:disabled,
+.visual-mode-button-disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.visual-mode-button[data-active='true'] {
+    background: rgb(255 255 255 / 12%);
+    border-color: var(--theme-colors-border);
+}
+
+.visual-mode-button svg {
+    display: block;
+    flex-shrink: 0;
 }
 
 .video-actions {
@@ -106,6 +148,40 @@
 }
 
 /* Retro theme overrides */
+::global([data-theme="retroMonochrome"]) .visual-mode-toggle {
+    background: var(--retro-panel, #0b0b0b);
+    border-color: rgb(255 255 255 / 35%);
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+::global([data-theme="retroMonochrome"]) .visual-mode-button {
+    width: 44px;
+    height: 44px;
+    color: var(--retro-text, #f2f2f2);
+    border-color: rgb(255 255 255 / 35%);
+    border-radius: 0;
+}
+
+::global([data-theme="retroMonochrome"]) .visual-mode-button:hover:not(:disabled) {
+    color: var(--retro-text-hot, #fff);
+    background: rgb(255 255 255 / 12%);
+    border-color: rgb(255 255 255 / 65%);
+}
+
+::global([data-theme="retroMonochrome"]) .visual-mode-button:focus-visible {
+    outline: 1px solid var(--retro-text-hot, #fff);
+    outline-offset: 2px;
+}
+
+::global([data-theme="retroMonochrome"]) .visual-mode-button[data-active='true'] {
+    background: rgb(255 255 255 / 12%);
+    border-color: rgb(255 255 255 / 65%);
+}
+
+::global([data-theme="retroMonochrome"]) .visual-mode-button svg {
+    color: currentColor;
+}
 :global([data-theme="retroMonochrome"]) .image {
     border: 1px solid var(--retro-border-muted, #3f3f3f);
     border-radius: 0 !important;

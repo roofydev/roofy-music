@@ -19,7 +19,7 @@ const WINDOW_BAR_OPTIONS = [
     { label: 'Native', value: Platform.LINUX },
 ];
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
 export const WindowSettings = memo(() => {
     const { t } = useTranslation();

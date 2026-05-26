@@ -594,6 +594,39 @@ async function createWindow(first = true): Promise<void> {
         mainWindow?.unmaximize();
     });
 
+    let videoFullscreenRestoreState: boolean | null = null;
+
+    ipcMain.on('window-video-fullscreen', (_event, enabled: boolean) => {
+        if (!mainWindow) {
+            return;
+        }
+
+        if (enabled) {
+            if (videoFullscreenRestoreState === null) {
+                videoFullscreenRestoreState = mainWindow.isFullScreen();
+            }
+
+            if (!mainWindow.isFullScreen()) {
+                mainWindow.setFullScreen(true);
+            }
+
+            return;
+        }
+
+        const restoreFullscreen = videoFullscreenRestoreState ?? false;
+        videoFullscreenRestoreState = null;
+        mainWindow.setFullScreen(restoreFullscreen);
+    });
+
+    mainWindow.on('leave-full-screen', () => {
+        if (videoFullscreenRestoreState === null) {
+            return;
+        }
+
+        videoFullscreenRestoreState = null;
+        mainWindow?.webContents.send('window-video-fullscreen-exited');
+    });
+
     ipcMain.on('window-minimize', () => {
         mainWindow?.minimize();
     });

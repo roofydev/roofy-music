@@ -264,8 +264,19 @@ const Controls = () => {
     const displaySettings = useLyricsDisplaySettings('default');
     const lyricConfig = { ...lyricsSettings, ...displaySettings };
 
+    const videoFullscreen = useFullScreenPlayerStore((state) => state.videoFullscreen);
+
     const handleToggleFullScreenPlayer = () => {
-        setStore({ expanded: !expanded, visualizerExpanded: false });
+        if (videoFullscreen) {
+            setStore({ videoFullscreen: false });
+            return;
+        }
+
+        setStore({
+            expanded: !expanded,
+            videoFullscreen: false,
+            visualizerExpanded: false,
+        });
     };
 
     const handleLyricsSettings = (property: string, value: any) => {
@@ -656,11 +667,17 @@ export const FullScreenPlayer = () => {
 
     useLayoutEffect(() => {
         if (isOpenedRef.current !== null) {
-            setStore({ expanded: false });
+            setStore({ expanded: false, videoFullscreen: false });
         }
 
         isOpenedRef.current = true;
     }, [location, setStore]);
+
+    useEffect(() => {
+        return () => {
+            setStore({ videoFullscreen: false });
+        };
+    }, [setStore]);
 
     return (
         <PlayerContainer

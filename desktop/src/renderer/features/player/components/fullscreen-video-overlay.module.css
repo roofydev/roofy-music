@@ -1,0 +1,73 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #050505;
+}
+
+.video-stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.video-stage :global(video) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.chrome {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.chrome-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
+    pointer-events: none;
+    background: linear-gradient(to top, rgb(0 0 0 / 96%) 0%, rgb(0 0 0 / 72%) 55%, transparent 100%);
+    opacity: 0;
+    transform: translateY(100%);
+    transition:
+        opacity 180ms ease,
+        transform 220ms ease;
+}
+
+.chrome-panel-visible {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.overlay:focus-within .chrome-panel-visible {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.player-bar {
+    width: 100%;
+    border-top: 1px solid rgb(255 255 255 / 18%);
+}
+
+:global([data-theme="retroMonochrome"]) .player-bar {
+    border-top-color: rgb(255 255 255 / 35%);
+}
+
+:global([data-theme="retroMonochrome"]) .chrome-panel {
+    background: linear-gradient(to top, rgb(8 8 8 / 98%) 0%, rgb(8 8 8 / 82%) 50%, transparent 100%);
+}
+

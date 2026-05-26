@@ -3,6 +3,7 @@ import { create } from 'zustand';
 export type ImportJob = {
     album?: string;
     artist?: string;
+    createdAt?: string;
     downloadedCount?: number;
     error?: string;
     id: string;
@@ -19,6 +20,7 @@ export type ImportJob = {
     targetPlaylistIds?: string[];
     targetPlaylistNames?: string[];
     title?: string;
+    updatedAt?: string;
     videoDownloadedCount?: number;
     videoId?: string;
     warning?: string;

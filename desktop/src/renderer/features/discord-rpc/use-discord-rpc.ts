@@ -28,7 +28,7 @@ import { useDebouncedCallback } from '/@/shared/hooks/use-debounced-callback';
 import { LibraryItem, QueueSong, ServerType } from '/@/shared/types/domain-types';
 import { PlayerStatus } from '/@/shared/types/types';
 
-const discordRpc = isElectron() ? window.api.discordRpc : null;
+const discordRpc = window.api?.discordRpc ?? null;
 
 const DiscordStatusDisplayType = {
     DETAILS: 2,
@@ -705,7 +705,7 @@ export const DiscordRpcHook = () => {
     const isElectronEnv = isElectron();
     const isDiscordRpcEnabled = useSettingsStore((state) => state.discord.enabled);
     const isPrivateMode = useAppStore((state) => state.privateMode);
-    const discordRpc = isElectronEnv ? window.api.discordRpc : null;
+    const discordRpc = window.api?.discordRpc ?? null;
 
     if (!isElectronEnv || !discordRpc || !isDiscordRpcEnabled || isPrivateMode) {
         return null;

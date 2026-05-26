@@ -1,10 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import clsx from 'clsx';
 import isElectron from 'is-electron';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import styles from './local-video-player.module.css';
 
 import { usePlayerSong, usePlayerStatus, usePlayerTimestamp } from '/@/renderer/store';
+import { Icon } from '/@/shared/components/icon/icon';
+import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Text } from '/@/shared/components/text/text';
 import { toast } from '/@/shared/components/toast/toast';
 import { PlayerStatus } from '/@/shared/types/types';
@@ -19,20 +22,29 @@ export type LocalVideoMetadata = null | {
     videoId: string;
 };
 
-type YoutubePlayerCommand =
-    | { args: [number, boolean]; event: 'command'; func: 'seekTo' }
-    | { args?: unknown[]; event: 'command'; func: 'mute' | 'pauseVideo' | 'playVideo' };
+type VideoStreamResolution = {
+    error?: string;
+    expiresAt?: number;
+    mimeType?: string;
+    resolvedAt: number;
+    source: 'youtube_music';
+    trackId: string;
+    url?: string;
+};
 
-const LOCAL_SYNC_DRIFT_SECONDS = 0.45;
-const YOUTUBE_SEEK_DRIFT_SECONDS = 2.25;
-const YOUTUBE_SEEK_COOLDOWN_MS = 5000;
+const HARD_SEEK_DRIFT_SECONDS = 1.75;
+const HARD_SEEK_COOLDOWN_MS = 3000;
 const PLAYER_SEEK_JUMP_SECONDS = 1.5;
+const RATE_DRIFT_SECONDS = 0.35;
+const RATE_RECOVERY_AMOUNT = 0.04;
 
 export const localVideoMetadataQueryKey = (songId?: string, path?: null | string) => [
     'local-video-metadata',
     songId || '',
     path || '',
 ];
+
+const videoStreamQueryKey = (videoId?: string) => ['youtube-video-stream', videoId || ''];
 
 export const useLocalVideoMetadata = () => {
     const currentSong = usePlayerSong();
@@ -49,79 +61,119 @@ export const useLocalVideoMetadata = () => {
     });
 };
 
+export const useSongVideoAvailability = () => {
+    const videoMetadataQuery = useLocalVideoMetadata();
+    const metadata = videoMetadataQuery.data;
+    const hasLocalFile = Boolean(metadata?.videoFileUrl);
+    const hasVideoId = Boolean(metadata?.videoId);
+    const shouldResolveStream = hasVideoId && !hasLocalFile;
+    const streamResolutionQuery = useVideoStreamResolution(
+        shouldResolveStream,
+        metadata?.videoId,
+    );
+
+    const canPlayVideo =
+        hasLocalFile || (hasVideoId && Boolean(streamResolutionQuery.data?.url));
+
+    const isCheckingVideo =
+        videoMetadataQuery.isLoading ||
+        videoMetadataQuery.isFetching ||
+        (shouldResolveStream &&
+            (streamResolutionQuery.isLoading || streamResolutionQuery.isFetching));
+
+    const videoUnavailable =
+        videoMetadataQuery.isFetched &&
+        (!metadata ||
+            (!hasLocalFile &&
+                (!hasVideoId ||
+                    (streamResolutionQuery.isFetched && !streamResolutionQuery.data?.url))));
+
+    return {
+        canPlayVideo,
+        hasVideoSource: hasLocalFile || hasVideoId,
+        isCheckingVideo,
+        metadata,
+        videoMetadataQuery,
+        videoUnavailable,
+    };
+};
+
 export const useHasVideoAttachment = () => {
-    const query = useLocalVideoMetadata();
-    return Boolean(query.data?.videoFileUrl || query.data?.embedUrl);
+    const { canPlayVideo } = useSongVideoAvailability();
+    return canPlayVideo;
 };
 
-interface SyncedLocalVideoProps {
-    metadata: NonNullable<LocalVideoMetadata>;
-    title: string;
-}
-
-const postYoutubeCommand = (iframe: HTMLIFrameElement | null, command: YoutubePlayerCommand) => {
-    iframe?.contentWindow?.postMessage(JSON.stringify(command), 'https://www.youtube-nocookie.com');
-    iframe?.contentWindow?.postMessage(JSON.stringify(command), 'https://www.youtube.com');
-};
-
-const buildEmbedUrl = (url: string, videoId: string) => {
-    const baseUrl = url || `https://www.youtube-nocookie.com/embed/${videoId}`;
-    const parsed = new URL(baseUrl);
-    parsed.searchParams.set('autoplay', '1');
-    parsed.searchParams.set('controls', '0');
-    parsed.searchParams.set('disablekb', '1');
-    parsed.searchParams.set('enablejsapi', '1');
-    parsed.searchParams.set('fs', '0');
-    parsed.searchParams.set('iv_load_policy', '3');
-    parsed.searchParams.set('modestbranding', '1');
-    parsed.searchParams.set('origin', window.location.origin);
-    parsed.searchParams.set('playsinline', '1');
-    parsed.searchParams.set('rel', '0');
-    parsed.searchParams.set('showinfo', '0');
-    return parsed.toString();
-};
+const useVideoStreamResolution = (enabled: boolean, videoId?: string) =>
+    useQuery<VideoStreamResolution>({
+        enabled: enabled && isElectron() && Boolean(window.api?.youtubeMusic && videoId),
+        queryFn: () => window.api.youtubeMusic.resolveVideoStream(videoId!, 'playback'),
+        queryKey: videoStreamQueryKey(videoId),
+        refetchOnWindowFocus: false,
+        retry: 1,
+        staleTime: 1000 * 60 * 2,
+    });
 
 const getClampedMediaTime = (time: number, duration: number) => {
     if (!Number.isFinite(duration) || duration <= 0) return Math.max(0, time);
     return Math.min(Math.max(0, time), Math.max(0, duration - 0.25));
 };
 
-export const SyncedLocalVideo = ({ metadata, title }: SyncedLocalVideoProps) => {
+interface SyncedLocalVideoProps {
+    metadata: NonNullable<LocalVideoMetadata>;
+}
+
+export const SyncedLocalVideo = ({ metadata }: SyncedLocalVideoProps) => {
     const videoRef = useRef<HTMLVideoElement | null>(null);
-    const iframeRef = useRef<HTMLIFrameElement | null>(null);
-    const youtubeCurrentTimeRef = useRef(0);
-    const youtubeLastSeekRef = useRef(-1);
-    const youtubeLastSeekAtRef = useRef(0);
+    const lastHardSeekAtRef = useRef(0);
     const previousPlayerTimeRef = useRef(0);
     const currentTime = usePlayerTimestamp();
     const playerStatus = usePlayerStatus();
-    const [iframeReady, setIframeReady] = useState(false);
-    const [preferLocalVideo, setPreferLocalVideo] = useState(Boolean(metadata.videoFileUrl));
+    const [localVideoFailed, setLocalVideoFailed] = useState(false);
+    const [streamVideoFailed, setStreamVideoFailed] = useState(false);
+    const [isVideoReady, setIsVideoReady] = useState(false);
 
     const isPlaying = playerStatus === PlayerStatus.PLAYING;
-    const shouldUseLocalVideo = Boolean(metadata.videoFileUrl && preferLocalVideo);
-    const embedUrl = useMemo(
-        () => buildEmbedUrl(metadata.embedUrl, metadata.videoId),
-        [metadata.embedUrl, metadata.videoId],
+    const shouldResolveStream = Boolean(
+        metadata.videoId && (!metadata.videoFileUrl || localVideoFailed),
     );
+    const streamResolutionQuery = useVideoStreamResolution(shouldResolveStream, metadata.videoId);
+    const localSourceUrl = !localVideoFailed ? metadata.videoFileUrl : '';
+    const streamSourceUrl = !streamVideoFailed ? streamResolutionQuery.data?.url || '' : '';
+    const videoSourceUrl = localSourceUrl || streamSourceUrl;
+    const isLocalSource = Boolean(localSourceUrl);
 
     useEffect(() => {
-        setIframeReady(false);
-        setPreferLocalVideo(Boolean(metadata.videoFileUrl));
-        youtubeCurrentTimeRef.current = 0;
-        youtubeLastSeekRef.current = -1;
-        youtubeLastSeekAtRef.current = 0;
+        setLocalVideoFailed(false);
+        setStreamVideoFailed(false);
+        setIsVideoReady(false);
+        lastHardSeekAtRef.current = 0;
         previousPlayerTimeRef.current = 0;
-    }, [metadata.embedUrl, metadata.videoFileUrl]);
+    }, [metadata.videoFileUrl, metadata.videoId]);
 
     useEffect(() => {
         const video = videoRef.current;
-        if (!video) return;
+        if (!video || !videoSourceUrl) return;
 
         video.muted = true;
         const targetTime = getClampedMediaTime(currentTime, video.duration);
-        if (Math.abs(video.currentTime - targetTime) > LOCAL_SYNC_DRIFT_SECONDS) {
+        const drift = targetTime - video.currentTime;
+        const absDrift = Math.abs(drift);
+        const now = Date.now();
+        const hasPlayerSeeked =
+            Math.abs(currentTime - previousPlayerTimeRef.current) > PLAYER_SEEK_JUMP_SECONDS;
+        const canHardSeek = now - lastHardSeekAtRef.current > HARD_SEEK_COOLDOWN_MS;
+
+        if (
+            absDrift > HARD_SEEK_DRIFT_SECONDS &&
+            (hasPlayerSeeked || isLocalSource || canHardSeek)
+        ) {
             video.currentTime = targetTime;
+            video.playbackRate = 1;
+            lastHardSeekAtRef.current = now;
+        } else if (absDrift > RATE_DRIFT_SECONDS && !hasPlayerSeeked) {
+            video.playbackRate = drift > 0 ? 1 + RATE_RECOVERY_AMOUNT : 1 - RATE_RECOVERY_AMOUNT;
+        } else {
+            video.playbackRate = 1;
         }
 
         if (isPlaying && video.paused) {
@@ -129,101 +181,78 @@ export const SyncedLocalVideo = ({ metadata, title }: SyncedLocalVideoProps) => 
         } else if (!isPlaying && !video.paused) {
             video.pause();
         }
-    }, [currentTime, isPlaying, metadata.videoFileUrl, shouldUseLocalVideo]);
 
-    useEffect(() => {
-        const handleMessage = (event: MessageEvent) => {
-            if (!String(event.origin).includes('youtube')) return;
+        previousPlayerTimeRef.current = currentTime;
+    }, [currentTime, isLocalSource, isPlaying, videoSourceUrl]);
 
-            try {
-                const payload =
-                    typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-                const current = payload?.info?.currentTime;
-                if (typeof current === 'number') {
-                    youtubeCurrentTimeRef.current = current;
-                }
-            } catch {
-                // Ignore non-JSON messages from the frame.
-            }
-        };
-
-        window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
-    }, []);
-
-    useEffect(() => {
-        if (!metadata.embedUrl || !iframeReady || shouldUseLocalVideo) return;
-
-        postYoutubeCommand(iframeRef.current, { event: 'command', func: 'mute' });
-
-        const now = Date.now();
-        const drift = Math.abs(youtubeCurrentTimeRef.current - currentTime);
-        const hasPlayerSeeked =
-            Math.abs(currentTime - previousPlayerTimeRef.current) > PLAYER_SEEK_JUMP_SECONDS;
-        const canDriftCorrect = now - youtubeLastSeekAtRef.current > YOUTUBE_SEEK_COOLDOWN_MS;
-
-        if (
-            youtubeLastSeekRef.current < 0 ||
-            hasPlayerSeeked ||
-            (drift > YOUTUBE_SEEK_DRIFT_SECONDS && canDriftCorrect)
-        ) {
-            const seekTime = Math.max(0, currentTime);
-            youtubeLastSeekRef.current = seekTime;
-            youtubeLastSeekAtRef.current = now;
-            postYoutubeCommand(iframeRef.current, {
-                args: [seekTime, true],
-                event: 'command',
-                func: 'seekTo',
-            });
+    const handleVideoError = () => {
+        if (isLocalSource) {
+            setLocalVideoFailed(true);
+            return;
         }
 
-        postYoutubeCommand(iframeRef.current, {
-            event: 'command',
-            func: isPlaying ? 'playVideo' : 'pauseVideo',
-        });
-        previousPlayerTimeRef.current = currentTime;
-    }, [currentTime, iframeReady, isPlaying, metadata.embedUrl, shouldUseLocalVideo]);
+        setStreamVideoFailed(true);
+    };
 
-    if (shouldUseLocalVideo) {
+    const handleLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+        const video = event.currentTarget;
+        if (!Number.isFinite(video.duration) || video.duration <= 0) {
+            handleVideoError();
+            return;
+        }
+
+        video.currentTime = getClampedMediaTime(currentTime, video.duration);
+        if (isPlaying) video.play().catch(() => {});
+    };
+
+    const isResolvingSource =
+        !videoSourceUrl &&
+        (streamResolutionQuery.isLoading || streamResolutionQuery.isFetching);
+    const isBufferingVideo = Boolean(videoSourceUrl) && !isVideoReady;
+
+    if (!videoSourceUrl) {
         return (
-            <video
-                className={styles.media}
-                key={metadata.videoFileUrl}
-                muted
-                onError={() => setPreferLocalVideo(false)}
-                onLoadedMetadata={(event) => {
-                    const video = event.currentTarget;
-                    if (!Number.isFinite(video.duration) || video.duration <= 0) {
-                        setPreferLocalVideo(false);
-                        return;
-                    }
-
-                    video.currentTime = getClampedMediaTime(currentTime, video.duration);
-                    if (isPlaying) video.play().catch(() => {});
-                }}
-                playsInline
-                preload="metadata"
-                ref={videoRef}
-                src={metadata.videoFileUrl}
-            />
+            <div className={styles.emptyVideoState}>
+                {isResolvingSource ? (
+                    <Spinner color="var(--theme-colors-foreground)" container size={28} />
+                ) : null}
+                <Text fw={700} size="sm">
+                    {isResolvingSource ? 'Preparing video...' : 'Video unavailable'}
+                </Text>
+                {!isResolvingSource && (
+                    <Text isMuted size="xs">
+                        {streamResolutionQuery.data?.error ||
+                            (metadata.videoFileUrl && localVideoFailed
+                                ? 'Saved MP4 could not be played, and streaming fallback is unavailable.'
+                                : 'Roofy could not resolve a clean video stream for this track.')}
+                    </Text>
+                )}
+            </div>
         );
     }
 
     return (
-        <>
-            <iframe
-                allow="autoplay; encrypted-media; picture-in-picture"
+        <div className={styles.videoShell}>
+            {isBufferingVideo && (
+                <div aria-hidden className={styles.loadingOverlay}>
+                    <Spinner color="var(--theme-colors-foreground)" container size={32} />
+                </div>
+            )}
+            <video
                 className={styles.media}
-                key={embedUrl}
-                onLoad={() => setIframeReady(true)}
-                ref={iframeRef}
-                src={embedUrl}
-                tabIndex={-1}
-                title={`Synced video for ${title}`}
+                key={videoSourceUrl}
+                muted
+                onCanPlay={() => setIsVideoReady(true)}
+                onError={handleVideoError}
+                onLoadedMetadata={handleLoadedMetadata}
+                onLoadStart={() => setIsVideoReady(false)}
+                onWaiting={() => setIsVideoReady(false)}
+                playsInline
+                preload="metadata"
+                ref={videoRef}
+                src={videoSourceUrl}
             />
-            <div className={styles.youtubeChromeMask} />
-            <div className={styles.interactionShield} />
-        </>
+        </div>
     );
 };
 
@@ -232,19 +261,103 @@ interface VideoModeOverlayProps {
 }
 
 export const VideoModeOverlay = ({ metadata }: VideoModeOverlayProps) => {
-    const currentSong = usePlayerSong();
+    return <SyncedLocalVideo metadata={metadata} />;
+};
 
-    const statusCopy = metadata.videoFileUrl ? 'Saved MP4' : 'Streaming video';
+export interface VideoPlayerToolbarProps {
+    isDownloading?: boolean;
+    metadata: NonNullable<LocalVideoMetadata>;
+    onDownload?: () => void;
+    onEnterFullscreen?: () => void;
+    onExitFullscreen?: () => void;
+    variant?: 'default' | 'overlay' | 'playerbar';
+}
+
+export const VideoPlayerToolbar = ({
+    isDownloading = false,
+    metadata,
+    onDownload,
+    onEnterFullscreen,
+    onExitFullscreen,
+    variant = 'default',
+}: VideoPlayerToolbarProps) => {
+    const isSaved = Boolean(metadata.videoFileUrl);
+    const statusCopy = isSaved ? 'Saved MP4' : 'Streaming video';
 
     return (
-        <>
-            <SyncedLocalVideo metadata={metadata} title={currentSong?.name || 'Current track'} />
-            <div className={styles.statusBar}>
-                <Text className={styles.statusText} fw={700} size="xs">
-                    {statusCopy}
-                </Text>
+        <div
+            aria-label="Video options"
+            className={clsx(styles.toolbar, {
+                [styles.toolbarOverlay]: variant === 'overlay',
+                [styles.toolbarPlayerbar]: variant === 'playerbar',
+            })}
+            onClick={(e) => e.stopPropagation()}
+            role="toolbar"
+        >
+            <span className={styles.statusBadge} title={statusCopy}>
+                {statusCopy}
+            </span>
+            <div className={styles.actionGroup}>
+                {onEnterFullscreen && (
+                    <button
+                        className={styles.actionButton}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEnterFullscreen();
+                        }}
+                        title="Fullscreen video"
+                        type="button"
+                    >
+                        <Icon icon="expand" size="md" />
+                    </button>
+                )}
+                {metadata.sourceUrl && (
+                    <button
+                        className={styles.actionButton}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(metadata.sourceUrl, '_blank');
+                        }}
+                        title="Open video source"
+                        type="button"
+                    >
+                        <Icon icon="externalLink" size="md" />
+                    </button>
+                )}
+                {isSaved ? (
+                    <span className={styles.savedIndicator} title="Video saved in your library">
+                        <Icon icon="check" size="md" />
+                    </span>
+                ) : (
+                    <button
+                        aria-busy={isDownloading}
+                        className={styles.actionButton}
+                        disabled={!metadata.canDownloadVideo || isDownloading}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDownload?.();
+                        }}
+                        title={isDownloading ? 'Saving MP4…' : 'Save MP4 to library'}
+                        type="button"
+                    >
+                        <Icon icon="download" size="md" />
+                    </button>
+                )}
+                {onExitFullscreen && (
+                    <button
+                        className={styles.actionButton}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onExitFullscreen();
+                        }}
+                        title="Exit fullscreen video"
+                        type="button"
+                    >
+                        <Icon icon="arrowDownS" size="md" />
+                    </button>
+                )}
             </div>
-        </>
+        </div>
     );
 };
 

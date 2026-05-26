@@ -48,14 +48,14 @@ function VisualizerSystemAudioBridge() {
         isExclusiveModeEnabled;
 
     const persistConsent = useCallback((granted: boolean) => {
-        if (!isElectron() || !window.api.localSettings) {
+        if (!window.api?.localSettings) {
             return;
         }
         window.api.localSettings.set(CONSENT_GRANTED_KEY, granted);
     }, []);
 
     useEffect(() => {
-        if (!isElectron() || !window.api.localSettings) {
+        if (!window.api?.localSettings) {
             setPromptState({ consent: false });
             return;
         }

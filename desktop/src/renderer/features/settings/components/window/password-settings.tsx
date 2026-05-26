@@ -9,7 +9,7 @@ import {
 import { useGeneralSettings, useSettingsStoreActions } from '/@/renderer/store';
 import { Select } from '/@/shared/components/select/select';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
 const PASSWORD_SETTINGS: { label: string; value: string }[] = [
     { label: 'libsecret', value: 'gnome_libsecret' },

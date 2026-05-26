@@ -24,7 +24,7 @@ import { TextInput } from '/@/shared/components/text-input/text-input';
 import { Text } from '/@/shared/components/text/text';
 import { LyricSource } from '/@/shared/types/domain-types';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
 interface LyricsSettingsFormProps {
     settingsKey: string;

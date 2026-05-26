@@ -12,20 +12,19 @@ import {
     OverrideAlbumArtistListQuery,
 } from '/@/renderer/features/artists/components/album-artist-list-content';
 import { AnimatedPage } from '/@/renderer/features/shared/components/animated-page';
+import { YoutubeMusicSongsTable } from '/@/renderer/features/youtube-music/components/youtube-music-songs-table';
 import {
     OverrideSongListQuery,
     SongListView,
 } from '/@/renderer/features/songs/components/song-list-content';
-import { addToQueueByData, useListSettings } from '/@/renderer/store';
+import { useListSettings } from '/@/renderer/store';
 import { Badge } from '/@/shared/components/badge/badge';
-import { Button } from '/@/shared/components/button/button';
 import { Group } from '/@/shared/components/group/group';
 import { Image } from '/@/shared/components/image/image';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Stack } from '/@/shared/components/stack/stack';
 import { Table } from '/@/shared/components/table/table';
 import { Text } from '/@/shared/components/text/text';
-import { toast } from '/@/shared/components/toast/toast';
 import {
     AlbumArtistListSort,
     AlbumListSort,
@@ -34,7 +33,7 @@ import {
     SongListSort,
     SortOrder,
 } from '/@/shared/types/domain-types';
-import { ItemListKey, Play } from '/@/shared/types/types';
+import { ItemListKey } from '/@/shared/types/types';
 
 export const SearchContent = () => {
     const { itemType } = useParams() as { itemType: LibraryItem };
@@ -177,25 +176,6 @@ const YoutubeMusicSearchSection = ({
               ? albums.length
               : artists.length;
 
-    const handleImport = async (song: Song) => {
-        const videoId = song.youtubeMusic?.videoId;
-        if (!videoId || !window.api?.youtubeMusic?.downloadTrack) return;
-
-        try {
-            await window.api.youtubeMusic.downloadTrack({
-                album: song.album || undefined,
-                artist: song.artistName || song.albumArtistName || 'Unknown Artist',
-                imageUrl: song.imageUrl || undefined,
-                sourceTrackId: song.id,
-                title: song.name,
-                videoId,
-            });
-            toast.success({ message: `Queued "${song.name}" for local import` });
-        } catch (error) {
-            toast.error({ message: (error as Error).message });
-        }
-    };
-
     return (
         <section
             style={{
@@ -215,45 +195,8 @@ const YoutubeMusicSearchSection = ({
                     {searchQuery.isLoading ? 'Loading' : `${count} results`}
                 </Text>
             </Group>
-            {itemType === LibraryItem.SONG && (
-                <Table>
-                    <Table.Tbody>
-                        {songs.slice(0, 8).map((song) => (
-                            <Table.Tr key={song.id}>
-                                <Table.Td w={42}>
-                                    <Image
-                                        imageContainerProps={{ style: { height: 32, width: 32 } }}
-                                        includeLoader={false}
-                                        src={song.imageUrl || undefined}
-                                        unloaderIcon="emptySongImage"
-                                    />
-                                </Table.Td>
-                                <Table.Td>
-                                    <Text>{song.name}</Text>
-                                    <Text isMuted size="sm">
-                                        {song.artistName || 'Unknown Artist'}
-                                    </Text>
-                                </Table.Td>
-                                <Table.Td>
-                                    <Group justify="flex-end" wrap="nowrap">
-                                        <Button
-                                            onClick={() => addToQueueByData(Play.NOW, [song])}
-                                            size="compact-sm"
-                                        >
-                                            Play
-                                        </Button>
-                                        <Button
-                                            onClick={() => handleImport(song)}
-                                            size="compact-sm"
-                                        >
-                                            Import
-                                        </Button>
-                                    </Group>
-                                </Table.Td>
-                            </Table.Tr>
-                        ))}
-                    </Table.Tbody>
-                </Table>
+            {itemType === LibraryItem.SONG && songs.length > 0 && (
+                <YoutubeMusicSongsTable songs={songs.slice(0, 8)} />
             )}
             {itemType !== LibraryItem.SONG && (
                 <Table>

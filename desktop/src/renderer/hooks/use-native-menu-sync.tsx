@@ -19,7 +19,7 @@ import {
 } from '/@/renderer/store';
 import { PlayerShuffle } from '/@/shared/types/types';
 
-const ipc = isElectron() ? window.api.ipc : null;
+const ipc = window.api?.ipc ?? null;
 
 export const useNativeMenuSync = () => {
     const { t } = useTranslation();

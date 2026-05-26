@@ -4,10 +4,11 @@ import styles from './retro-status-bar.module.css';
 
 import { Group } from '/@/shared/components/group/group';
 import { Text } from '/@/shared/components/text/text';
-import { usePlayerSong } from '/@/renderer/store';
+import { useFullScreenPlayerStore, usePlayerSong } from '/@/renderer/store';
 import { usePlayerTimestamp } from '/@/renderer/store/timestamp.store';
 
 export const RetroStatusBar = memo(function RetroStatusBar() {
+    const videoFullscreen = useFullScreenPlayerStore((state) => state.videoFullscreen);
     const currentTrack = usePlayerSong();
     const currentTime = usePlayerTimestamp();
 
@@ -25,6 +26,10 @@ export const RetroStatusBar = memo(function RetroStatusBar() {
 
     const now = new Date();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+    if (videoFullscreen) {
+        return null;
+    }
 
     return (
         <div className={styles.container} id="retro-status-bar">

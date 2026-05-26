@@ -19,7 +19,7 @@ import { Icon } from '/@/shared/components/icon/icon';
 import { Table } from '/@/shared/components/table/table';
 import { TextInput } from '/@/shared/components/text-input/text-input';
 
-const ipc = isElectron() ? window.api.ipc : null;
+const ipc = window.api?.ipc ?? null;
 
 const BINDINGS_MAP: Record<BindingActions, string> = {
     browserBack: i18n.t('setting.hotkey', { context: 'browserBack' }),

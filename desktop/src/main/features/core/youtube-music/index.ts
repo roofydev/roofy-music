@@ -141,6 +141,14 @@ const cacheStreamUrl = (videoId: string, url: string, source: StreamCacheEntry['
     });
 };
 
+const cacheVideoStreamUrl = (videoId: string, url: string, source: StreamCacheEntry['source']) => {
+    videoStreamCache.set(videoId, {
+        expiresAt: streamUrlExpiresAt(url),
+        source,
+        url,
+    });
+};
+
 const probeStreamUrl = async (url: string, timeoutMs = 2500): Promise<boolean> =>
     new Promise((resolve) => {
         let settled = false;
@@ -159,7 +167,8 @@ const probeStreamUrl = async (url: string, timeoutMs = 2500): Promise<boolean> =
         }
 
         const clientUserAgent = userAgentForYoutubeClient(youtubeClientParam(url));
-        const hasSignedRange = parsed.hostname.endsWith('.googlevideo.com') && parsed.searchParams.has('range');
+        const hasSignedRange =
+            parsed.hostname.endsWith('.googlevideo.com') && parsed.searchParams.has('range');
         const req = https.request(
             parsed,
             {
@@ -217,6 +226,38 @@ const chooseAudioFormat = (formats: any[] | undefined) => {
     )[0];
 };
 
+const isVideoFormat = (format: any) => {
+    const mimeType = String(format?.mime_type || format?.mimeType || '');
+    return format?.has_video !== false && !format?.has_audio && mimeType.includes('video');
+};
+
+const chooseVideoFormat = (formats: any[] | undefined) => {
+    const videoFormats = (formats || []).filter(isVideoFormat);
+    return videoFormats.sort((a, b) => {
+        const aMime = String(a?.mime_type || a?.mimeType || '');
+        const bMime = String(b?.mime_type || b?.mimeType || '');
+        const aMp4Score = aMime.includes('video/mp4') ? 100_000 : 0;
+        const bMp4Score = bMime.includes('video/mp4') ? 100_000 : 0;
+        const aAvcScore = aMime.includes('avc1') ? 10_000 : 0;
+        const bAvcScore = bMime.includes('avc1') ? 10_000 : 0;
+        const aHeight = Number(a?.height || 0);
+        const bHeight = Number(b?.height || 0);
+        const aFps = Number(a?.fps || 0);
+        const bFps = Number(b?.fps || 0);
+        const aBitrate = Number(a?.bitrate || a?.average_bitrate || 0);
+        const bBitrate = Number(b?.bitrate || b?.average_bitrate || 0);
+
+        return (
+            bMp4Score +
+            bAvcScore +
+            bHeight * 100 +
+            bFps * 10 +
+            bBitrate / 1000 -
+            (aMp4Score + aAvcScore + aHeight * 100 + aFps * 10 + aBitrate / 1000)
+        );
+    })[0];
+};
+
 const decipherFormatUrl = async (format: any, player: any): Promise<null | string> => {
     if (!format) return null;
     return format.url || (format.decipher ? await format.decipher(player) : null);
@@ -226,6 +267,7 @@ let innertubeInstance: any | null = null;
 let innertubeCookie: null | string = null;
 let youtubeRuntimeInstalled = false;
 const streamCache = new Map<string, StreamCacheEntry>();
+const videoStreamCache = new Map<string, StreamCacheEntry>();
 let ytProxyPort: null | number = null;
 let ytProxyReadyPromise: null | Promise<void> = null;
 let accountIdentityRefreshPromise: null | Promise<null | StoredSession> = null;
@@ -447,7 +489,7 @@ const startYtProxyServer = () => {
                 return;
             }
 
-            const match = req.url?.match(/^\/yt-stream\/([A-Za-z0-9_-]{11})$/);
+            const match = req.url?.match(/^\/yt-(stream|video-stream)\/([A-Za-z0-9_-]{11})$/);
             if (!match) {
                 res.statusCode = 404;
                 res.end();
@@ -470,11 +512,14 @@ const startYtProxyServer = () => {
                 return;
             }
 
-            const videoId = match[1];
+            const isVideoProxy = match[1] === 'video-stream';
+            const videoId = match[2];
             let streamUrl: null | string = null;
 
             try {
-                streamUrl = await resolveStreamUrl(videoId);
+                streamUrl = isVideoProxy
+                    ? await resolveVideoStreamUrl(videoId)
+                    : await resolveStreamUrl(videoId);
             } catch (error) {
                 console.error('Failed to resolve YouTube stream URL:', error);
                 res.statusCode = 502;
@@ -569,13 +614,7 @@ const startYtProxyServer = () => {
                         console.warn(
                             `[YT Stream Proxy] CDN 403 for ${videoId} with Range=${requestHeaders.Range}; retrying without Range before resolver fallback...`,
                         );
-                        forwardProxy(
-                            url,
-                            attempt,
-                            triedYtdlpUrl,
-                            true,
-                            rejectedClientsForRequest,
-                        );
+                        forwardProxy(url, attempt, triedYtdlpUrl, true, rejectedClientsForRequest);
                         return;
                     }
 
@@ -599,13 +638,23 @@ const startYtProxyServer = () => {
                                 `[YT Stream Proxy] CDN 403 for ${videoId} (client=${rejectedClient || 'unknown'}), trying another direct client before yt-dlp...`,
                             );
                             recentInvalidations.set(videoId, now);
-                            streamCache.delete(videoId);
+                            if (isVideoProxy) {
+                                videoStreamCache.delete(videoId);
+                            } else {
+                                streamCache.delete(videoId);
+                            }
                             try {
-                                const freshUrl = await resolveStreamUrl(
-                                    videoId,
-                                    new Set([requestUrl, url]),
-                                    rejectedClients,
-                                );
+                                const freshUrl = isVideoProxy
+                                    ? await resolveVideoStreamUrl(
+                                          videoId,
+                                          new Set([requestUrl, url]),
+                                          rejectedClients,
+                                      )
+                                    : await resolveStreamUrl(
+                                          videoId,
+                                          new Set([requestUrl, url]),
+                                          rejectedClients,
+                                      );
                                 if (freshUrl) {
                                     console.log(
                                         `[YT Stream Proxy] Fresh URL resolved, retrying ${videoId}`,
@@ -643,12 +692,18 @@ const startYtProxyServer = () => {
 
                             if (!triedYtdlpUrl) {
                                 try {
-                                    const ytdlpUrl = await resolveStreamUrlWithYtdlp(videoId);
+                                    const ytdlpUrl = isVideoProxy
+                                        ? await resolveVideoStreamUrlWithYtdlp(videoId)
+                                        : await resolveStreamUrlWithYtdlp(videoId);
                                     if (ytdlpUrl && ytdlpUrl !== url && ytdlpUrl !== requestUrl) {
                                         console.warn(
                                             `[YT Stream Proxy] Falling back to yt-dlp direct URL for ${videoId}`,
                                         );
-                                        cacheStreamUrl(videoId, ytdlpUrl, 'yt-dlp');
+                                        if (isVideoProxy) {
+                                            cacheVideoStreamUrl(videoId, ytdlpUrl, 'yt-dlp');
+                                        } else {
+                                            cacheStreamUrl(videoId, ytdlpUrl, 'yt-dlp');
+                                        }
                                         forwardProxy(ytdlpUrl, attempt + 1, true);
                                         return;
                                     }
@@ -671,7 +726,11 @@ const startYtProxyServer = () => {
                             console.warn(
                                 `[YT Stream Proxy] Falling back to non-seekable yt-dlp pipe for ${videoId}`,
                             );
-                            pipeStreamWithYtdlp(videoId, res);
+                            if (isVideoProxy) {
+                                pipeVideoStreamWithYtdlp(videoId, res);
+                            } else {
+                                pipeStreamWithYtdlp(videoId, res);
+                            }
                             return;
                         }
                     }
@@ -787,6 +846,55 @@ const resolveStreamUrlWithYtdlp = async (videoId: string): Promise<null | string
     });
 };
 
+const resolveVideoStreamUrlWithYtdlp = async (videoId: string): Promise<null | string> => {
+    const ytDlpPath = getYtDlpPath();
+    const stored = getStoredSession();
+    const args = [
+        '--no-check-certificates',
+        '--no-warnings',
+        '-f',
+        'bestvideo[ext=mp4][vcodec^=avc1]/best[ext=mp4]/bestvideo[ext=mp4]/bestvideo',
+        '--get-url',
+    ];
+
+    if (stored?.cookie) {
+        args.push('--add-header', `Cookie:${stored.cookie}`);
+        args.push('--add-header', 'Referer:https://music.youtube.com/');
+    }
+
+    args.push(`https://music.youtube.com/watch?v=${videoId}`);
+
+    return new Promise((resolve, reject) => {
+        const child = spawn(ytDlpPath, args, { windowsHide: true });
+        let stdout = '';
+        let stderr = '';
+
+        child.stdout.on('data', (data: Buffer) => {
+            stdout += data.toString();
+        });
+
+        child.stderr.on('data', (data: Buffer) => {
+            stderr += data.toString();
+        });
+
+        child.on('close', (code) => {
+            if (code !== 0) {
+                reject(new Error(stderr || `yt-dlp exited with code ${code}`));
+                return;
+            }
+            const url = stdout
+                .trim()
+                .split('\n')
+                .find((line) => line.startsWith('http'));
+            resolve(url || null);
+        });
+
+        child.on('error', (err) => {
+            reject(err);
+        });
+    });
+};
+
 const pipeStreamWithYtdlp = (videoId: string, res: http.ServerResponse) => {
     const ytDlpPath = getYtDlpPath();
     const stored = getStoredSession();
@@ -841,6 +949,74 @@ const pipeStreamWithYtdlp = (videoId: string, res: http.ServerResponse) => {
 
     child.on('error', (error) => {
         console.error(`[YT Stream Proxy] yt-dlp pipe error for ${videoId}:`, error);
+        if (!started && !res.headersSent) {
+            res.statusCode = 502;
+            res.setHeader('Access-Control-Allow-Origin', '*');
+        }
+        res.end();
+    });
+
+    res.on('close', () => {
+        if (!child.killed) {
+            child.kill();
+        }
+    });
+};
+
+const pipeVideoStreamWithYtdlp = (videoId: string, res: http.ServerResponse) => {
+    const ytDlpPath = getYtDlpPath();
+    const stored = getStoredSession();
+    const args = [
+        '--no-check-certificates',
+        '--no-warnings',
+        '--quiet',
+        '--no-playlist',
+        '-f',
+        'bestvideo[ext=mp4][vcodec^=avc1]/best[ext=mp4]/bestvideo[ext=mp4]/bestvideo',
+        '-o',
+        '-',
+    ];
+
+    if (stored?.cookie) {
+        args.push('--add-header', `Cookie:${stored.cookie}`);
+        args.push('--add-header', 'Referer:https://music.youtube.com/');
+    }
+
+    args.push(`https://music.youtube.com/watch?v=${videoId}`);
+
+    const child = spawn(ytDlpPath, args, { windowsHide: true });
+    let started = false;
+    let stderr = '';
+
+    child.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString();
+    });
+
+    child.stdout.on('data', (chunk: Buffer) => {
+        if (!started) {
+            started = true;
+            res.statusCode = 200;
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Expose-Headers', '*');
+            res.setHeader('Accept-Ranges', 'none');
+            res.setHeader('Content-Type', 'video/mp4');
+        }
+        res.write(chunk);
+    });
+
+    child.on('close', (code) => {
+        if (!started && !res.headersSent) {
+            res.statusCode = code === 0 ? 204 : 502;
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            if (code !== 0) {
+                console.error(`[YT Stream Proxy] yt-dlp video pipe failed for ${videoId}:`, stderr);
+            }
+        }
+        res.end();
+    });
+
+    child.on('error', (error) => {
+        console.error(`[YT Stream Proxy] yt-dlp video pipe error for ${videoId}:`, error);
         if (!started && !res.headersSent) {
             res.statusCode = 502;
             res.setHeader('Access-Control-Allow-Origin', '*');
@@ -914,7 +1090,10 @@ const resolveStreamUrl = async (
     if (!rejectedClients.has('WEB_REMIX')) {
         try {
             const poToken = await getContentPoToken();
-            const info = await yt.music.getInfo(videoId, poToken ? { po_token: poToken } : undefined);
+            const info = await yt.music.getInfo(
+                videoId,
+                poToken ? { po_token: poToken } : undefined,
+            );
             const format = info.chooseFormat
                 ? info.chooseFormat({ quality: 'best', type: 'audio' })
                 : chooseAudioFormat(info.streaming_data?.adaptive_formats);
@@ -932,7 +1111,10 @@ const resolveStreamUrl = async (
     if (!rejectedClients.has('WEB')) {
         try {
             const poToken = await getContentPoToken();
-            const info = await yt.getBasicInfo(videoId, poToken ? { po_token: poToken } : undefined);
+            const info = await yt.getBasicInfo(
+                videoId,
+                poToken ? { po_token: poToken } : undefined,
+            );
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
             const url = await decipherFormatUrl(format, yt.session.player);
             const usableUrl = await acceptResolvedUrl(url, 'WEB');
@@ -1001,6 +1183,103 @@ const resolveStreamUrl = async (
     return null;
 };
 
+const resolveVideoStreamUrl = async (
+    videoId: string,
+    rejectedUrls = new Set<string>(),
+    rejectedClients = new Set<string>(),
+): Promise<null | string> => {
+    const cached = videoStreamCache.get(videoId);
+    if (cached && cached.expiresAt > Date.now() && !rejectedUrls.has(cached.url)) {
+        return cached.url;
+    }
+
+    const yt = await getInnertube();
+    let contentPoToken: null | string | undefined;
+    const getContentPoToken = async () => {
+        if (contentPoToken !== undefined) return contentPoToken;
+        contentPoToken = await generatePoToken(videoId);
+        return contentPoToken;
+    };
+    const acceptResolvedUrl = async (
+        url: null | string,
+        label: string,
+        source: StreamCacheEntry['source'] = 'direct',
+    ) => {
+        if (!url) return null;
+        if (rejectedUrls.has(url)) {
+            console.warn(`[YT Video Stream] ${label} returned a rejected URL for ${videoId}`);
+            return null;
+        }
+
+        const isUsable = await probeStreamUrl(url).catch(() => false);
+        if (!isUsable) {
+            console.warn(`[YT Video Stream] ${label} URL failed preflight for ${videoId}`);
+            rejectedUrls.add(url);
+            return null;
+        }
+
+        console.log(`[YT Video Stream] Resolved via ${label} for ${videoId}`);
+        cacheVideoStreamUrl(videoId, url, source);
+        return url;
+    };
+
+    if (!rejectedClients.has('WEB')) {
+        try {
+            const poToken = await getContentPoToken();
+            const info = await yt.getBasicInfo(
+                videoId,
+                poToken ? { po_token: poToken } : undefined,
+            );
+            const url = await decipherFormatUrl(
+                chooseVideoFormat(info.streaming_data?.adaptive_formats),
+                yt.session.player,
+            );
+            const usableUrl = await acceptResolvedUrl(url, 'WEB');
+            if (usableUrl) return usableUrl;
+        } catch (error) {
+            console.warn(`[YT Video Stream] WEB failed for ${videoId}:`, error);
+        }
+    }
+
+    if (!rejectedClients.has('IOS') && !rejectedClients.has('iOS')) {
+        try {
+            const info = await yt.getBasicInfo(videoId, { client: 'IOS' });
+            const url = await decipherFormatUrl(
+                chooseVideoFormat(info.streaming_data?.adaptive_formats),
+                yt.session.player,
+            );
+            const usableUrl = await acceptResolvedUrl(url, 'IOS');
+            if (usableUrl) return usableUrl;
+        } catch (error) {
+            console.warn(`[YT Video Stream] IOS failed for ${videoId}:`, error);
+        }
+    }
+
+    if (!rejectedClients.has('ANDROID')) {
+        try {
+            const info = await yt.getBasicInfo(videoId, { client: 'ANDROID' });
+            const url = await decipherFormatUrl(
+                chooseVideoFormat(info.streaming_data?.adaptive_formats),
+                yt.session.player,
+            );
+            const usableUrl = await acceptResolvedUrl(url, 'ANDROID');
+            if (usableUrl) return usableUrl;
+        } catch (error) {
+            console.warn(`[YT Video Stream] ANDROID failed for ${videoId}:`, error);
+        }
+    }
+
+    try {
+        const url = await resolveVideoStreamUrlWithYtdlp(videoId);
+        const usableUrl = await acceptResolvedUrl(url, 'yt-dlp', 'yt-dlp');
+        if (usableUrl) return usableUrl;
+    } catch (error) {
+        console.warn(`[YT Video Stream] yt-dlp failed for ${videoId}:`, error);
+    }
+
+    return null;
+};
+
 const nowIso = () => new Date().toISOString();
 
 const decrypt = (encrypted: unknown): null | StoredSession => {
@@ -1028,6 +1307,7 @@ const clearCachedClient = () => {
     innertubeCookie = null;
     innertubeInstance = null;
     streamCache.clear();
+    videoStreamCache.clear();
 };
 
 const loadYoutubei = async () => {
@@ -1453,7 +1733,9 @@ const normalizePlaylistId = (id: string) => {
 const normalizeVideoId = (id: string) => id.replace(/^ytm:/, '');
 
 const youtubeImageFallback = (videoId: null | string | undefined) =>
-    videoId && VIDEO_ID_REGEX.test(videoId) ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : null;
+    videoId && VIDEO_ID_REGEX.test(videoId)
+        ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+        : null;
 
 const normalizeImageUrlForRenderer = (url: null | string) => youtubeImageProxyUrl(url);
 
@@ -2252,7 +2534,9 @@ const collectHomeFromInnertube = async (): Promise<YoutubeMusicHomeResponse> => 
         console.warn('[YouTube Music] Failed to load InnerTube home feed:', error);
     }
 
-    const rawSections = feeds.flatMap((feed) => (Array.isArray(feed?.sections) ? feed.sections : []));
+    const rawSections = feeds.flatMap((feed) =>
+        Array.isArray(feed?.sections) ? feed.sections : [],
+    );
     const sections = rawSections
         .map((section: any, index: number) => {
             const title = textValue(section?.header?.title) || `Shelf ${index + 1}`;
@@ -2296,9 +2580,7 @@ const collectHomeFromInnertube = async (): Promise<YoutubeMusicHomeResponse> => 
     return dedupeHomeSections({ sections });
 };
 
-const dedupeHomeSections = (
-    response: YoutubeMusicHomeResponse,
-): YoutubeMusicHomeResponse => {
+const dedupeHomeSections = (response: YoutubeMusicHomeResponse): YoutubeMusicHomeResponse => {
     const seenSectionTitles = new Set<string>();
     const dedupedSections: YoutubeMusicHomeResponse['sections'] = [];
 
@@ -2382,7 +2664,10 @@ const getPlaylistSongs = async (id: string): Promise<Song[]> => {
             playlist = await playlist.getContinuation();
             items.push(...shelfItems(playlist?.contents));
         } catch (error) {
-            console.warn(`[YouTube Music] Failed to load playlist continuation ${playlistId}:`, error);
+            console.warn(
+                `[YouTube Music] Failed to load playlist continuation ${playlistId}:`,
+                error,
+            );
             break;
         }
     }
@@ -2784,7 +3069,10 @@ const getAccountPlaylists = async (): Promise<Playlist[]> => {
                 try {
                     libraryViews.unshift(await library.applyFilter(filter));
                 } catch (error) {
-                    console.warn(`[YouTube Music] Failed to apply library filter "${filter}":`, error);
+                    console.warn(
+                        `[YouTube Music] Failed to apply library filter "${filter}":`,
+                        error,
+                    );
                 }
                 break;
             }
@@ -2863,6 +3151,12 @@ const getStreamUrl = async (id: string): Promise<string> => {
     return `http://127.0.0.1:${ytProxyPort}/yt-stream/${videoId}`;
 };
 
+const getVideoStreamUrl = async (id: string): Promise<string> => {
+    await startYtProxyServer();
+    const videoId = id.startsWith('ytm:') ? id.slice(4) : id;
+    return `http://127.0.0.1:${ytProxyPort}/yt-video-stream/${videoId}`;
+};
+
 const getLyrics = async (id: string) => {
     const videoId = id.startsWith('ytm:') ? id.slice(4) : id;
     const yt = await getInnertube();
@@ -2928,10 +3222,63 @@ ipcMain.handle(
     },
 );
 
+ipcMain.handle(
+    'stream:resolve-video',
+    async (_event, args: { id: string; reason?: 'playback' | 'preload' | 'retry' }) => {
+        await startYtProxyServer();
+        const videoId = args.id.startsWith('ytm:') ? args.id.slice(4) : args.id;
+        const cached = videoStreamCache.get(videoId);
+
+        if (cached && cached.expiresAt > Date.now() + 30_000) {
+            console.log(
+                `[VideoStreamResolver] Cache hit for ${videoId} (reason=${args.reason || 'playback'})`,
+            );
+            return {
+                expiresAt: cached.expiresAt,
+                mimeType: 'video/mp4',
+                resolvedAt: Date.now(),
+                source: 'youtube_music',
+                trackId: `youtube_music:${videoId}`,
+                url: `http://127.0.0.1:${ytProxyPort}/yt-video-stream/${videoId}`,
+            };
+        }
+
+        try {
+            const rawUrl = await resolveVideoStreamUrl(videoId);
+            if (!rawUrl) {
+                return {
+                    error: 'Could not resolve video stream URL',
+                    resolvedAt: Date.now(),
+                    source: 'youtube_music',
+                    trackId: `youtube_music:${videoId}`,
+                };
+            }
+            return {
+                expiresAt:
+                    videoStreamCache.get(videoId)?.expiresAt || Date.now() + STREAM_CACHE_TTL_MS,
+                mimeType: 'video/mp4',
+                resolvedAt: Date.now(),
+                source: 'youtube_music',
+                trackId: `youtube_music:${videoId}`,
+                url: `http://127.0.0.1:${ytProxyPort}/yt-video-stream/${videoId}`,
+            };
+        } catch (error) {
+            console.error(`[VideoStreamResolver] Failed to resolve ${videoId}:`, error);
+            return {
+                error: error instanceof Error ? error.message : 'Video stream resolution failed',
+                resolvedAt: Date.now(),
+                source: 'youtube_music',
+                trackId: `youtube_music:${videoId}`,
+            };
+        }
+    },
+);
+
 ipcMain.handle('stream:invalidate', (_event, id: string) => {
     const videoId = id.startsWith('ytm:') ? id.slice(4) : id;
     const had = streamCache.has(videoId);
     streamCache.delete(videoId);
+    videoStreamCache.delete(videoId);
     console.log(`[StreamResolver] Invalidated ${videoId} (was cached=${had})`);
     return had;
 });
@@ -2991,6 +3338,7 @@ ipcMain.handle('youtube-music-playlist-songs', (_event, id: string) => getPlayli
 ipcMain.handle('youtube-music-song-detail', (_event, id: string) => getSongDetail(id));
 ipcMain.handle('youtube-music-song-list', () => getSongList());
 ipcMain.handle('youtube-music-stream-url', (_event, id: string) => getStreamUrl(id));
+ipcMain.handle('youtube-music-video-stream-url', (_event, id: string) => getVideoStreamUrl(id));
 ipcMain.handle('youtube-music-lyrics', (_event, id: string) => getLyrics(id));
 ipcMain.handle('youtube-music-account-playlists', () => getAccountPlaylists());
 ipcMain.handle('youtube-music-account-songs', () => getAccountSongs());
@@ -3081,6 +3429,7 @@ export const youtubeMusic = {
     getSongDetail,
     getSongList,
     getStreamUrl,
+    getVideoStreamUrl,
     home,
     search,
     status,

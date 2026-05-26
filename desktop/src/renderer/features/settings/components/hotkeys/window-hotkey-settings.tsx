@@ -10,7 +10,7 @@ import { openRestartRequiredToast } from '/@/renderer/features/settings/restart-
 import { useHotkeySettings, usePlaybackSettings, useSettingsStoreActions } from '/@/renderer/store';
 import { Switch } from '/@/shared/components/switch/switch';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
 export const WindowHotkeySettings = memo(() => {
     const { t } = useTranslation();

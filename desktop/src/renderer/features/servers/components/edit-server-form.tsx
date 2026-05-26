@@ -25,7 +25,7 @@ import {
     ServerType,
 } from '/@/shared/types/domain-types';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
 interface EditServerFormProps {
     isUpdate?: boolean;

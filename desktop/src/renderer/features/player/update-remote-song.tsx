@@ -2,7 +2,7 @@ import isElectron from 'is-electron';
 
 import { QueueSong } from '/@/shared/types/domain-types';
 
-const remote = isElectron() ? window.api.remote : null;
+const remote = window.api?.remote ?? null;
 const mediaSession = navigator.mediaSession;
 
 export const updateSong = (song: QueueSong | undefined, imageUrl?: null | string) => {

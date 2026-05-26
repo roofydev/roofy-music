@@ -16,6 +16,8 @@ const search = (query: string): Promise<YoutubeMusicSearchResult> =>
 const home = (): Promise<YoutubeMusicHomeResponse> => ipcRenderer.invoke('youtube-music-home');
 const getStreamUrl = (id: string): Promise<string> =>
     ipcRenderer.invoke('youtube-music-stream-url', id);
+const getVideoStreamUrl = (id: string): Promise<string> =>
+    ipcRenderer.invoke('youtube-music-video-stream-url', id);
 const getLyrics = (id: string): Promise<null | string> =>
     ipcRenderer.invoke('youtube-music-lyrics', id);
 const getAlbumSongs = (id: string): Promise<Song[]> =>
@@ -36,6 +38,8 @@ const getSongList = (): Promise<Song[]> => ipcRenderer.invoke('youtube-music-son
 // Stream resolver
 const resolveStream = (id: string, reason?: 'playback' | 'preload' | 'retry') =>
     ipcRenderer.invoke('stream:resolve', { id, reason });
+const resolveVideoStream = (id: string, reason?: 'playback' | 'preload' | 'retry') =>
+    ipcRenderer.invoke('stream:resolve-video', { id, reason });
 const invalidateStream = (id: string) => ipcRenderer.invoke('stream:invalidate', id);
 
 // Downloads
@@ -110,6 +114,7 @@ export const youtubeMusic = {
     getSongDetail,
     getSongList,
     getStreamUrl,
+    getVideoStreamUrl,
     home,
     importPlaylist,
     importTrack,
@@ -118,6 +123,7 @@ export const youtubeMusic = {
     onImportJobFailed,
     onImportJobUpdated,
     resolveStream,
+    resolveVideoStream,
     search,
     status,
 };

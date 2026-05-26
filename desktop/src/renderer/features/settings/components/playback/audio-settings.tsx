@@ -14,8 +14,8 @@ import { Switch } from '/@/shared/components/switch/switch';
 import { toast } from '/@/shared/components/toast/toast';
 import { PlayerStatus, PlayerType } from '/@/shared/types/types';
 
-const ipc = isElectron() ? window.api.ipc : null;
-const mpvPlayer = isElectron() ? window.api.mpvPlayer : null;
+const ipc = window.api?.ipc ?? null;
+const mpvPlayer = window.api?.mpvPlayer ?? null;
 
 const getAudioDevices = async () => {
     const devices = await navigator.mediaDevices.enumerateDevices();

@@ -21,7 +21,7 @@ import { logMsg } from '/@/renderer/utils/logger-message';
 import { LyricSource, ServerType } from '/@/shared/types/domain-types';
 import { FontType, Platform, PlayerStyle, PlayerType } from '/@/shared/types/types';
 
-const utils = isElectron() ? window.api.utils : null;
+const utils = window.api?.utils ?? null;
 let appTrackerInFlight = false;
 let appTrackerLastSentDate: null | string = null;
 

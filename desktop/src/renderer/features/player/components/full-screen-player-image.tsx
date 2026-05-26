@@ -7,9 +7,9 @@ import { generatePath, Link } from 'react-router';
 import styles from './full-screen-player-image.module.css';
 
 import { useItemImageUrl } from '/@/renderer/components/item-image/item-image';
+import { FullscreenVideoOverlay } from '/@/renderer/features/player/components/fullscreen-video-overlay';
 import {
-    useDownloadVideoForCurrentSong,
-    useLocalVideoMetadata,
+    useSongVideoAvailability,
     VideoModeOverlay,
 } from '/@/renderer/features/player/components/local-video-player';
 import {
@@ -25,9 +25,7 @@ import {
     usePlayerData,
     usePlayerSong,
 } from '/@/renderer/store';
-import { ActionIcon } from '/@/shared/components/action-icon/action-icon';
 import { Badge } from '/@/shared/components/badge/badge';
-import { Button } from '/@/shared/components/button/button';
 import { Center } from '/@/shared/components/center/center';
 import { Flex } from '/@/shared/components/flex/flex';
 import { Group } from '/@/shared/components/group/group';
@@ -113,14 +111,15 @@ export const FullScreenPlayerImage = () => {
     const { nextSong } = usePlayerData();
     const { blurExplicitImages, playerItems } = useGeneralSettings();
     const visualMode = useFullScreenPlayerStore((state) => state.visualMode);
+    const videoFullscreen = useFullScreenPlayerStore((state) => state.videoFullscreen);
     const { setStore } = useFullScreenPlayerStoreActions();
-    const videoMetadataQuery = useLocalVideoMetadata();
-    const videoMetadata = videoMetadataQuery.data;
-    const hasVideo = Boolean(videoMetadata?.videoFileUrl || videoMetadata?.embedUrl);
-    const { downloadVideo, isDownloading } = useDownloadVideoForCurrentSong();
-
+    const { canPlayVideo, isCheckingVideo, metadata: videoMetadata, videoUnavailable } =
+        useSongVideoAvailability();
+    const videoButtonDisabled = videoUnavailable || isCheckingVideo;
     const isPlayingRadio = isRadioActive && isRadioPlaying;
-    const isVideoMode = !isPlayingRadio && hasVideo && visualMode === 'video';
+    const isVideoMode = !isPlayingRadio && canPlayVideo && visualMode === 'video';
+    const showVideoFullscreen = isVideoMode && videoFullscreen && videoMetadata;
+    const showVisualModeToggle = !isPlayingRadio && Boolean(currentSong?.id);
 
     const currentImageUrl = useItemImageUrl({
         id: currentSong?.imageId || undefined,
@@ -156,10 +155,10 @@ export const FullScreenPlayerImage = () => {
     }, [imageState]);
 
     useEffect(() => {
-        if (!hasVideo && visualMode === 'video') {
-            setStore({ visualMode: 'image' });
+        if (!canPlayVideo && (visualMode === 'video' || videoFullscreen)) {
+            setStore({ videoFullscreen: false, visualMode: 'image' });
         }
-    }, [hasVideo, setStore, visualMode]);
+    }, [canPlayVideo, setStore, videoFullscreen, visualMode]);
 
     useEffect(() => {
         if (isPlayingRadio) {
@@ -245,6 +244,15 @@ export const FullScreenPlayerImage = () => {
         ),
     };
 
+    if (showVideoFullscreen && videoMetadata) {
+        return (
+            <FullscreenVideoOverlay
+                metadata={videoMetadata}
+                onExit={() => setStore({ videoFullscreen: false })}
+            />
+        );
+    }
+
     return (
         <Flex
             align="center"
@@ -258,24 +266,35 @@ export const FullScreenPlayerImage = () => {
                     [styles.videoSurface]: isVideoMode,
                 })}
             >
-                {hasVideo && (
+                {showVisualModeToggle && (
                     <div className={styles.visualModeToggle}>
-                        <ActionIcon
-                            icon="image"
-                            iconProps={{ color: !isVideoMode ? 'primary' : undefined }}
+                        <button
+                            className={styles.visualModeButton}
+                            data-active={!isVideoMode}
                             onClick={() => setStore({ visualMode: 'image' })}
-                            size="md"
-                            tooltip={{ label: 'Show artwork' }}
-                            variant="subtle"
-                        />
-                        <ActionIcon
-                            icon="mediaPlay"
-                            iconProps={{ color: isVideoMode ? 'primary' : undefined }}
+                            title="Show artwork"
+                            type="button"
+                        >
+                            <Icon icon="image" size="md" />
+                        </button>
+                        <button
+                            className={clsx(styles.visualModeButton, {
+                                [styles.visualModeButtonDisabled]: videoButtonDisabled,
+                            })}
+                            data-active={isVideoMode}
+                            disabled={videoButtonDisabled}
                             onClick={() => setStore({ visualMode: 'video' })}
-                            size="md"
-                            tooltip={{ label: 'Show video' }}
-                            variant="subtle"
-                        />
+                            title={
+                                videoButtonDisabled
+                                    ? isCheckingVideo
+                                        ? 'Checking for video…'
+                                        : 'No video available for this track'
+                                    : 'Show video'
+                            }
+                            type="button"
+                        >
+                            <Icon icon="mediaPlay" size="md" />
+                        </button>
                     </div>
                 )}
                 <div className={styles.imageContainer} ref={mainImageRef}>
@@ -333,33 +352,22 @@ export const FullScreenPlayerImage = () => {
                         </AnimatePresence>
                     )}
                 </div>
-                {isVideoMode && videoMetadata && (
-                    <div className={styles.videoActions}>
-                        {videoMetadata.sourceUrl && (
-                            <Button
-                                leftSection={<Icon icon="externalLink" />}
-                                onClick={() => window.open(videoMetadata.sourceUrl, '_blank')}
-                                size="compact-xs"
-                                variant="subtle"
-                            >
-                                Source
-                            </Button>
-                        )}
-                        {videoMetadata.canDownloadVideo && !videoMetadata.videoFileUrl && (
-                            <Button
-                                leftSection={<Icon icon="download" />}
-                                loading={isDownloading}
-                                onClick={downloadVideo}
-                                size="compact-xs"
-                            >
-                                Save MP4
-                            </Button>
-                        )}
-                    </div>
-                )}
             </div>
-            <Stack className={styles.metadataContainer} gap="md" maw="100%">
-                <Text fw={900} lh="1.2" overflow="hidden" size="4xl" w="100%">
+            <Stack
+                className={clsx(styles.metadataContainer, {
+                    [styles.metadataContainerVideo]: isVideoMode,
+                })}
+                gap="md"
+                maw="100%"
+            >
+                <Text
+                    className={styles.metadataTitle}
+                    fw={900}
+                    lh="1.25"
+                    overflow={isVideoMode ? 'visible' : 'hidden'}
+                    size="4xl"
+                    w="100%"
+                >
                     {isPlayingRadio
                         ? radioMetadata?.title || stationName || 'Radio'
                         : currentSong?.name}
@@ -411,7 +419,7 @@ export const FullScreenPlayerImage = () => {
                 )}
                 {!isPlayingRadio && (
                     <Group justify="center" mt="sm">
-                        {hasVideo && (
+                        {canPlayVideo && (
                             <Badge>
                                 {videoMetadata?.videoFileUrl ? 'MP4 video' : 'Streamable video'}
                             </Badge>

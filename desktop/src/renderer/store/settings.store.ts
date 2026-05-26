@@ -1,4 +1,3 @@
-import isElectron from 'is-electron';
 import cloneDeep from 'lodash/cloneDeep';
 import mergeWith from 'lodash/mergeWith';
 import { nanoid } from 'nanoid';
@@ -41,7 +40,7 @@ import {
     TableColumn,
 } from '/@/shared/types/types';
 
-const utils = isElectron() ? window.api.utils : null;
+const utils = window.api?.utils ?? null;
 
 type DeepPartial<T> = {
     [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];

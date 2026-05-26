@@ -40,7 +40,7 @@ const UpdateAvailableDialog = lazy(() =>
     })),
 );
 
-const ipc = isElectron() ? window.api.ipc : null;
+const ipc = window.api?.ipc ?? null;
 
 export const App = () => {
     return <ThemedApp />;

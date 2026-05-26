@@ -18,6 +18,7 @@ interface FullScreenPlayerState {
     expanded: boolean;
     opacity: number;
     useImageAspectRatio: boolean;
+    videoFullscreen: boolean;
     visualMode: 'image' | 'video';
     visualizerExpanded: boolean;
 }
@@ -38,6 +39,7 @@ export const useFullScreenPlayerStore = createWithEqualityFn<FullScreenPlayerSli
                 expanded: false,
                 opacity: 60,
                 useImageAspectRatio: false,
+                videoFullscreen: false,
                 visualMode: 'image',
                 visualizerExpanded: false,
             })),

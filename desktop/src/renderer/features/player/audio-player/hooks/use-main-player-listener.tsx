@@ -6,9 +6,9 @@ import { useIsRadioActive } from '/@/renderer/features/radio/hooks/use-radio-pla
 import { usePlayerActions, useVolumeWheelStep } from '/@/renderer/store';
 import { toast } from '/@/shared/components/toast/toast';
 
-const mpvPlayer = isElectron() ? window.api.mpvPlayer : null;
-const mpvPlayerListener = isElectron() ? window.api.mpvPlayerListener : null;
-const ipc = isElectron() ? window.api.ipc : null;
+const mpvPlayer = window.api?.mpvPlayer ?? null;
+const mpvPlayerListener = window.api?.mpvPlayerListener ?? null;
+const ipc = window.api?.ipc ?? null;
 
 export const useMainPlayerListener = () => {
     const isRadioActive = useIsRadioActive();
@@ -160,7 +160,7 @@ const MainPlayerListenerHookInner = () => {
 
 export const MainPlayerListenerHook = () => {
     const isElectronEnv = isElectron();
-    const mpvPlayerListener = isElectronEnv ? window.api.mpvPlayerListener : null;
+    const mpvPlayerListener = window.api?.mpvPlayerListener ?? null;
 
     if (mpvPlayerListener === null) {
         return null;

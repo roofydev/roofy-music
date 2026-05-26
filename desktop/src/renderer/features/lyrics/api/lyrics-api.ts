@@ -23,7 +23,7 @@ import { LyricSource } from '/@/shared/types/domain-types';
 import { LyricsResponse } from '/@/shared/types/domain-types';
 import { ServerFeature } from '/@/shared/types/features-types';
 
-const lyricsIpc = isElectron() ? window.api.lyrics : null;
+const lyricsIpc = window.api?.lyrics ?? null;
 
 export type LyricsQueryResult = {
     local: FullLyricsMetadata | null | StructuredLyric[];

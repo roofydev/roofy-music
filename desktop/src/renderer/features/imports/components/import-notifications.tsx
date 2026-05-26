@@ -4,6 +4,7 @@ import { useImportJobs } from '/@/renderer/store';
 import { toast } from '/@/shared/components/toast/toast';
 
 const STORAGE_KEY = 'roofy.importNotifications';
+const SESSION_STARTED_AT = Date.now();
 
 function loadNotifiedKeys(): Set<string> {
     try {
@@ -47,15 +48,45 @@ const getVideoCopy = (job: {
     return ' Audio imported; MP4 video was not saved.';
 };
 
+const jobStartedBeforeSession = (job: { createdAt?: string }) => {
+    if (!job.createdAt) return false;
+    const createdAt = Date.parse(job.createdAt);
+    return Number.isFinite(createdAt) && createdAt < SESSION_STARTED_AT;
+};
+
 export const ImportNotifications = () => {
     const jobs = useImportJobs();
     const notifiedRef = useRef<Set<string>>(loadNotifiedKeys());
     const activeToastRef = useRef<Set<string>>(new Set());
+    const initializedRef = useRef(false);
 
     useEffect(() => {
         const keysToKeep = new Set<string>();
 
+        if (!initializedRef.current) {
+            Object.values(jobs).forEach((job) => {
+                if (job.status === 'completed' || job.status === 'failed') {
+                    const key = `${job.id}:${job.status}`;
+                    notifiedRef.current.add(key);
+                    keysToKeep.add(key);
+                }
+            });
+            notifiedRef.current = new Set([...keysToKeep, ...notifiedRef.current]);
+            saveNotifiedKeys(notifiedRef.current);
+            initializedRef.current = true;
+            return;
+        }
+
         Object.values(jobs).forEach((job) => {
+            if (jobStartedBeforeSession(job)) {
+                if (job.status === 'completed' || job.status === 'failed') {
+                    const key = `${job.id}:${job.status}`;
+                    notifiedRef.current.add(key);
+                    keysToKeep.add(key);
+                }
+                return;
+            }
+
             const toastId = `import-${job.id}`;
             const title = clampText(job.name || job.title || 'Track', 48);
             const target = getTargetCopy(job.targetPlaylistNames);

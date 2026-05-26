@@ -1,4 +1,3 @@
-import isElectron from 'is-electron';
 import { useEffect, useRef } from 'react';
 
 import i18n from '/@/i18n/i18n';
@@ -18,7 +17,7 @@ export const useSyncSettingsToMain = () => {
             return;
         }
 
-        if (!isElectron() || !window.api.localSettings) {
+        if (!window.api?.localSettings) {
             hasRunRef.current = true;
             return;
         }

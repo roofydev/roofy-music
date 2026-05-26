@@ -18,9 +18,9 @@ import { useAppStore, usePlayerData, usePlayerStatus, useWindowSettings } from '
 import { Text } from '/@/shared/components/text/text';
 import { Platform, PlayerStatus } from '/@/shared/types/types';
 
-const localSettings = isElectron() ? window.api.localSettings : null;
+const localSettings = window.api?.localSettings ?? null;
 
-const browser = isElectron() ? window.api.browser : null;
+const browser = window.api?.browser ?? null;
 const close = () => browser?.exit();
 const minimize = () => browser?.minimize();
 const maximize = () => browser?.maximize();

@@ -1,4 +1,9 @@
 .root {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+
     --ai-size-xs: calc(1.875rem * var(--mantine-scale));
     --ai-size-sm: calc(2.25rem * var(--mantine-scale));
     --ai-size-md: calc(2.625rem * var(--mantine-scale));
@@ -133,6 +138,12 @@
         min-width: var(--ai-size-compact-md);
         height: var(--ai-size-compact-md);
         min-height: var(--ai-size-compact-md);
+    }
+
+    & svg {
+        display: block;
+        flex-shrink: 0;
+        margin: 0;
     }
 }
 

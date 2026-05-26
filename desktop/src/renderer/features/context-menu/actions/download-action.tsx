@@ -13,7 +13,7 @@ interface DownloadActionProps {
     songs?: Song[];
 }
 
-const utils = isElectron() ? window.api.utils : null;
+const utils = window.api?.utils ?? null;
 
 export const DownloadAction = ({ ids, songs = [] }: DownloadActionProps) => {
     const { t } = useTranslation();
@@ -84,14 +84,21 @@ export const DownloadAction = ({ ids, songs = [] }: DownloadActionProps) => {
     }, [queueYoutubeImports]);
 
     return isYoutubeOnlySelection ? (
-        <>
-            <ContextMenu.Item leftIcon="download" onSelect={onSelect}>
-                Import to Roofy Music
-            </ContextMenu.Item>
-            <ContextMenu.Item leftIcon="video" onSelect={onSelectWithVideo}>
-                Import to Roofy Music with MP4
-            </ContextMenu.Item>
-        </>
+        <ContextMenu.Submenu>
+            <ContextMenu.SubmenuTarget>
+                <ContextMenu.Item leftIcon="download" onSelect={onSelect} rightIcon="arrowRightS">
+                    Import to Roofy Music
+                </ContextMenu.Item>
+            </ContextMenu.SubmenuTarget>
+            <ContextMenu.SubmenuContent>
+                <ContextMenu.Item leftIcon="download" onSelect={onSelect}>
+                    Audio only
+                </ContextMenu.Item>
+                <ContextMenu.Item leftIcon="mediaPlay" onSelect={onSelectWithVideo}>
+                    Audio + MP4 video
+                </ContextMenu.Item>
+            </ContextMenu.SubmenuContent>
+        </ContextMenu.Submenu>
     ) : (
         <ContextMenu.Item
             disabled={!isYoutubeOnlySelection && ids.length > 1}

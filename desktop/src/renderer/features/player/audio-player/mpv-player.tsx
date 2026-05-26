@@ -19,7 +19,7 @@ import { PlayerStatus } from '/@/shared/types/types';
 const PLAY_PAUSE_FADE_DURATION = 300;
 const PLAY_PAUSE_FADE_INTERVAL = 10;
 
-const mpvPlayer = isElectron() ? window.api.mpvPlayer : null;
+const mpvPlayer = window.api?.mpvPlayer ?? null;
 
 export function MpvPlayer() {
     const playerRef = useRef<MpvPlayerEngineHandle>(null);

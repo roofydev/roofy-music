@@ -25,10 +25,8 @@ import { Button } from '/@/shared/components/button/button';
 import { Checkbox } from '/@/shared/components/checkbox/checkbox';
 import { Group } from '/@/shared/components/group/group';
 import { Icon } from '/@/shared/components/icon/icon';
-import { Image } from '/@/shared/components/image/image';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Stack } from '/@/shared/components/stack/stack';
-import { Table } from '/@/shared/components/table/table';
 import { TextInput } from '/@/shared/components/text-input/text-input';
 import { Text } from '/@/shared/components/text/text';
 import { toast } from '/@/shared/components/toast/toast';
@@ -129,14 +127,6 @@ const YoutubeMusicRoute = () => {
         const term = playlistSearchTerm.toLowerCase();
         return playlists.filter((p) => p.name.toLowerCase().includes(term));
     }, [accountPlaylistsQuery.data, playlistSearchTerm]);
-
-    const handlePlay = (song: Song) => {
-        addToQueueByData(Play.NOW, [song]);
-    };
-
-    const handleQueue = (song: Song) => {
-        addToQueueByData(Play.LAST, [song]);
-    };
 
     const handleImportSong = useCallback(
         async (song: Song) => {
@@ -335,84 +325,9 @@ const YoutubeMusicRoute = () => {
                                             <>
                                                 {searchQuery.data?.songs &&
                                                 searchQuery.data.songs.length > 0 ? (
-                                                    <Table>
-                                                        <Table.Thead>
-                                                            <Table.Tr>
-                                                                <Table.Th />
-                                                                <Table.Th>Track</Table.Th>
-                                                                <Table.Th>Artist</Table.Th>
-                                                                <Table.Th>Album</Table.Th>
-                                                                <Table.Th />
-                                                            </Table.Tr>
-                                                        </Table.Thead>
-                                                        <Table.Tbody>
-                                                            {searchQuery.data.songs.map((song) => (
-                                                                <Table.Tr
-                                                                    className={styles.songRow}
-                                                                    key={song.id}
-                                                                >
-                                                                    <Table.Td>
-                                                                        <Image
-                                                                            className={
-                                                                                styles.artImage
-                                                                            }
-                                                                            containerClassName={
-                                                                                styles.art
-                                                                            }
-                                                                            includeLoader={false}
-                                                                            src={
-                                                                                song.imageUrl ||
-                                                                                undefined
-                                                                            }
-                                                                            unloaderIcon="emptySongImage"
-                                                                        />
-                                                                    </Table.Td>
-                                                                    <Table.Td>{song.name}</Table.Td>
-                                                                    <Table.Td>
-                                                                        {song.artistName}
-                                                                    </Table.Td>
-                                                                    <Table.Td>
-                                                                        {song.album || '-'}
-                                                                    </Table.Td>
-                                                                    <Table.Td>
-                                                                        <Group
-                                                                            justify="flex-end"
-                                                                            wrap="nowrap"
-                                                                        >
-                                                                            <Button
-                                                                                onClick={() =>
-                                                                                    handleImportSong(
-                                                                                        song,
-                                                                                    )
-                                                                                }
-                                                                                size="compact-sm"
-                                                                            >
-                                                                                Import
-                                                                            </Button>
-                                                                            <Button
-                                                                                onClick={() =>
-                                                                                    handlePlay(song)
-                                                                                }
-                                                                                size="compact-sm"
-                                                                            >
-                                                                                Play
-                                                                            </Button>
-                                                                            <Button
-                                                                                onClick={() =>
-                                                                                    handleQueue(
-                                                                                        song,
-                                                                                    )
-                                                                                }
-                                                                                size="compact-sm"
-                                                                            >
-                                                                                Queue
-                                                                            </Button>
-                                                                        </Group>
-                                                                    </Table.Td>
-                                                                </Table.Tr>
-                                                            ))}
-                                                        </Table.Tbody>
-                                                    </Table>
+                                                    <YoutubeMusicSongsTable
+                                                        songs={searchQuery.data.songs}
+                                                    />
                                                 ) : (
                                                     <Text isMuted>
                                                         {debouncedQuery

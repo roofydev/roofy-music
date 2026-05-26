@@ -11,9 +11,10 @@ import { usePlayerSong, usePlayerStore } from '/@/renderer/store';
 import { LibraryItem, QueueSong } from '/@/shared/types/domain-types';
 import { PlayerShuffle, ServerType } from '/@/shared/types/types';
 
-const ipc = isElectron() ? window.api.ipc : null;
-const utils = isElectron() ? window.api.utils : null;
-const mpris = isElectron() && (utils?.isLinux() || utils?.isMacOS()) ? window.api.mpris : null;
+const ipc = window.api?.ipc ?? null;
+const utils = window.api?.utils ?? null;
+const mpris =
+    utils?.isLinux() || utils?.isMacOS() ? (window.api?.mpris ?? null) : null;
 
 export const useMPRIS = () => {
     const player = usePlayerStore();
@@ -221,8 +222,9 @@ const MPRISHookInner = () => {
 
 export const MPRISHook = () => {
     const isElectronEnv = isElectron();
-    const utils = isElectronEnv ? window.api.utils : null;
-    const mpris = isElectronEnv && (utils?.isLinux() || utils?.isMacOS()) ? window.api.mpris : null;
+    const utils = window.api?.utils ?? null;
+    const mpris =
+        utils?.isLinux() || utils?.isMacOS() ? (window.api?.mpris ?? null) : null;
 
     if (mpris === null) {
         return null;
