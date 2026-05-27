@@ -64,6 +64,7 @@ export interface PartyTrack {
     suggestedByGuestId?: string;
     title: string;
     videoId?: string;
+    videoStreamUrl?: string;
     votes: number;
     votedByGuestIds: string[];
 }

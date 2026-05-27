@@ -135,6 +135,7 @@ const VIDEO_ID_REGEX = /^[A-Za-z0-9_-]{11}$/;
 const PING_TIMEOUT_MS = 10000;
 
 const youtubeStreamCache = new Map<string, { expiresAt: number; url: string }>();
+const youtubeVideoStreamCache = new Map<string, { expiresAt: number; url: string }>();
 const chatRateLimits = new Map<string, number>();
 const suggestionRateLimits = new Map<string, number>();
 const guestReadyTrackIds = new Set<string>();
@@ -358,9 +359,17 @@ const searchTracks = async (query: string) => {
         .filter((track): track is PartyTrack => Boolean(track));
 };
 
+type PartyMediaKind = 'audio' | 'video';
+
 const syncGuestStreamUrl = (track: PartyTrack, guestId: string) => {
-    const token = signStreamToken(room!.code, guestId, track.id);
+    const token = signMediaToken(room!.code, guestId, track.id, 'audio');
     return `/party/api/stream/${encodeURIComponent(track.id)}?token=${encodeURIComponent(token)}`;
+};
+
+const syncGuestVideoUrl = (track: PartyTrack, guestId: string) => {
+    if (!track.videoId) return undefined;
+    const token = signMediaToken(room!.code, guestId, track.id, 'video');
+    return `/party/api/video/${encodeURIComponent(track.id)}?token=${encodeURIComponent(token)}`;
 };
 
 const syncGuestArtworkUrl = (artworkUrl: null | string | undefined, guestId: string) => {
@@ -390,6 +399,7 @@ const hydrateTrack = (track: PartyTrack): PartyTrack => ({
                   ...hydrateTrack(room.nowPlaying),
                   artworkUrl: syncGuestArtworkUrl(room.nowPlaying.artworkUrl, guestId),
                   streamUrl: syncGuestStreamUrl(room.nowPlaying, guestId),
+                  videoStreamUrl: syncGuestVideoUrl(room.nowPlaying, guestId),
               }
             : null,
         queue: room.queue.map((track) => ({
@@ -513,6 +523,18 @@ const getCachedYoutubeStreamUrl = async (videoId: string) => {
     return url;
 };
 
+const getCachedYoutubeVideoStreamUrl = async (videoId: string) => {
+    const cached = youtubeVideoStreamCache.get(videoId);
+    if (cached && cached.expiresAt > Date.now()) return cached.url;
+
+    const url = await youtubeMusic.getVideoStreamUrl(videoId);
+    youtubeVideoStreamCache.set(videoId, {
+        expiresAt: Date.now() + YOUTUBE_STREAM_CACHE_MS,
+        url,
+    });
+    return url;
+};
+
 const resetBufferGate = (trackId: string) => {
     guestReadyTrackIds.clear();
     pendingBufferTrackId = trackId;
@@ -537,10 +559,16 @@ const safeEqual = (left: string, right: string) => {
     return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 };
 
-const signStreamToken = (roomCode: string, guestId: string, trackId: string) => {
+const signMediaToken = (
+    roomCode: string,
+    guestId: string,
+    trackId: string,
+    media: PartyMediaKind,
+) => {
     const payload = {
         expiresAt: getTokenExpiresAt(),
         guestId,
+        media,
         roomCode,
         trackId,
     };
@@ -561,7 +589,7 @@ const signArtworkToken = (roomCode: string, guestId: string, artworkUrl: string)
     return `${body}.${signature}`;
 };
 
-const verifyStreamToken = (token: string, trackId: string) => {
+const verifyMediaToken = (token: string, trackId: string, media: PartyMediaKind) => {
     const [body, signature] = token.split('.');
     if (!body || !signature) return false;
 
@@ -572,12 +600,14 @@ const verifyStreamToken = (token: string, trackId: string) => {
         const payload = JSON.parse(Buffer.from(body, 'base64url').toString()) as {
             expiresAt: number;
             guestId: string;
+            media?: PartyMediaKind;
             roomCode: string;
             trackId: string;
         };
         return (
             room?.code === payload.roomCode &&
             payload.trackId === trackId &&
+            payload.media === media &&
             payload.expiresAt > Date.now() &&
             Boolean(room.guests.find((guest) => guest.id === payload.guestId && guest.status === 'approved'))
         );
@@ -702,7 +732,7 @@ const proxyTrackStream = async (
     trackId: string,
     token: string,
 ) => {
-    if (!verifyStreamToken(token, trackId)) {
+    if (!verifyMediaToken(token, trackId, 'audio')) {
         res.statusCode = 403;
         res.end('Forbidden');
         return;
@@ -716,6 +746,34 @@ const proxyTrackStream = async (
     if (!streamUrl) {
         res.statusCode = 404;
         res.end('Stream unavailable');
+        return;
+    }
+
+    pipeHttpProxy(req, res, new URL(streamUrl), {
+        'Access-Control-Allow-Origin': '*',
+    });
+};
+
+const proxyTrackVideo = async (
+    req: IncomingMessage,
+    res: ServerResponse,
+    trackId: string,
+    token: string,
+) => {
+    if (!verifyMediaToken(token, trackId, 'video')) {
+        res.statusCode = 403;
+        res.end('Forbidden');
+        return;
+    }
+
+    const track = findTrack(trackId);
+    const streamUrl = track?.videoId
+        ? await getCachedYoutubeVideoStreamUrl(track.videoId)
+        : undefined;
+
+    if (!streamUrl) {
+        res.statusCode = 404;
+        res.end('Video unavailable');
         return;
     }
 
@@ -1169,11 +1227,22 @@ const enablePartyServer = async () =>
             try {
                 const reqUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
                 const streamMatch = reqUrl.pathname.match(/^\/party\/api\/stream\/(.+)$/);
+                const videoMatch = reqUrl.pathname.match(/^\/party\/api\/video\/(.+)$/);
                 if (streamMatch) {
                     await proxyTrackStream(
                         req,
                         res,
                         decodeURIComponent(streamMatch[1]),
+                        reqUrl.searchParams.get('token') || '',
+                    );
+                    return;
+                }
+
+                if (videoMatch) {
+                    await proxyTrackVideo(
+                        req,
+                        res,
+                        decodeURIComponent(videoMatch[1]),
                         reqUrl.searchParams.get('token') || '',
                     );
                     return;

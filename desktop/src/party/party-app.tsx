@@ -15,6 +15,8 @@ import {
     RiCloseLine,
     RiDragMove2Line,
     RiEmotionLine,
+    RiFullscreenExitLine,
+    RiFullscreenLine,
     RiInformationLine,
     RiListUnordered,
     RiLockFill,
@@ -34,6 +36,8 @@ import {
     RiSkipForwardFill,
     RiThumbUpLine,
     RiUserLine,
+    RiVideoLine,
+    RiVideoOffLine,
     RiVolumeDownLine,
     RiVolumeMuteLine,
     RiVolumeUpLine,
@@ -64,6 +68,11 @@ const MIN_SEEK_INTERVAL_MS = 3000;
 const PROGRESS_TICK_MS = 500;
 const BUFFER_WAIT_FALLBACK_MS = 8000;
 const AUDIO_LOAD_TIMEOUT_MS = 15000;
+const VIDEO_CHROME_IDLE_MS = 2500;
+const VIDEO_HARD_SEEK_DRIFT_SECONDS = 1.75;
+const VIDEO_HARD_SEEK_COOLDOWN_MS = 3000;
+const VIDEO_RATE_DRIFT_SECONDS = 0.35;
+const VIDEO_RATE_RECOVERY_AMOUNT = 0.04;
 
 type PartyTab = 'chat' | 'side' | 'upNext';
 type SideTab = 'guests' | 'requests';
@@ -104,6 +113,8 @@ const saveDjMicPrefs = (prefs: StoredDjMicPrefs) => {
 };
 
 const sessionStorageKey = (roomCode: string) => `roofy-party-session:${roomCode.toUpperCase()}`;
+const videoPreferenceStorageKey = (roomCode: string) =>
+    `roofy-party-video-enabled:${roomCode.toUpperCase()}`;
 
 const loadStoredSession = (roomCode: string): StoredPartySession | null => {
     try {
@@ -368,12 +379,17 @@ const PartyChatEmojiPicker = ({ onSelect }: { onSelect: (emoji: string) => void 
 
 export const PartyApp = () => {
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const fullscreenRef = useRef<HTMLDivElement | null>(null);
     const socketRef = useRef<WebSocket | null>(null);
     const audioUnlockedRef = useRef(false);
     const lastAppliedStatusRef = useRef<PlayerStatus | null>(null);
+    const lastVideoSeekAtRef = useRef(0);
+    const loadedVideoUrlRef = useRef<string | null>(null);
     const loadedTrackIdRef = useRef<string | null>(null);
     const trackReadyRef = useRef(false);
     const lastSeekAtRef = useRef(0);
+    const videoChromeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const rateResetRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const chatEndRef = useRef<HTMLDivElement | null>(null);
@@ -401,11 +417,18 @@ export const PartyApp = () => {
     const [chatInput, setChatInput] = useState('');
     const [waitingForBuffer, setWaitingForBuffer] = useState(false);
     const [audioReloadKey, setAudioReloadKey] = useState(0);
+    const [audioReady, setAudioReady] = useState(false);
     const [audioNeedsUnlock, setAudioNeedsUnlock] = useState(false);
     const [audioLoadIssue, setAudioLoadIssue] = useState<string | null>(null);
     const [dragTrackId, setDragTrackId] = useState<string | null>(null);
     const [djSpeaking, setDjSpeaking] = useState(false);
     const [seekPreviewPercent, setSeekPreviewPercent] = useState<null | number>(null);
+    const [videoEnabled, setVideoEnabled] = useState(false);
+    const [videoFullscreen, setVideoFullscreen] = useState(false);
+    const [videoChromeVisible, setVideoChromeVisible] = useState(true);
+    const [videoLoadIssue, setVideoLoadIssue] = useState<string | null>(null);
+    const [videoReady, setVideoReady] = useState(false);
+    const [videoReloadKey, setVideoReloadKey] = useState(0);
 
     const code = useMemo(roomCodeFromPath, []);
 
@@ -413,6 +436,17 @@ export const PartyApp = () => {
         const stored = loadStoredSession(code);
         if (stored?.displayName) setDisplayName(stored.displayName);
     }, [code]);
+
+    useEffect(() => {
+        setVideoEnabled(localStorage.getItem(videoPreferenceStorageKey(code)) === 'true');
+    }, [code]);
+
+    useEffect(() => {
+        localStorage.setItem(videoPreferenceStorageKey(code), videoEnabled ? 'true' : 'false');
+    }, [code, videoEnabled]);
+
+    const safariBrowser = useMemo(() => isSafariBrowser(), []);
+
     const syncDelayMs = useMemo(
         () => (isLanConnection() ? SYNC_DELAY_LAN_MS : SYNC_DELAY_TUNNEL_MS),
         [],
@@ -445,6 +479,13 @@ export const PartyApp = () => {
         send: sendRaw,
         socketRef,
     });
+
+    const resumeAudioContext = useCallback(async () => {
+        const context = contextRef.current;
+        if (context?.state === 'suspended') {
+            await context.resume();
+        }
+    }, [contextRef]);
 
     useEffect(() => {
         const theme = state?.settings.roomTheme || 'dark';
@@ -623,25 +664,32 @@ export const PartyApp = () => {
     const primeAudio = useCallback(async () => {
         const audio = audioRef.current;
         if (!audio) {
-            audioUnlockedRef.current = true;
+            audioUnlockedRef.current = false;
             return;
         }
 
         try {
-            await audio.play();
-            audio.pause();
+            await resumeAudioContext();
+            if (audio.src) {
+                await audio.play();
+                audio.pause();
+            }
             audioUnlockedRef.current = true;
             setAudioNeedsUnlock(false);
         } catch {
-            audioUnlockedRef.current = true;
+            audioUnlockedRef.current = false;
+            if (joined && state?.playbackStatus === PlayerStatus.PLAYING) {
+                setAudioNeedsUnlock(true);
+            }
         }
-    }, []);
+    }, [joined, resumeAudioContext, state?.playbackStatus]);
 
     const tryPlay = useCallback(async () => {
         const audio = audioRef.current;
         if (!audio) return;
 
         try {
+            await resumeAudioContext();
             await audio.play();
             audioUnlockedRef.current = true;
             setAudioNeedsUnlock(false);
@@ -649,19 +697,24 @@ export const PartyApp = () => {
             setAudioNeedsUnlock(true);
 
             const unlockOnInteraction = async () => {
-                audioUnlockedRef.current = true;
                 try {
+                    await resumeAudioContext();
                     await audio.play();
+                    audioUnlockedRef.current = true;
                     setAudioNeedsUnlock(false);
                 } catch {
                     // Browser blocked autoplay; will retry on next interaction.
+                    audioUnlockedRef.current = false;
+                    setAudioNeedsUnlock(true);
                 }
             };
 
+            document.addEventListener('pointerdown', unlockOnInteraction, { once: true });
+            document.addEventListener('touchend', unlockOnInteraction, { once: true });
             document.addEventListener('click', unlockOnInteraction, { once: true });
             document.addEventListener('keydown', unlockOnInteraction, { once: true });
         }
-    }, []);
+    }, [resumeAudioContext]);
 
     const clearBufferWait = useCallback(() => {
         setWaitingForBuffer(false);
@@ -671,19 +724,38 @@ export const PartyApp = () => {
 
     const resyncAudio = useCallback(() => {
         const audio = audioRef.current;
+        const video = videoRef.current;
         loadedTrackIdRef.current = null;
+        loadedVideoUrlRef.current = null;
         trackReadyRef.current = false;
         clearBufferWait();
+        setAudioReady(false);
         setAudioNeedsUnlock(false);
+        setVideoLoadIssue(null);
+        setVideoReady(false);
         if (audio) {
             audio.pause();
             audio.removeAttribute('src');
             audio.load();
         }
+        if (video) {
+            video.pause();
+            video.removeAttribute('src');
+            video.load();
+        }
         setAudioReloadKey((key) => key + 1);
         send({ type: 'sync_request' });
         void primeAudio();
     }, [clearBufferWait, primeAudio, send]);
+
+    const getSyncedMediaSeconds = useCallback(() => {
+        const audio = audioRef.current;
+        if (audio && trackReadyRef.current && Number.isFinite(audio.currentTime)) {
+            return audio.currentTime;
+        }
+
+        return getAdjustedPositionMs(state, Date.now(), syncDelayMs) / 1000;
+    }, [state, syncDelayMs]);
 
     // Source loading — only when track changes
     useEffect(() => {
@@ -693,6 +765,7 @@ export const PartyApp = () => {
 
         if (!track?.streamUrl) {
             trackReadyRef.current = false;
+            setAudioReady(false);
             clearBufferWait();
             if (track) {
                 setAudioLoadIssue('Waiting for the DJ stream…');
@@ -711,6 +784,7 @@ export const PartyApp = () => {
 
         loadedTrackIdRef.current = track.id;
         trackReadyRef.current = false;
+        setAudioReady(false);
         setWaitingForBuffer(isTrackChange);
         lastAppliedStatusRef.current = null;
 
@@ -723,6 +797,7 @@ export const PartyApp = () => {
 
         const onCanPlay = () => {
             trackReadyRef.current = true;
+            setAudioReady(true);
             setAudioLoadIssue(null);
             send({ trackId: track.id, type: 'ready' });
 
@@ -743,6 +818,7 @@ export const PartyApp = () => {
 
         const onError = () => {
             trackReadyRef.current = false;
+            setAudioReady(false);
             clearBufferWait();
             setAudioLoadIssue('Could not load audio. Tap Sync audio to retry.');
         };
@@ -882,6 +958,200 @@ export const PartyApp = () => {
         };
     }, [joined, send, state, syncDelayMs, waitingForBuffer]);
 
+    useEffect(() => {
+        const video = videoRef.current;
+        const videoUrl = state?.nowPlaying?.videoStreamUrl;
+        if (!video || !joined) return;
+
+        const shouldLoadVideo =
+            videoEnabled && videoUrl && audioReady && !audioNeedsUnlock && !waitingForBuffer;
+
+        if (!shouldLoadVideo) {
+            loadedVideoUrlRef.current = null;
+            setVideoReady(false);
+            setVideoLoadIssue(
+                videoEnabled && videoUrl
+                    ? audioNeedsUnlock
+                        ? 'Enable audio first'
+                        : 'Waiting for audio sync'
+                    : null,
+            );
+            video.pause();
+            video.removeAttribute('src');
+            video.load();
+            return;
+        }
+
+        const absoluteUrl = new URL(videoUrl!, window.location.origin).href;
+        if (loadedVideoUrlRef.current === absoluteUrl && video.src === absoluteUrl) return;
+
+        loadedVideoUrlRef.current = absoluteUrl;
+        setVideoReady(false);
+        setVideoLoadIssue(null);
+        video.muted = true;
+        video.playsInline = true;
+        video.src = absoluteUrl;
+        video.load();
+
+        const onLoadedMetadata = () => {
+            const targetSeconds = getSyncedMediaSeconds();
+            if (Number.isFinite(targetSeconds)) {
+                video.currentTime = Math.max(0, targetSeconds);
+            }
+        };
+
+        const onCanPlay = () => {
+            setVideoReady(true);
+            setVideoLoadIssue(null);
+            if (state?.playbackStatus === PlayerStatus.PLAYING) {
+                video.play().catch(() => {});
+            }
+        };
+
+        const onError = () => {
+            setVideoReady(false);
+            setVideoLoadIssue('Video unavailable');
+        };
+
+        video.addEventListener('loadedmetadata', onLoadedMetadata);
+        video.addEventListener('canplay', onCanPlay);
+        video.addEventListener('loadeddata', onCanPlay);
+        video.addEventListener('error', onError);
+
+        return () => {
+            video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('canplay', onCanPlay);
+            video.removeEventListener('loadeddata', onCanPlay);
+            video.removeEventListener('error', onError);
+        };
+    }, [
+        getSyncedMediaSeconds,
+        audioNeedsUnlock,
+        audioReady,
+        joined,
+        state?.nowPlaying?.id,
+        state?.nowPlaying?.videoStreamUrl,
+        state?.playbackStatus,
+        videoEnabled,
+        videoFullscreen,
+        videoReloadKey,
+        waitingForBuffer,
+    ]);
+
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video || !joined || !videoEnabled || !videoReady) return;
+
+        if (state?.playbackStatus === PlayerStatus.PLAYING) {
+            video.play().catch(() => {});
+            return;
+        }
+
+        video.pause();
+        video.playbackRate = 1;
+    }, [joined, state?.playbackStatus, videoEnabled, videoReady]);
+
+    useEffect(() => {
+        if (
+            !joined ||
+            !state ||
+            !videoEnabled ||
+            !videoReady ||
+            state.playbackStatus !== PlayerStatus.PLAYING
+        ) {
+            return;
+        }
+
+        const interval = window.setInterval(() => {
+            const video = videoRef.current;
+            if (!video) return;
+
+            const targetSeconds = getSyncedMediaSeconds();
+            if (!Number.isFinite(targetSeconds)) return;
+
+            const drift = targetSeconds - video.currentTime;
+            const absDrift = Math.abs(drift);
+            const nowMs = Date.now();
+
+            if (
+                absDrift > VIDEO_HARD_SEEK_DRIFT_SECONDS ||
+                (safariBrowser && absDrift > VIDEO_RATE_DRIFT_SECONDS)
+            ) {
+                if (nowMs - lastVideoSeekAtRef.current < VIDEO_HARD_SEEK_COOLDOWN_MS) {
+                    return;
+                }
+                video.currentTime = Math.max(0, targetSeconds);
+                video.playbackRate = 1;
+                lastVideoSeekAtRef.current = nowMs;
+                return;
+            }
+
+            if (absDrift > VIDEO_RATE_DRIFT_SECONDS) {
+                video.playbackRate =
+                    drift > 0 ? 1 + VIDEO_RATE_RECOVERY_AMOUNT : 1 - VIDEO_RATE_RECOVERY_AMOUNT;
+                return;
+            }
+
+            video.playbackRate = 1;
+        }, PROGRESS_TICK_MS);
+
+        return () => window.clearInterval(interval);
+    }, [getSyncedMediaSeconds, joined, safariBrowser, state, videoEnabled, videoReady]);
+
+    const revealVideoChrome = useCallback(() => {
+        setVideoChromeVisible(true);
+        if (videoChromeTimerRef.current) clearTimeout(videoChromeTimerRef.current);
+        videoChromeTimerRef.current = setTimeout(
+            () => setVideoChromeVisible(false),
+            VIDEO_CHROME_IDLE_MS,
+        );
+    }, []);
+
+    useEffect(() => {
+        if (!videoFullscreen) return;
+
+        revealVideoChrome();
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        const requestNativeFullscreen = async () => {
+            try {
+                await fullscreenRef.current?.requestFullscreen?.();
+            } catch {
+                // The fixed overlay still provides fullscreen-style viewing.
+            }
+        };
+
+        void requestNativeFullscreen();
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setVideoFullscreen(false);
+        };
+
+        const handleFullscreenChange = () => {
+            if (!document.fullscreenElement) setVideoFullscreen(false);
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(() => {});
+            }
+            if (videoChromeTimerRef.current) clearTimeout(videoChromeTimerRef.current);
+        };
+    }, [revealVideoChrome, videoFullscreen]);
+
+    useEffect(() => {
+        if (videoFullscreen && !state?.nowPlaying?.videoStreamUrl) {
+            setVideoFullscreen(false);
+        }
+    }, [state?.nowPlaying?.videoStreamUrl, videoFullscreen]);
+
     const handleJoin = (event: FormEvent) => {
         event.preventDefault();
         const name = displayName.trim();
@@ -992,6 +1262,8 @@ export const PartyApp = () => {
     const queueLocked = Boolean(state?.settings.queueLocked);
     const roomCode = (code || state?.code || 'JOIN').toUpperCase();
     const showingSearch = requestSearch.trim().length >= 3;
+    const videoAvailable = Boolean(track?.videoStreamUrl);
+    const showVideo = videoEnabled && videoAvailable;
 
     const handleTransportClick = () => {
         if (!canControlPlayer) return;
@@ -1104,6 +1376,12 @@ export const PartyApp = () => {
         if (toIndex < 0) return;
         send({ toIndex, trackId: dragTrackId, type: 'reorder_queue' });
         setDragTrackId(null);
+    };
+
+    const enableSyncedVideo = () => {
+        setVideoLoadIssue(null);
+        setVideoEnabled(true);
+        void tryPlay();
     };
 
     const renderSearchResultRow = (result: PartyTrack, compact = false) => (
@@ -1319,6 +1597,198 @@ export const PartyApp = () => {
         </div>
     );
 
+    const renderMediaStage = (fullscreen = false) => (
+        <div
+            className={`artwork-frame party-media-stage${fullscreen ? ' party-media-stage-fullscreen' : ''}`}
+        >
+            {showVideo ? (
+                <>
+                    <video
+                        className="party-video-media"
+                        muted
+                        playsInline
+                        preload="auto"
+                        ref={videoRef}
+                    />
+                    {(!videoReady || videoLoadIssue) && (
+                        <div className="party-video-status">
+                            {videoLoadIssue ? <RiVideoOffLine aria-hidden /> : <RiVideoLine aria-hidden />}
+                            <span>{videoLoadIssue || 'Preparing video...'}</span>
+                            {videoLoadIssue === 'Enable audio first' && (
+                                <button
+                                    className="party-btn party-btn-primary party-video-retry"
+                                    onClick={() => {
+                                        void tryPlay();
+                                        setVideoReloadKey((key) => key + 1);
+                                    }}
+                                    type="button"
+                                >
+                                    Enable audio
+                                </button>
+                            )}
+                            {videoLoadIssue === 'Video unavailable' && (
+                                <button
+                                    className="party-btn party-btn-ghost party-video-retry"
+                                    onClick={() => {
+                                        setVideoLoadIssue(null);
+                                        loadedVideoUrlRef.current = null;
+                                        setVideoReloadKey((key) => key + 1);
+                                    }}
+                                    type="button"
+                                >
+                                    Retry
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </>
+            ) : (
+                <>
+                    <ArtworkImage artworkUrl={track?.artworkUrl} />
+                    <PartyArtworkVisualizer
+                        active={isLocalPlaying}
+                        analyserRef={analyserRef}
+                        audioGraphReady={audioGraphReady}
+                        contextRef={contextRef}
+                    />
+                </>
+            )}
+
+            <div className="party-media-actions">
+                {videoAvailable && (
+                    <button
+                        aria-label={videoEnabled ? 'Hide video' : 'Show synced video'}
+                        className="icon-btn party-media-action"
+                        onClick={() => {
+                            setVideoLoadIssue(null);
+                            setVideoEnabled((enabled) => {
+                                if (!enabled) void tryPlay();
+                                return !enabled;
+                            });
+                        }}
+                        title={videoEnabled ? 'Hide video' : 'Show synced video'}
+                        type="button"
+                    >
+                        {videoEnabled ? <RiVideoOffLine /> : <RiVideoLine />}
+                    </button>
+                )}
+                {videoAvailable && (
+                    <button
+                        aria-label="Fullscreen video"
+                        className="icon-btn party-media-action"
+                        onClick={() => {
+                            enableSyncedVideo();
+                            setVideoFullscreen(true);
+                        }}
+                        title="Fullscreen video"
+                        type="button"
+                    >
+                        <RiFullscreenLine />
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+
+    const renderFullscreenVideoOverlay = () => {
+        if (!videoFullscreen) return null;
+
+        return (
+            <div
+                className="party-video-fullscreen"
+                onMouseMove={revealVideoChrome}
+                onPointerDown={revealVideoChrome}
+                ref={fullscreenRef}
+            >
+                <div className="party-video-fullscreen-stage">{renderMediaStage(true)}</div>
+
+                <div
+                    className={`party-video-fullscreen-chrome${
+                        videoChromeVisible ? ' party-video-fullscreen-chrome-visible' : ''
+                    }`}
+                >
+                    <div className="party-video-fullscreen-top">
+                        <div className="party-video-fullscreen-title">
+                            <span>{track?.title || 'Nothing playing'}</span>
+                            <small>{track?.artist || state?.hostDisplayName}</small>
+                        </div>
+                        <div className="party-video-fullscreen-actions">
+                            <button
+                                aria-label="Sync audio"
+                                className="icon-btn"
+                                onClick={resyncAudio}
+                                title="Sync audio"
+                                type="button"
+                            >
+                                <RiRefreshLine />
+                            </button>
+                            <button
+                                aria-label="Exit fullscreen"
+                                className="icon-btn"
+                                onClick={() => setVideoFullscreen(false)}
+                                title="Exit fullscreen"
+                                type="button"
+                            >
+                                <RiFullscreenExitLine />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="party-video-fullscreen-rail">
+                        <nav aria-label="Fullscreen sections" className="party-video-rail-tabs">
+                            <button
+                                className={activeTab === 'upNext' ? 'active' : ''}
+                                onClick={() => setActiveTab('upNext')}
+                                type="button"
+                            >
+                                <RiListUnordered aria-hidden />
+                                <span>{queuedTracks.length}</span>
+                            </button>
+                            <button
+                                className={activeTab === 'chat' ? 'active' : ''}
+                                onClick={() => setActiveTab('chat')}
+                                type="button"
+                            >
+                                <RiChat3Line aria-hidden />
+                                <span>{chatMessages.length}</span>
+                            </button>
+                            <button
+                                className={activeTab === 'side' ? 'active' : ''}
+                                onClick={() => setActiveTab('side')}
+                                type="button"
+                            >
+                                <RiUserLine aria-hidden />
+                                <span>{pendingRequests}</span>
+                            </button>
+                        </nav>
+                        <div className="party-video-rail-content">
+                            {activeTab === 'upNext' && renderUpNextPanel(' party-video-rail-panel')}
+                            {activeTab === 'chat' && renderChatPanel(' party-video-rail-panel')}
+                            {activeTab === 'side' && renderSidePanel(' party-video-rail-panel')}
+                        </div>
+                    </div>
+
+                    <div className="party-video-fullscreen-bottom">
+                        <div className="party-video-fullscreen-progress">
+                            <span>{formatTime(positionMs)}</span>
+                            <div className="progress-track">
+                                <span className="buffer-bar" style={{ width: `${bufferPercent}%` }} />
+                                <span className="play-bar" style={{ width: `${displayProgressPercent}%` }} />
+                            </div>
+                            <span>{formatTime(durationMs)}</span>
+                        </div>
+                        <PartyVolumeControl
+                            muted={muted}
+                            onMutedChange={setMuted}
+                            onVolumeChange={setVolume}
+                            volume={volume}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const renderNowPlaying = () => (
         <section className="party-column party-column-now-playing">
             <div className="party-column-header">
@@ -1327,15 +1797,7 @@ export const PartyApp = () => {
                 </span>
             </div>
             <div className="player-section">
-                <div className="artwork-frame">
-                    <ArtworkImage artworkUrl={track?.artworkUrl} />
-                    <PartyArtworkVisualizer
-                        active={isLocalPlaying}
-                        analyserRef={analyserRef}
-                        audioGraphReady={audioGraphReady}
-                        contextRef={contextRef}
-                    />
-                </div>
+                {!videoFullscreen && renderMediaStage(false)}
 
                 <div className="track-info">
                     <h1 className="track-title">{track?.title || 'Nothing playing'}</h1>
@@ -1577,13 +2039,18 @@ export const PartyApp = () => {
                 <div className="party-audio-banner" role="status">
                     <p className="party-audio-banner-text">
                         {audioLoadIssue ??
-                            'Playback is paused by your browser. Enable audio to hear the DJ.'}
+                            (safariBrowser
+                                ? 'Safari requires a tap before synced playback can start.'
+                                : 'Playback is paused by your browser. Enable audio to hear the DJ.')}
                     </p>
                     <div className="party-audio-banner-actions">
                         {audioNeedsUnlock && (
                             <button
                                 className="party-btn party-btn-primary"
-                                onClick={() => void tryPlay()}
+                                onClick={() => {
+                                    void tryPlay();
+                                    setVideoReloadKey((key) => key + 1);
+                                }}
                                 type="button"
                             >
                                 Enable audio
@@ -1749,6 +2216,8 @@ export const PartyApp = () => {
                             {copyFeedback && <p className="party-modal-feedback">{copyFeedback}</p>}
                         </div>,
                     )}
+
+                    {renderFullscreenVideoOverlay()}
 
                     <div className="party-main-grid">
                         {renderUpNextPanel(' party-panels-desktop')}

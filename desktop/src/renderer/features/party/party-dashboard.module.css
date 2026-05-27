@@ -28,6 +28,79 @@
     border-right: none;
 }
 
+.partyQueueWorkspace {
+    border-right: 1px solid var(--theme-colors-border);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.partyQueueWorkspace .partyColumn {
+    border-right: none;
+    flex: 1;
+}
+
+.partyYoutubeSearchPanel {
+    border-bottom: 1px solid var(--theme-colors-border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+}
+
+.partyYoutubeSearchForm {
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.partyYoutubeSearchInput {
+    font-size: 0.82rem;
+}
+
+.partyYoutubeSearchMeta {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+    min-height: 1rem;
+}
+
+.partyYoutubeResults {
+    display: grid;
+    gap: 0.35rem;
+    max-height: 13.5rem;
+    overflow-y: auto;
+}
+
+.partyYoutubeResultRow {
+    align-items: center;
+    border-radius: 6px;
+    display: grid;
+    gap: 0.55rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 3rem;
+    padding: 0.35rem;
+}
+
+.partyYoutubeResultRow:hover {
+    background: rgb(255 255 255 / 5%);
+}
+
+.partyYoutubeResultImage {
+    background: rgb(255 255 255 / 8%);
+    border-radius: 4px;
+    display: block;
+    height: 2.35rem;
+    object-fit: cover;
+    width: 2.35rem;
+}
+
+.partyYoutubeResultText {
+    min-width: 0;
+}
+
 .partyColumnHeader {
     align-items: center;
     border-bottom: 1px solid var(--theme-colors-border);

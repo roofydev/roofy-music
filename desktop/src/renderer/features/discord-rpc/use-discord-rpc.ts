@@ -6,7 +6,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '/@/renderer/api';
 import { useItemImageUrl } from '/@/renderer/components/item-image/item-image';
 import { usePartyStore } from '/@/renderer/features/party/party-store';
-import { PartyRoomState } from '/@/shared/types/party-types';
 import {
     useIsRadioActive,
     useRadioPlayer,
@@ -28,6 +27,7 @@ import { LogCategory, logFn } from '/@/renderer/utils/logger';
 import { logMsg } from '/@/renderer/utils/logger-message';
 import { useDebouncedCallback } from '/@/shared/hooks/use-debounced-callback';
 import { LibraryItem, QueueSong, ServerType } from '/@/shared/types/domain-types';
+import { PartyRoomState } from '/@/shared/types/party-types';
 import { PlayerStatus } from '/@/shared/types/types';
 
 const discordRpc = window.api?.discordRpc ?? null;
@@ -255,14 +255,37 @@ const getPublicPartyJoinUrl = (partyState: null | PartyRoomState | undefined) =>
     if (
         !partyState?.isActive ||
         partyState.tunnelStatus.mode !== 'tunnel' ||
-        partyState.tunnelStatus.state !== 'connected' ||
-        !partyState.joinUrl.startsWith('https://')
+        partyState.tunnelStatus.state !== 'connected'
     ) {
         return null;
     }
 
-    return partyState.joinUrl;
+    const joinUrl = partyState.joinUrl.startsWith('https://')
+        ? partyState.joinUrl
+        : partyState.tunnelStatus.url
+          ? `${partyState.tunnelStatus.url.replace(/\/$/, '')}/party/${encodeURIComponent(partyState.code)}`
+          : '';
+
+    if (!joinUrl) {
+        return null;
+    }
+
+    try {
+        const url = new URL(joinUrl);
+        if (url.protocol !== 'https:') {
+            return null;
+        }
+
+        return url.toString();
+    } catch {
+        return null;
+    }
 };
+
+const getPartyDiscordSize = (partyState: PartyRoomState) => ({
+    max: partyState.settings.maxGuests + 1,
+    size: partyState.guests.filter((guest) => guest.status === 'approved').length + 1,
+});
 
 const getPartyDiscordSnapshot = (partyState: null | PartyRoomState | undefined) => {
     const joinUrl = getPublicPartyJoinUrl(partyState);
@@ -271,10 +294,9 @@ const getPartyDiscordSnapshot = (partyState: null | PartyRoomState | undefined) 
         return '';
     }
 
-    const partySize =
-        partyState.guests.filter((guest) => guest.status === 'approved').length + 1;
+    const partySize = getPartyDiscordSize(partyState);
 
-    return `${joinUrl}|${partyState.code}|${partySize}|${partyState.settings.maxGuests + 1}`;
+    return `${joinUrl}|${partyState.code}|${partySize.size}|${partySize.max}`;
 };
 
 const applyPartyDiscordActivity = (
@@ -288,15 +310,40 @@ const applyPartyDiscordActivity = (
     }
 
     activity.partyId = partyState.code;
-    activity.partySize =
-        partyState.guests.filter((guest) => guest.status === 'approved').length + 1;
-    activity.partyMax = partyState.settings.maxGuests + 1;
+    const partySize = getPartyDiscordSize(partyState);
+
+    activity.partySize = partySize.size;
+    activity.partyMax = partySize.max;
     activity.buttons = [
         {
             label: 'Listen together',
             url: joinUrl,
         },
     ];
+};
+
+const createPartyDiscordActivity = (
+    partyState: PartyRoomState,
+    showAsListening: boolean,
+): SetActivity => {
+    const partySize = getPartyDiscordSize(partyState);
+    const activity: SetActivity = {
+        details: 'Hosting a listening party',
+        instance: false,
+        largeImageKey: 'icon',
+        largeImageText: 'Roofy Music party',
+        name: 'Roofy Music Desktop',
+        partyId: partyState.code,
+        partyMax: partySize.max,
+        partySize: partySize.size,
+        state: `${partySize.size} of ${partySize.max} listening`,
+        statusDisplayType: DiscordStatusDisplayType.DETAILS,
+        type: showAsListening ? 2 : 0,
+    };
+
+    applyPartyDiscordActivity(activity, partyState);
+
+    return activity;
 };
 
 export const useDiscordRpc = () => {
@@ -331,6 +378,16 @@ export const useDiscordRpc = () => {
 
     const setActivity = useCallback(
         async (current: ActivityState, previous: ActivityState) => {
+            const publishActivity = async (activity: SetActivity) => {
+                const isConnected = await discordRpc?.isConnected();
+                if (!isConnected) {
+                    previousEnabledRef.current = true;
+                    await discordRpc?.initialize(discordSettings.clientId);
+                }
+
+                discordRpc?.setActivity(activity);
+            };
+
             // Check if track changed by comparing with previous state
             const song = current[0];
             const previousSong = previous[0];
@@ -342,11 +399,24 @@ export const useDiscordRpc = () => {
 
             const isPlayingRadio = isRadioActive && isRadioPlaying;
             const hasTrackOrRadio = Boolean(current[0]) || isPlayingRadio;
+            const partyState = usePartyStore.getState().state;
+            const partySnapshot = getPartyDiscordSnapshot(partyState);
+            const partyActivity =
+                partyState && getPublicPartyJoinUrl(partyState)
+                    ? createPartyDiscordActivity(partyState, discordSettings.showAsListening)
+                    : null;
 
             if (
                 !hasTrackOrRadio || // No track and not playing radio
                 (current[2] === 'paused' && !discordSettings.showPaused) // Paused with show paused setting disabled
             ) {
+                if (partyActivity) {
+                    await publishActivity(partyActivity);
+                    previousPartySnapshotRef.current = partySnapshot;
+                    return;
+                }
+
+                previousPartySnapshotRef.current = partySnapshot;
                 return discordRpc?.clearActivity();
             }
 
@@ -377,13 +447,10 @@ export const useDiscordRpc = () => {
                     type: discordSettings.showAsListening ? 2 : 0,
                 };
 
-                const isConnected = await discordRpc?.isConnected();
-                if (!isConnected) {
-                    previousEnabledRef.current = true;
-                    await discordRpc?.initialize(discordSettings.clientId);
-                }
+                applyPartyDiscordActivity(activity, partyState);
 
-                discordRpc?.setActivity(activity);
+                await publishActivity(activity);
+                previousPartySnapshotRef.current = partySnapshot;
                 return;
             }
 
@@ -398,7 +465,6 @@ export const useDiscordRpc = () => {
                 song.imageId ||
                 undefined;
             const largeImageChanged = currentLargeImageKey !== previousLargeImageKeyRef.current;
-            const partySnapshot = getPartyDiscordSnapshot(usePartyStore.getState().state);
             const partySnapshotChanged = partySnapshot !== previousPartySnapshotRef.current;
 
             /*
@@ -612,16 +678,9 @@ export const useDiscordRpc = () => {
                     activity.largeImageKey = 'icon';
                 }
 
-                applyPartyDiscordActivity(activity, usePartyStore.getState().state);
+                applyPartyDiscordActivity(activity, partyState);
 
-                // Initialize if needed
-                const isConnected = await discordRpc?.isConnected();
-                if (!isConnected) {
-                    previousEnabledRef.current = true;
-
-                    await discordRpc?.initialize(discordSettings.clientId);
-                }
-                discordRpc?.setActivity(activity);
+                await publishActivity(activity);
                 previousLargeImageKeyRef.current = currentLargeImageKey || null;
                 previousPartySnapshotRef.current = partySnapshot;
             }

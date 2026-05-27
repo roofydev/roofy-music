@@ -8,8 +8,10 @@ export const isSafariBrowser = () => {
 };
 
 export const configurePartyAudioElement = (audio: HTMLAudioElement) => {
+    audio.preload = 'auto';
     audio.preservesPitch = true;
     audio.setAttribute('playsinline', 'true');
+    audio.setAttribute('webkit-playsinline', 'true');
 
     const legacySafariAudio = audio as HTMLAudioElement & { webkitPreservesPitch?: boolean };
     if ('webkitPreservesPitch' in legacySafariAudio) {
