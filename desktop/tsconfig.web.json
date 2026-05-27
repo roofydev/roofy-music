@@ -8,6 +8,7 @@
     "src/i18n/**/*",
     "src/shared/**/*",
     "src/remote/**/*",
+    "src/party/**/*",
     "package.json"
   ],
   "compilerOptions": {
@@ -26,6 +27,9 @@
       ],
       "/@/remote/*": [
         "src/remote/*"
+      ],
+      "/@/party/*": [
+        "src/party/*"
       ]
     }
   },

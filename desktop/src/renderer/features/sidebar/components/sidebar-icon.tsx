@@ -76,6 +76,9 @@ export const SidebarIcon = ({ active, route, size }: SidebarIconProps) => {
             case AppRoute.NOW_PLAYING:
                 if (isActive) return <RiPlayFill size={size} />;
                 return <RiPlayLine size={size} />;
+            case AppRoute.PARTY:
+                if (isActive) return <RiRadioFill size={size} />;
+                return <RiRadioLine size={size} />;
             case AppRoute.PLAYLISTS:
                 if (isActive) return <RiPlayListFill size={size} />;
                 return <RiPlayListLine size={size} />;

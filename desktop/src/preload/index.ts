@@ -10,6 +10,7 @@ import { localSettings } from './local-settings';
 import { lyrics } from './lyrics';
 import { mpris } from './mpris';
 import { mpvPlayer, mpvPlayerListener } from './mpv-player';
+import { party } from './party';
 import { remote } from './remote';
 import { utils } from './utils';
 import { youtubeMusic } from './youtube-music';
@@ -26,6 +27,7 @@ const api = {
     mpris,
     mpvPlayer,
     mpvPlayerListener,
+    party,
     remote,
     utils,
     youtubeMusic,

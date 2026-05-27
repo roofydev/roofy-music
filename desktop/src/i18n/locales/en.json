@@ -478,6 +478,22 @@
         "favorites": {
             "title": "$t(entity.favorite, {\"count\": 2})"
         },
+        "party": {
+            "title": "Party",
+            "liveChat": "Live chat",
+            "guests": "Guests",
+            "requestQueue": "Request queue",
+            "invite": "Invite",
+            "roomSettings": "Room settings",
+            "moderation": "Moderation",
+            "endRoom": "End room",
+            "uptime": "Uptime",
+            "listeners": "Listeners",
+            "queueLock": "Queue lock",
+            "mic": "Mic",
+            "roomTheme": "Room theme",
+            "bandwidthWarning": "Streaming to many guests uses your upload bandwidth."
+        },
         "windowBar": {
             "paused": "(Paused) ",
             "privateMode": "(Private mode)"

@@ -183,3 +183,33 @@
 :global([data-theme="retroMonochrome"]) .toolbar-overlay .action-group {
     background: rgb(0 0 0 / 82%);
 }
+
+:global([data-video-fullscreen]) .toolbar-playerbar .status-badge,
+:global([data-video-fullscreen]) .toolbar-playerbar .action-group {
+    background: transparent;
+    border-color: transparent;
+    backdrop-filter: none;
+}
+
+:global([data-video-fullscreen]) .toolbar-playerbar .status-badge,
+:global([data-video-fullscreen]) .toolbar-playerbar .action-button,
+:global([data-video-fullscreen]) .toolbar-playerbar .saved-indicator {
+    color: var(--theme-colors-foreground);
+}
+
+:global([data-video-fullscreen]) .toolbar-playerbar .action-button svg,
+:global([data-video-fullscreen]) .toolbar-playerbar .saved-indicator svg {
+    color: var(--theme-colors-foreground);
+}
+
+:global([data-theme="retroMonochrome"]) :global([data-video-fullscreen]) .toolbar-playerbar .status-badge,
+:global([data-theme="retroMonochrome"]) :global([data-video-fullscreen]) .toolbar-playerbar .action-group {
+    background: transparent;
+    border-color: transparent;
+    color: var(--retro-text, #f2f2f2);
+}
+
+:global([data-theme="retroMonochrome"]) :global([data-video-fullscreen]) .toolbar-playerbar .action-button svg,
+:global([data-theme="retroMonochrome"]) :global([data-video-fullscreen]) .toolbar-playerbar .saved-indicator svg {
+    color: var(--retro-text, #f2f2f2);
+}

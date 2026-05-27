@@ -29,6 +29,7 @@ import semver from 'semver';
 import packageJson from '../../package.json';
 import { shutdownLocalFirst, startLocalFirst } from './features/core/local-first';
 import { disableMediaKeys, enableMediaKeys } from './features/core/player/media-keys';
+import { shutdownParty } from './features/core/party';
 import { shutdownServer } from './features/core/remote';
 import { store } from './features/core/settings';
 import MenuBuilder, { MenuPlaybackState } from './menu';
@@ -637,6 +638,7 @@ async function createWindow(first = true): Promise<void> {
 
     ipcMain.on('window-quit', () => {
         shutdownLocalFirst();
+        shutdownParty();
         shutdownServer();
         mainWindow?.close();
         app.exit();
@@ -1025,6 +1027,7 @@ ipcMain.handle('power-save-blocker-is-started', () => {
 app.on('window-all-closed', () => {
     globalShortcut.unregisterAll();
     shutdownLocalFirst();
+    shutdownParty();
     // Respect the OSX convention of having the application in memory even
     // after all windows have been closed
     if (isMacOS()) {

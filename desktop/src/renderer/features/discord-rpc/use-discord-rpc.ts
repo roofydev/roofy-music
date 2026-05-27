@@ -5,6 +5,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '/@/renderer/api';
 import { useItemImageUrl } from '/@/renderer/components/item-image/item-image';
+import { usePartyStore } from '/@/renderer/features/party/party-store';
+import { PartyRoomState } from '/@/shared/types/party-types';
 import {
     useIsRadioActive,
     useRadioPlayer,
@@ -249,6 +251,54 @@ const resolvePublicArtworkUrl = async (song: QueueSong) => {
     return undefined;
 };
 
+const getPublicPartyJoinUrl = (partyState: null | PartyRoomState | undefined) => {
+    if (
+        !partyState?.isActive ||
+        partyState.tunnelStatus.mode !== 'tunnel' ||
+        partyState.tunnelStatus.state !== 'connected' ||
+        !partyState.joinUrl.startsWith('https://')
+    ) {
+        return null;
+    }
+
+    return partyState.joinUrl;
+};
+
+const getPartyDiscordSnapshot = (partyState: null | PartyRoomState | undefined) => {
+    const joinUrl = getPublicPartyJoinUrl(partyState);
+
+    if (!joinUrl || !partyState) {
+        return '';
+    }
+
+    const partySize =
+        partyState.guests.filter((guest) => guest.status === 'approved').length + 1;
+
+    return `${joinUrl}|${partyState.code}|${partySize}|${partyState.settings.maxGuests + 1}`;
+};
+
+const applyPartyDiscordActivity = (
+    activity: SetActivity,
+    partyState: null | PartyRoomState | undefined,
+) => {
+    const joinUrl = getPublicPartyJoinUrl(partyState);
+
+    if (!joinUrl || !partyState) {
+        return;
+    }
+
+    activity.partyId = partyState.code;
+    activity.partySize =
+        partyState.guests.filter((guest) => guest.status === 'approved').length + 1;
+    activity.partyMax = partyState.settings.maxGuests + 1;
+    activity.buttons = [
+        {
+            label: 'Listen together',
+            url: joinUrl,
+        },
+    ];
+};
+
 export const useDiscordRpc = () => {
     const discordSettings = useDiscordSettings();
     const lastfmApiKey = useLastfmApiKey();
@@ -272,6 +322,7 @@ export const useDiscordRpc = () => {
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const previousActivityStateRef = useRef<ActivityState | null>(null);
     const previousLargeImageKeyRef = useRef<null | string>(null);
+    const previousPartySnapshotRef = useRef('');
 
     // Update imageUrl ref when it changes
     useEffect(() => {
@@ -347,6 +398,8 @@ export const useDiscordRpc = () => {
                 song.imageId ||
                 undefined;
             const largeImageChanged = currentLargeImageKey !== previousLargeImageKeyRef.current;
+            const partySnapshot = getPartyDiscordSnapshot(usePartyStore.getState().state);
+            const partySnapshotChanged = partySnapshot !== previousPartySnapshotRef.current;
 
             /*
                 1. If the song has just started, update status
@@ -354,6 +407,7 @@ export const useDiscordRpc = () => {
                 3. If the current song id is completely different, update status
                 4. If the player state changed, update status
                 5. If the song artwork resolved after the last update, refresh the image
+                6. If the public party link or guest count changed, refresh the invite button
             */
             if (
                 previous[1] === 0 ||
@@ -361,7 +415,8 @@ export const useDiscordRpc = () => {
                 trackChangedByState ||
                 trackChanged ||
                 current[2] !== previous[2] ||
-                largeImageChanged
+                largeImageChanged ||
+                partySnapshotChanged
             ) {
                 if (trackChangedByState || trackChanged) {
                     setlastUniqueId(song._uniqueId);
@@ -557,6 +612,8 @@ export const useDiscordRpc = () => {
                     activity.largeImageKey = 'icon';
                 }
 
+                applyPartyDiscordActivity(activity, usePartyStore.getState().state);
+
                 // Initialize if needed
                 const isConnected = await discordRpc?.isConnected();
                 if (!isConnected) {
@@ -566,6 +623,7 @@ export const useDiscordRpc = () => {
                 }
                 discordRpc?.setActivity(activity);
                 previousLargeImageKeyRef.current = currentLargeImageKey || null;
+                previousPartySnapshotRef.current = partySnapshot;
             }
         },
         [
@@ -640,6 +698,19 @@ export const useDiscordRpc = () => {
         // Set activity immediately when Discord RPC is enabled
         debouncedSetActivity(initialState, initialState);
 
+        const unsubPartyChange = usePartyStore.subscribe((state, prevState) => {
+            const currentSnapshot = getPartyDiscordSnapshot(state.state);
+            const previousSnapshot = getPartyDiscordSnapshot(prevState.state);
+
+            if (currentSnapshot === previousSnapshot) {
+                return;
+            }
+
+            const current = getCurrentActivityState();
+            const previous = previousActivityStateRef.current || current;
+            debouncedSetActivity(current, previous);
+        });
+
         const unsubSongChange = usePlayerStore.subscribe(
             (state): ActivityState => {
                 const currentSong = state.getCurrentSong();
@@ -681,6 +752,7 @@ export const useDiscordRpc = () => {
         );
 
         return () => {
+            unsubPartyChange();
             unsubSongChange();
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);

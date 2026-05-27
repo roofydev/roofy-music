@@ -1,0 +1,708 @@
+.partyDashboard {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.partyDashboardGrid {
+    display: grid;
+    flex: 1;
+    gap: 0;
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr) minmax(280px, 320px);
+    min-height: 0;
+    overflow: hidden;
+}
+
+.partyColumn {
+    border-right: 1px solid var(--theme-colors-border);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.partyColumn:last-child {
+    border-right: none;
+}
+
+.partyColumnHeader {
+    align-items: center;
+    border-bottom: 1px solid var(--theme-colors-border);
+    display: flex;
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    gap: 0.5rem;
+    justify-content: space-between;
+    letter-spacing: 0.08em;
+    padding: 0.75rem 1rem;
+    text-transform: uppercase;
+}
+
+.partyColumnBody {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.partyColumnScroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.75rem 1rem;
+}
+
+.partyColumnFooter {
+    border-top: 1px solid var(--theme-colors-border);
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    padding: 0.65rem 1rem;
+    text-transform: uppercase;
+}
+
+.partyRoomHeader {
+    align-items: center;
+    border-bottom: 1px solid var(--theme-colors-border);
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+}
+
+.partyRoomMeta {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.partyRoomCode {
+    font-family: var(--theme-font-family-monospace, monospace);
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+}
+
+.partyLiveBadge {
+    align-items: center;
+    background: rgb(220 38 38 / 15%);
+    border: 1px solid rgb(220 38 38 / 35%);
+    border-radius: 999px;
+    color: #f87171;
+    display: inline-flex;
+    font-size: 0.7rem;
+    font-weight: 700;
+    gap: 0.35rem;
+    letter-spacing: 0.08em;
+    padding: 0.25rem 0.65rem;
+    text-transform: uppercase;
+}
+
+.partyLiveDot {
+    background: #ef4444;
+    border-radius: 50%;
+    height: 0.45rem;
+    width: 0.45rem;
+}
+
+.partyMetaStat {
+    color: var(--theme-colors-text-muted);
+    font-size: 0.75rem;
+}
+
+.partyMetaStat strong {
+    color: var(--theme-colors-text);
+    display: block;
+    font-size: 0.95rem;
+}
+
+.partyHeaderActions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.partyBulkActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0.65rem 1rem 0;
+}
+
+.partyGuestRow {
+    align-items: center;
+    display: flex;
+    gap: 0.65rem;
+    padding: 0.45rem 0;
+}
+
+.partyAvatar {
+    align-items: center;
+    border-radius: 50%;
+    color: #fff;
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    height: 2rem;
+    justify-content: center;
+    width: 2rem;
+}
+
+.partyGuestInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.partyGuestName {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.partyGuestRole {
+    color: var(--theme-colors-text-muted);
+    font-size: 0.7rem;
+}
+
+.partyQueueTable {
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    width: 100%;
+}
+
+.partyQueueTable th {
+    border-bottom: 1px solid var(--theme-colors-border);
+    color: var(--theme-colors-text-muted);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 0.5rem 0.35rem;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.partyQueueTable td {
+    border-bottom: 1px solid rgb(255 255 255 / 6%);
+    padding: 0.55rem 0.35rem;
+    vertical-align: middle;
+}
+
+.partyQueueRow {
+    position: relative;
+}
+
+.partyQueueRowDragging {
+    opacity: 0.45;
+}
+
+.partyQueueRowOverTop::before,
+.partyQueueRowOverBottom::after {
+    background: var(--theme-colors-primary, #6366f1);
+    content: '';
+    height: 2px;
+    left: 0;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+    z-index: 1;
+}
+
+.partyQueueRowOverTop::before {
+    top: 0;
+}
+
+.partyQueueRowOverBottom::after {
+    bottom: 0;
+}
+
+.partyQueueIndexCell {
+    width: 2.75rem;
+}
+
+.partyQueueIndexInner {
+    align-items: center;
+    display: flex;
+    gap: 0.15rem;
+}
+
+.partyQueueDragHandle {
+    align-items: center;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--theme-colors-text-muted);
+    cursor: grab;
+    display: inline-flex;
+    justify-content: center;
+    padding: 0.1rem;
+    touch-action: none;
+}
+
+.partyQueueDragHandle:active {
+    cursor: grabbing;
+}
+
+.partyQueueDragHandle:hover:not(:disabled) {
+    background: rgb(255 255 255 / 8%);
+    color: var(--theme-colors-text);
+}
+
+.partyQueueDragHandleDisabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+}
+
+.partyTrackCell {
+    align-items: center;
+    display: flex;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.partyTrackThumb {
+    background: var(--theme-colors-background-muted);
+    border-radius: 4px;
+    flex-shrink: 0;
+    height: 2rem;
+    object-fit: cover;
+    width: 2rem;
+}
+
+.partyVoteBar {
+    background: rgb(255 255 255 / 8%);
+    border-radius: 999px;
+    height: 0.35rem;
+    overflow: hidden;
+    width: 3rem;
+}
+
+.partyVoteFill {
+    background: var(--theme-colors-primary);
+    height: 100%;
+}
+
+.partyChatMessage {
+    display: flex;
+    gap: 0.55rem;
+    padding: 0.45rem 0;
+}
+
+.partyChatBody {
+    flex: 1;
+    min-width: 0;
+}
+
+.partyChatMeta {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.partyChatInputRow {
+    border-top: 1px solid var(--theme-colors-border);
+    display: flex;
+    gap: 0.35rem;
+    padding: 0.75rem 1rem;
+}
+
+.partyDjToolsBar {
+    align-items: center;
+    background: var(--theme-colors-background-muted);
+    border-top: 1px solid var(--theme-colors-border);
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    padding: 0.55rem 1rem;
+}
+
+.partyDjToolGroup {
+    align-items: center;
+    display: flex;
+    gap: 0.45rem;
+}
+
+.partyDjToolLabel {
+    color: var(--theme-colors-text-muted);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.partyMicSettings {
+    display: flex;
+    flex-direction: column;
+}
+
+.partySetupScreen {
+    align-items: flex-start;
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 2rem 1.5rem 2.5rem;
+}
+
+.partySetupInner {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 42rem;
+    width: 100%;
+}
+
+.partySetupHero {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.partySetupTitleRow {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.partySetupTitle {
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin: 0;
+}
+
+.partySetupBadge {
+    background: rgb(255 255 255 / 6%);
+    border: 1px solid var(--theme-colors-border);
+    border-radius: 999px;
+    color: var(--theme-colors-text-muted);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 0.2rem 0.55rem;
+    text-transform: uppercase;
+}
+
+.partySetupSubtitle {
+    color: var(--theme-colors-text-muted);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    margin: 0;
+    max-width: 36rem;
+}
+
+.partySetupCard {
+    background: rgb(255 255 255 / 2%);
+    border: 1px solid var(--theme-colors-border);
+    border-radius: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.35rem 1.35rem 1.5rem;
+}
+
+.partySetupCardTitle {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.partySetupForm {
+    display: flex;
+    flex-direction: column;
+    gap: 1.35rem;
+}
+
+.partySetupSection {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.partySetupSection + .partySetupSection {
+    border-top: 1px solid var(--theme-colors-border);
+    padding-top: 1.35rem;
+}
+
+.partySetupSectionTitle {
+    color: var(--theme-colors-text-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.partySettingField {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.partySettingLabel {
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.partySettingHint {
+    color: var(--theme-colors-text-muted);
+    font-size: 0.78rem;
+    line-height: 1.45;
+    margin: 0;
+}
+
+.partySettingSwitches {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.partySettingHostRow {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr);
+}
+
+.partySettingInput {
+    width: 100%;
+}
+
+.partySettingsStack {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.partySetupFooter {
+    align-items: flex-start;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.partySetupHint {
+    color: var(--theme-colors-text-muted);
+    font-size: 0.78rem;
+    line-height: 1.45;
+    margin: 0;
+}
+
+@media (width <= 640px) {
+    .partySetupScreen {
+        padding: 1.25rem 1rem 2rem;
+    }
+
+    .partySettingHostRow {
+        grid-template-columns: 1fr;
+    }
+}
+
+.partyInviteModalContent {
+    background: var(--theme-colors-background);
+    border: 1px solid var(--theme-colors-border);
+}
+
+.partyInviteModalHeader {
+    border-bottom: 1px solid var(--theme-colors-border);
+    margin-bottom: 0;
+    padding: 1rem 1.25rem;
+}
+
+.partyInviteModalTitle {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.partyInviteModalBody {
+    padding: 1.25rem;
+}
+
+.partyInviteLead {
+    color: var(--theme-colors-text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0 0 1.25rem;
+}
+
+.partyInviteCodeInline {
+    color: var(--theme-colors-text);
+    font-family: var(--theme-font-family-monospace, monospace);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+}
+
+.partyInviteLayout {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: auto minmax(0, 1fr);
+}
+
+.partyInviteQrBlock {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.partyInviteQrImage {
+    background: #fff;
+    border: 1px solid var(--theme-colors-border);
+    border-radius: 0.65rem;
+    display: block;
+    height: 11rem;
+    object-fit: contain;
+    padding: 0.5rem;
+    width: 11rem;
+}
+
+.partyInviteQrSkeleton {
+    animation: partyInvitePulse 1.2s ease-in-out infinite;
+    background: rgb(255 255 255 / 6%);
+    border: 1px solid var(--theme-colors-border);
+    border-radius: 0.65rem;
+    height: 11rem;
+    width: 11rem;
+}
+
+.partyInviteQrFallback {
+    align-items: center;
+    background: rgb(255 255 255 / 4%);
+    border: 1px dashed var(--theme-colors-border);
+    border-radius: 0.65rem;
+    color: var(--theme-colors-text-muted);
+    display: flex;
+    height: 11rem;
+    justify-content: center;
+    padding: 1rem;
+    text-align: center;
+    width: 11rem;
+}
+
+.partyInviteQrCaption {
+    color: var(--theme-colors-text-muted);
+    margin: 0;
+    text-align: center;
+}
+
+.partyInviteDetails {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.partyInviteRoomCode {
+    align-items: center;
+    background: rgb(255 255 255 / 3%);
+    border: 1px solid var(--theme-colors-border);
+    border-radius: 0.65rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    padding: 0.85rem 1rem;
+}
+
+.partyInviteRoomCodeLabel {
+    color: var(--theme-colors-text-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    width: 100%;
+}
+
+.partyInviteRoomCodeValue {
+    flex: 1;
+    font-family: var(--theme-font-family-monospace, monospace);
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    min-width: 0;
+}
+
+.partyInviteLinkBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.partyInviteLinkLabel {
+    color: var(--theme-colors-text-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.partyInviteLinkBox {
+    background: rgb(0 0 0 / 25%);
+    border: 1px solid var(--theme-colors-border);
+    border-radius: 0.5rem;
+    color: var(--theme-colors-text-muted);
+    font-family: var(--theme-font-family-monospace, monospace);
+    font-size: 0.72rem;
+    line-height: 1.45;
+    max-height: 5.5rem;
+    overflow-y: auto;
+    padding: 0.65rem 0.75rem;
+    word-break: break-all;
+}
+
+@keyframes partyInvitePulse {
+    0%,
+    100% {
+        opacity: 0.45;
+    }
+
+    50% {
+        opacity: 0.85;
+    }
+}
+
+@media (width <= 560px) {
+    .partyInviteLayout {
+        grid-template-columns: 1fr;
+    }
+
+    .partyInviteQrBlock {
+        justify-content: center;
+    }
+}
+
+@media (width <= 1200px) {
+    .partyDashboardGrid {
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+    }
+
+    .partyGuestsColumn {
+        display: none;
+    }
+}
+
+@media (width <= 900px) {
+    .partyDashboardGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .partyChatColumn {
+        display: none;
+    }
+}

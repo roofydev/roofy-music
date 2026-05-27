@@ -644,6 +644,28 @@ const RemoteSettingsSchema = z.object({
     username: z.string(),
 });
 
+const PartySettingsSchema = z.object({
+    allowGuestQueueReorder: z.boolean(),
+    autoApproveJoins: z.boolean(),
+    autoApproveSuggestions: z.boolean(),
+    chatRateLimitEnabled: z.boolean().default(false),
+    cloudflaredPath: z.string().optional(),
+    controlMode: z.enum(['all', 'host', 'selected']),
+    exposureMode: z.enum(['lan', 'tunnel']),
+    hostDisplayName: z.string(),
+    maxGuests: z.number(),
+    micAutoGainControl: z.boolean().default(false),
+    micDeviceId: z.string().optional(),
+    micEchoCancellation: z.boolean().default(false),
+    micGain: z.number().default(100),
+    micNoiseSuppression: z.boolean().default(true),
+    port: z.number(),
+    queueLocked: z.boolean(),
+    roomTheme: z.enum(['dark', 'dynamic']),
+    voteToSkipEnabled: z.boolean(),
+    voteToSkipThreshold: z.number(),
+});
+
 const WindowSettingsSchema = z.object({
     disableAutoUpdate: z.boolean(),
     exitToTray: z.boolean(),
@@ -695,6 +717,7 @@ export const ValidationSettingsStateSchema = z.object({
     lyrics: LyricsSettingsSchema,
     lyricsDisplay: z.record(z.string(), LyricsDisplaySettingsSchema),
     playback: PlaybackSettingsSchema,
+    party: PartySettingsSchema,
     queryBuilder: QueryBuilderSettingsSchema,
     remote: RemoteSettingsSchema,
     tab: z.union([
@@ -975,6 +998,12 @@ export const playerItems: SortableItem<PlayerItem>[] = [
 ];
 
 export const sidebarItems: SidebarItemType[] = [
+    {
+        disabled: false,
+        id: 'Party',
+        label: 'Party',
+        route: AppRoute.PARTY,
+    },
     {
         disabled: true,
         id: 'Now Playing',
@@ -1869,6 +1898,25 @@ const initialState: SettingsState = {
         port: 4333,
         username: 'roofy',
     },
+    party: {
+        allowGuestQueueReorder: false,
+        autoApproveJoins: true,
+        autoApproveSuggestions: false,
+        chatRateLimitEnabled: false,
+        controlMode: 'host',
+        exposureMode: 'tunnel',
+        hostDisplayName: 'Host',
+        maxGuests: 20,
+        micAutoGainControl: false,
+        micEchoCancellation: false,
+        micGain: 100,
+        micNoiseSuppression: true,
+        port: 4334,
+        queueLocked: false,
+        roomTheme: 'dark',
+        voteToSkipEnabled: false,
+        voteToSkipThreshold: 0.5,
+    },
     tab: 'general',
     visualizer: {
         audiomotionanalyzer: {
@@ -2466,10 +2514,46 @@ export const useSettingsStore = createWithEqualityFn<SettingsSlice>()(
                     }
                 }
 
+                if (version <= 31) {
+                    state.party = {
+                        ...initialState.party,
+                        ...state.party,
+                        autoApproveJoins: true,
+                        controlMode: state.party?.controlMode || initialState.party.controlMode,
+                    };
+                }
+
+                if (version <= 32) {
+                    state.party = {
+                        ...initialState.party,
+                        ...state.party,
+                        allowGuestQueueReorder:
+                            state.party?.allowGuestQueueReorder ??
+                            initialState.party.allowGuestQueueReorder,
+                    };
+                }
+
+                if (version <= 33) {
+                    state.party = {
+                        ...initialState.party,
+                        ...state.party,
+                        micAutoGainControl:
+                            state.party?.micAutoGainControl ??
+                            initialState.party.micAutoGainControl,
+                        micEchoCancellation:
+                            state.party?.micEchoCancellation ??
+                            initialState.party.micEchoCancellation,
+                        micGain: state.party?.micGain ?? initialState.party.micGain,
+                        micNoiseSuppression:
+                            state.party?.micNoiseSuppression ??
+                            initialState.party.micNoiseSuppression,
+                    };
+                }
+
                 return persistedState;
             },
             name: 'store_settings',
-            version: 31,
+            version: 34,
         },
     ),
 );
@@ -2519,6 +2603,8 @@ export const useLyricsDisplaySettings = (key: string = 'default') =>
     useSettingsStore((state) => state.lyricsDisplay[key] || state.lyricsDisplay.default, shallow);
 
 export const useRemoteSettings = () => useSettingsStore((state) => state.remote, shallow);
+
+export const usePartySettings = () => useSettingsStore((state) => state.party, shallow);
 
 export const useFontSettings = () => useSettingsStore((state) => state.font, shallow);
 

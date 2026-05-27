@@ -38,5 +38,10 @@ Expand-Archive -Path 'deno.zip' -DestinationPath $outDir -Force
 Remove-Item 'deno.zip'
 Write-Host "Downloaded Deno: $($denoAsset.name)"
 
+# --- cloudflared ---
+Write-Host 'Fetching cloudflared...'
+Invoke-WebRequest -Uri 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe' -OutFile "$outDir/cloudflared.exe"
+Write-Host 'Downloaded cloudflared.exe'
+
 Write-Host '--- Bundled binaries ---'
 Get-ChildItem -Path $outDir | ForEach-Object { Write-Host $_.Name }
