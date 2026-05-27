@@ -16,3 +16,5 @@ export const hashAvatarColor = (value: string) => {
     }
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
+
+export const COMMON_PARTY_EMOJIS = ['😀', '😂', '🔥', '❤️', '👍', '🎵', '🎉', '💯', '🙌', '✨'];

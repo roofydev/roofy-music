@@ -1587,6 +1587,59 @@ ul {
     color: var(--party-muted);
 }
 
+.chat-emoji-picker {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.chat-emoji-btn-active {
+    color: #fff;
+    background: var(--party-surface);
+    border-color: var(--party-border-light);
+}
+
+.chat-emoji-btn-active svg {
+    color: #fff;
+}
+
+.chat-emoji-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 0.45rem);
+    z-index: 8;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.25rem;
+    width: min(220px, 70vw);
+    padding: 0.45rem;
+    background: var(--party-surface);
+    border: 1px solid var(--party-border);
+    border-radius: var(--party-radius);
+    box-shadow: 0 -8px 24px rgb(0 0 0 / 45%);
+}
+
+.chat-emoji-option {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    aspect-ratio: 1;
+    padding: 0;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: var(--party-radius);
+}
+
+.chat-emoji-option:hover {
+    background: rgb(255 255 255 / 8%);
+}
+
+.footer-chat-mobile .chat-emoji-menu {
+    bottom: calc(100% + 0.55rem);
+}
+
 /* ── Search results ── */
 
 .search-results {

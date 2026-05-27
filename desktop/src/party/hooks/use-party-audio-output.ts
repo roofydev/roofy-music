@@ -1,5 +1,7 @@
 import { RefObject, useEffect, useRef, useState } from 'react';
 
+import { configurePartyAudioElement } from '/@/party/utils/party-audio';
+
 const clampVolume = (value: number) => Math.min(1, Math.max(0, value));
 
 export const usePartyAudioOutput = (
@@ -24,6 +26,8 @@ export const usePartyAudioOutput = (
                 connectFrameRef.current = requestAnimationFrame(connectAudio);
                 return;
             }
+
+            configurePartyAudioElement(audio);
 
             try {
                 const AudioContextClass =

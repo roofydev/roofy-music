@@ -42,6 +42,8 @@ import {
 import { PartyArtworkVisualizer } from '/@/party/components/party-artwork-visualizer';
 import { usePartyAudioOutput } from '/@/party/hooks/use-party-audio-output';
 import { usePartyVoiceReceiver } from '/@/party/hooks/use-party-voice-receiver';
+import { configurePartyAudioElement, isSafariBrowser } from '/@/party/utils/party-audio';
+import { COMMON_PARTY_EMOJIS } from '/@/shared/party-utils';
 
 import {
     PartyChatMessage,
@@ -308,6 +310,59 @@ const ArtworkImage = ({ artworkUrl }: { artworkUrl?: null | string }) => {
             onError={() => setFailed(true)}
             src={artworkUrl}
         />
+    );
+};
+
+const PartyChatEmojiPicker = ({ onSelect }: { onSelect: (emoji: string) => void }) => {
+    const [open, setOpen] = useState(false);
+    const rootRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!open) return;
+
+        const handlePointerDown = (event: PointerEvent) => {
+            if (!rootRef.current?.contains(event.target as Node)) {
+                setOpen(false);
+            }
+        };
+
+        document.addEventListener('pointerdown', handlePointerDown);
+        return () => document.removeEventListener('pointerdown', handlePointerDown);
+    }, [open]);
+
+    const handleSelect = (emoji: string) => {
+        onSelect(emoji);
+        setOpen(false);
+    };
+
+    return (
+        <div className="chat-emoji-picker" ref={rootRef}>
+            <button
+                aria-expanded={open}
+                aria-haspopup="listbox"
+                aria-label="Emoji"
+                className={`icon-btn chat-emoji-btn${open ? ' chat-emoji-btn-active' : ''}`}
+                onClick={() => setOpen((value) => !value)}
+                type="button"
+            >
+                <RiEmotionLine />
+            </button>
+            {open && (
+                <div aria-label="Emoji picker" className="chat-emoji-menu" role="listbox">
+                    {COMMON_PARTY_EMOJIS.map((emoji) => (
+                        <button
+                            key={emoji}
+                            aria-label={emoji}
+                            className="chat-emoji-option"
+                            onClick={() => handleSelect(emoji)}
+                            type="button"
+                        >
+                            {emoji}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
     );
 };
 
@@ -660,6 +715,7 @@ export const PartyApp = () => {
         lastAppliedStatusRef.current = null;
 
         const absoluteUrl = new URL(track.streamUrl, window.location.origin).href;
+        configurePartyAudioElement(audio);
         if (audio.src !== absoluteUrl) {
             audio.src = absoluteUrl;
             audio.load();
@@ -798,6 +854,17 @@ export const PartyApp = () => {
                 }, SEEK_DEBOUNCE_MS);
 
                 send({ type: 'sync_request' });
+                return;
+            }
+
+            // Safari routes audio through Web Audio; playbackRate nudges change pitch audibly.
+            if (isSafariBrowser()) {
+                const nowMs = Date.now();
+                if (nowMs - lastSeekAtRef.current < MIN_SEEK_INTERVAL_MS) return;
+
+                audio.currentTime = Math.max(0, expectedSeconds);
+                audio.playbackRate = 1;
+                lastSeekAtRef.current = nowMs;
                 return;
             }
 
@@ -1098,9 +1165,9 @@ export const PartyApp = () => {
                 placeholder="Say something..."
                 value={chatInput}
             />
-            <button aria-label="Emoji" className="icon-btn chat-emoji-btn" disabled type="button">
-                <RiEmotionLine />
-            </button>
+            <PartyChatEmojiPicker
+                onSelect={(emoji) => setChatInput((current) => `${current}${emoji}`)}
+            />
             <button
                 aria-label="Send message"
                 className="chat-compose-btn"
@@ -1384,7 +1451,7 @@ export const PartyApp = () => {
                     </button>
                 </div>
 
-                <audio preload="auto" ref={audioRef} />
+                <audio playsInline preload="auto" ref={audioRef} />
             </div>
         </section>
     );
@@ -1749,6 +1816,11 @@ export const PartyApp = () => {
                                     onChange={(event) => setChatInput(event.currentTarget.value)}
                                     placeholder="Say something..."
                                     value={chatInput}
+                                />
+                                <PartyChatEmojiPicker
+                                    onSelect={(emoji) =>
+                                        setChatInput((current) => `${current}${emoji}`)
+                                    }
                                 />
                                 <button
                                     aria-label="Send message"
