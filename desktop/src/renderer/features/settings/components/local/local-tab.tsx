@@ -96,6 +96,12 @@ export const LocalTab = () => {
     const [mobileImportQrError, setMobileImportQrError] = useState(false);
     const [pairingQrDataUrl, setPairingQrDataUrl] = useState<null | string>(null);
     const [pairingQrError, setPairingQrError] = useState(false);
+    const [tagEditorPath, setTagEditorPath] = useState('');
+    const [tagTitle, setTagTitle] = useState('');
+    const [tagArtist, setTagArtist] = useState('');
+    const [tagAlbum, setTagAlbum] = useState('');
+    const [tagAlbumArtist, setTagAlbumArtist] = useState('');
+    const [tagArtworkUrl, setTagArtworkUrl] = useState('');
 
     const refresh = async () => {
         const next = await window.api.localFirst.status();
@@ -645,6 +651,101 @@ export const LocalTab = () => {
                         variant="subtle"
                     >
                         Open folder
+                    </Button>
+                </Group>
+            </Stack>
+
+            <Stack gap="sm">
+                <Text fw={600}>Edit file tags</Text>
+                <Text c="dimmed" size="sm">
+                    Probe or rewrite embedded tags on a file in your library folder (uses ffmpeg).
+                </Text>
+                <TextInput
+                    label="Audio file path"
+                    onChange={(event) => setTagEditorPath(event.currentTarget.value)}
+                    placeholder="C:\Music\library\Downloads\Artist\Song.mp3"
+                    value={tagEditorPath}
+                />
+                <Group grow>
+                    <TextInput
+                        label="Title"
+                        onChange={(event) => setTagTitle(event.currentTarget.value)}
+                        value={tagTitle}
+                    />
+                    <TextInput
+                        label="Artist"
+                        onChange={(event) => setTagArtist(event.currentTarget.value)}
+                        value={tagArtist}
+                    />
+                </Group>
+                <Group grow>
+                    <TextInput
+                        label="Album"
+                        onChange={(event) => setTagAlbum(event.currentTarget.value)}
+                        value={tagAlbum}
+                    />
+                    <TextInput
+                        label="Album artist"
+                        onChange={(event) => setTagAlbumArtist(event.currentTarget.value)}
+                        value={tagAlbumArtist}
+                    />
+                </Group>
+                <TextInput
+                    label="Artwork URL (optional)"
+                    onChange={(event) => setTagArtworkUrl(event.currentTarget.value)}
+                    value={tagArtworkUrl}
+                />
+                <Group>
+                    <Button
+                        disabled={busy || !tagEditorPath}
+                        onClick={() =>
+                            run(async () => {
+                                const tags = await window.api.localFirst.probeAudioTags(tagEditorPath);
+                                setTagTitle(tags.title || '');
+                                setTagArtist(tags.artist || '');
+                                setTagAlbum(tags.album || '');
+                                setTagAlbumArtist(tags.albumArtist || '');
+                                setMessage('Tags loaded from file.');
+                            })
+                        }
+                        variant="light"
+                    >
+                        Probe tags
+                    </Button>
+                    <Button
+                        disabled={busy || !tagEditorPath || !tagTitle}
+                        onClick={() =>
+                            run(async () => {
+                                await window.api.localFirst.writeAudioTags({
+                                    album: tagAlbum || undefined,
+                                    albumArtist: tagAlbumArtist || undefined,
+                                    artist: tagArtist || undefined,
+                                    artworkUrl: tagArtworkUrl || undefined,
+                                    filePath: tagEditorPath,
+                                    title: tagTitle,
+                                });
+                                setMessage('Tags written to file. Run a Navidrome scan to refresh the library.');
+                            })
+                        }
+                    >
+                        Save tags
+                    </Button>
+                    <Button
+                        disabled={busy || !tagEditorPath}
+                        onClick={() =>
+                            run(async () => {
+                                await window.api.localFirst.enrichAudioFile(tagEditorPath);
+                                const tags = await window.api.localFirst.probeAudioTags(tagEditorPath);
+                                setTagTitle(tags.title || tagTitle);
+                                setTagArtist(tags.artist || tagArtist);
+                                setTagAlbum(tags.album || tagAlbum);
+                                setTagAlbumArtist(tags.albumArtist || tagAlbumArtist);
+                                setMessage('MusicBrainz enrichment applied.');
+                            })
+                        }
+                        variant="subtle"
+                    >
+                        Enrich (MusicBrainz)
                     </Button>
                 </Group>
             </Stack>

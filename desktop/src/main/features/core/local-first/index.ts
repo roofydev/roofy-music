@@ -27,7 +27,7 @@ import {
     spotdlSongToNormalizedTrack,
     summarizeSpotdlPreview,
 } from './spotdl';
-import { enrichAudioFileMetadata } from './metadata-enrichment';
+import { enrichAudioFileMetadata, probeAudioTags } from './metadata-enrichment';
 
 import { applyHandoffState, requestHandoffState } from '/@/main/features/core/handoff';
 import { getMainWindow } from '/@/main/index';
@@ -3727,6 +3727,45 @@ const getLocalFirstStatus = (message = ''): LocalFirstStatus => {
         },
     };
 };
+
+ipcMain.handle('roofy-local-probe-audio-tags', (_event, filePath: string) => {
+    const normalizedPath = String(filePath || '').trim();
+    if (!normalizedPath || !existsSync(normalizedPath)) {
+        throw new Error('A valid audio file path is required.');
+    }
+    const ffprobe = getToolCommand('ffprobe', 'ROOFY_FFPROBE_PATH');
+    return probeAudioTags(ffprobe, normalizedPath);
+});
+
+ipcMain.handle(
+    'roofy-local-write-audio-tags',
+    async (
+        _event,
+        args: {
+            album?: string;
+            albumArtist?: string;
+            artist?: string;
+            artworkUrl?: string;
+            filePath: string;
+            title: string;
+        },
+    ) => {
+        const normalizedPath = String(args.filePath || '').trim();
+        if (!normalizedPath || !existsSync(normalizedPath)) {
+            throw new Error('A valid audio file path is required.');
+        }
+
+        await writeMetadataTags(normalizedPath, {
+            album: args.album,
+            albumArtist: args.albumArtist,
+            artist: args.artist,
+            artworkUrl: args.artworkUrl,
+            title: args.title || path.basename(normalizedPath, path.extname(normalizedPath)),
+        });
+
+        return { ok: true };
+    },
+);
 
 ipcMain.handle('roofy-local-set-auto-enrich-metadata', (_event, enabled: boolean) => {
     store.set(AUTO_ENRICH_METADATA_KEY, Boolean(enabled));

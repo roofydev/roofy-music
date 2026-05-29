@@ -15,6 +15,16 @@ const setAutoEnrichMetadata = (enabled: boolean) =>
     ipcRenderer.invoke('roofy-local-set-auto-enrich-metadata', enabled);
 const enrichAudioFile = (filePath: string) =>
     ipcRenderer.invoke('roofy-local-enrich-audio-file', filePath);
+const probeAudioTags = (filePath: string) =>
+    ipcRenderer.invoke('roofy-local-probe-audio-tags', filePath);
+const writeAudioTags = (args: {
+    album?: string;
+    albumArtist?: string;
+    artist?: string;
+    artworkUrl?: string;
+    filePath: string;
+    title: string;
+}) => ipcRenderer.invoke('roofy-local-write-audio-tags', args);
 const credentials = () => ipcRenderer.invoke('roofy-local-credentials');
 const createUser = (args: {
     email?: string;
@@ -156,6 +166,8 @@ export const localFirst = {
     stop,
     stopMobileImport,
     stopPairing,
+    probeAudioTags,
+    writeAudioTags,
 };
 
 export type LocalFirst = typeof localFirst;
