@@ -3,6 +3,9 @@ import { ipcRenderer } from 'electron';
 const status = () => ipcRenderer.invoke('roofy-local-status');
 const start = () => ipcRenderer.invoke('roofy-local-start');
 const stop = () => ipcRenderer.invoke('roofy-local-stop');
+const startPairing = (mode: 'lan' | 'tunnel' = 'tunnel') =>
+    ipcRenderer.invoke('roofy-local-start-pairing', mode);
+const stopPairing = () => ipcRenderer.invoke('roofy-local-stop-pairing');
 const selectLibrary = () => ipcRenderer.invoke('roofy-local-select-library');
 const openLibraryFolder = () => ipcRenderer.invoke('roofy-local-open-library-folder');
 const credentials = () => ipcRenderer.invoke('roofy-local-credentials');
@@ -138,8 +141,10 @@ export const localFirst = {
     setSpotifyClientId,
     spotifyStatus,
     start,
+    startPairing,
     status,
     stop,
+    stopPairing,
 };
 
 export type LocalFirst = typeof localFirst;

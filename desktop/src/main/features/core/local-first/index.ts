@@ -11,20 +11,21 @@ import {
     writeFileSync,
 } from 'fs';
 import http from 'http';
+import { networkInterfaces } from 'os';
 import path from 'path';
 import { pathToFileURL } from 'url';
 
+import { ensureCloudflared } from '../party/cloudflared-binary';
 import { store } from '../settings';
-
 import {
     collectAudioFiles,
     getSpotdlInvocation,
     runSpotdlDownload,
     runSpotdlSave,
     spotdlAvailable,
+    type SpotdlRunContext,
     spotdlSongToNormalizedTrack,
     summarizeSpotdlPreview,
-    type SpotdlRunContext,
 } from './spotdl';
 
 import { getMainWindow } from '/@/main/index';
@@ -146,6 +147,7 @@ type LocalFirstStatus = {
         url: string;
         username: string;
     };
+    pairing: LocalPairingStatus;
     tools: {
         deno: boolean;
         ffmpeg: boolean;
@@ -153,6 +155,16 @@ type LocalFirstStatus = {
         spotdl: boolean;
         ytDlp: boolean;
     };
+};
+
+type LocalPairingMode = 'lan' | 'tunnel';
+
+type LocalPairingStatus = {
+    error?: string;
+    mode: LocalPairingMode;
+    pairingUrl?: string;
+    state: 'connected' | 'disabled' | 'starting' | 'unavailable';
+    url?: string;
 };
 
 type LocalVideoMetadata = {
@@ -250,6 +262,9 @@ const now = () => new Date().toISOString();
 
 let navidromeProcess: ChildProcessWithoutNullStreams | null = null;
 let activeImport: null | { child: ChildProcessWithoutNullStreams; id: string } = null;
+let localPairingLanServer: http.Server | null = null;
+let localPairingTunnelProcess: ChildProcessWithoutNullStreams | null = null;
+let localPairingStatus: LocalPairingStatus = { mode: 'tunnel', state: 'disabled' };
 
 const loadImportJobs = (): ImportJob[] => {
     const savedJobs = store.get(IMPORT_JOBS_KEY) as ImportJob[] | undefined;
@@ -367,8 +382,8 @@ const spotifyStatus = () => {
         message: spotdlAvailable()
             ? 'Spotify links import through spotDL.'
             : 'Install spotDL to import Spotify track, playlist, album, and artist links.',
-        spotdlAvailable: spotdlAvailable(),
         redirectUri: getSpotifyRedirectUri(),
+        spotdlAvailable: spotdlAvailable(),
     };
 };
 
@@ -398,17 +413,21 @@ const getSpotifyUrlParts = (
         if (hostname !== 'open.spotify.com') return null;
         const [type, id] = url.pathname.split('/').filter(Boolean);
         if (
-            (type === 'track' ||
-                type === 'playlist' ||
-                type === 'album' ||
-                type === 'artist') &&
+            (type === 'track' || type === 'playlist' || type === 'album' || type === 'artist') &&
             id
         ) {
             return { id, type };
         }
     } catch {
-        const uriMatch = /^spotify:(track|playlist|album|artist):([A-Za-z0-9]+)$/.exec(input.trim());
-        if (uriMatch) return { id: uriMatch[2], type: uriMatch[1] as 'album' | 'artist' | 'playlist' | 'track' };
+        const uriMatch = /^spotify:(track|playlist|album|artist):([A-Za-z0-9]+)$/.exec(
+            input.trim(),
+        );
+        if (uriMatch) {
+            return {
+                id: uriMatch[2],
+                type: uriMatch[1] as 'album' | 'artist' | 'playlist' | 'track',
+            };
+        }
     }
 
     return null;
@@ -427,9 +446,7 @@ const shouldUseSpotdlImport = (job: ImportJob) =>
     job.source === 'spotify' &&
     spotdlAvailable() &&
     isSpotifyUrlInput(job.input) &&
-    !(job.sourceTracks || []).some((track) =>
-        extractYoutubeVideoId(track.resolvedSourceUrl),
-    );
+    !(job.sourceTracks || []).some((track) => extractYoutubeVideoId(track.resolvedSourceUrl));
 
 const isSoundCloudSetUrl = (input: string) => {
     try {
@@ -457,7 +474,6 @@ const toLibraryAbsolutePath = (filePath: string) => {
 
 const normalizeMetadataPath = (filePath: string) =>
     toLibraryRelativePath(toLibraryAbsolutePath(filePath));
-
 
 const getYoutubeWatchUrl = (videoId: string) => `https://www.youtube.com/watch?v=${videoId}`;
 
@@ -798,10 +814,196 @@ export const shutdownLocalFirst = () => {
         activeImport = null;
     }
 
+    stopLocalPairing();
+
     if (navidromeProcess) {
         navidromeProcess.kill();
         navidromeProcess = null;
     }
+};
+
+const getLanHost = () => {
+    const interfaces = networkInterfaces();
+    for (const entries of Object.values(interfaces)) {
+        for (const entry of entries || []) {
+            if (entry.family === 'IPv4' && !entry.internal) {
+                return entry.address;
+            }
+        }
+    }
+    return undefined;
+};
+
+const getLanPairingUrl = (port: number) => {
+    const host = getLanHost();
+    if (!host) return undefined;
+    return `http://${host}:${port}`;
+};
+
+const getPairingUrl = (serverUrl: string) => {
+    const url = new URL('roofymusic://pair/subsonic');
+    url.searchParams.set('name', 'Roofy Local Library');
+    url.searchParams.set('serverUrl', serverUrl);
+    url.searchParams.set('username', LOCAL_SERVER_USERNAME);
+    url.searchParams.set('password', getPassword());
+    return url.toString();
+};
+
+const withPairingUrl = (status: LocalPairingStatus): LocalPairingStatus => ({
+    ...status,
+    pairingUrl: status.url ? getPairingUrl(status.url) : undefined,
+});
+
+const stopLocalPairing = () => {
+    localPairingTunnelProcess?.kill();
+    localPairingTunnelProcess = null;
+    localPairingLanServer?.close();
+    localPairingLanServer = null;
+    localPairingStatus = { mode: localPairingStatus.mode, state: 'disabled' };
+    return getLocalFirstStatus();
+};
+
+const startLocalPairingLanServer = () =>
+    new Promise<string | undefined>((resolve) => {
+        const host = getLanHost();
+        if (!host) {
+            resolve(undefined);
+            return;
+        }
+
+        localPairingLanServer?.close();
+        localPairingLanServer = http.createServer((req, res) => {
+            const target = new URL(req.url || '/', getUrl());
+            const proxyReq = http.request(
+                target,
+                {
+                    headers: {
+                        ...req.headers,
+                        host: target.host,
+                    },
+                    method: req.method,
+                },
+                (proxyRes) => {
+                    res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+                    proxyRes.pipe(res);
+                },
+            );
+
+            proxyReq.on('error', (error) => {
+                res.statusCode = 502;
+                res.end(error.message);
+            });
+            req.pipe(proxyReq);
+        });
+
+        localPairingLanServer.once('error', () => {
+            localPairingLanServer = null;
+            resolve(undefined);
+        });
+
+        localPairingLanServer.listen(0, '0.0.0.0', () => {
+            const address = localPairingLanServer?.address();
+            const port = typeof address === 'object' && address ? address.port : undefined;
+            resolve(port ? getLanPairingUrl(port) : undefined);
+        });
+    });
+
+const startLocalPairing = async (mode: LocalPairingMode): Promise<LocalFirstStatus> => {
+    if (!navidromeProcess || navidromeProcess.killed) {
+        await startLocalFirst();
+    }
+
+    if (mode === 'lan') {
+        localPairingTunnelProcess?.kill();
+        localPairingTunnelProcess = null;
+
+        const lanUrl = await startLocalPairingLanServer();
+        localPairingStatus = lanUrl
+            ? { mode, state: 'connected', url: lanUrl }
+            : {
+                  error: 'No LAN IPv4 address or available proxy port was found. Try Tunnel mode instead.',
+                  mode,
+                  state: 'unavailable',
+              };
+        return getLocalFirstStatus();
+    }
+
+    localPairingLanServer?.close();
+    localPairingLanServer = null;
+
+    if (
+        localPairingTunnelProcess &&
+        !localPairingTunnelProcess.killed &&
+        localPairingStatus.mode === 'tunnel' &&
+        localPairingStatus.state === 'connected'
+    ) {
+        return getLocalFirstStatus();
+    }
+
+    localPairingTunnelProcess?.kill();
+    localPairingTunnelProcess = null;
+    localPairingStatus = { mode, state: 'starting' };
+
+    const binaryResult = await ensureCloudflared();
+    if (!binaryResult.ok) {
+        localPairingStatus = {
+            error: binaryResult.error,
+            mode,
+            state: 'unavailable',
+        };
+        return getLocalFirstStatus();
+    }
+
+    await new Promise<void>((resolve) => {
+        let settled = false;
+        const finish = (status: LocalPairingStatus) => {
+            if (settled) return;
+            settled = true;
+            localPairingStatus = status;
+            resolve();
+        };
+
+        localPairingTunnelProcess = spawn(binaryResult.path, ['tunnel', '--url', getUrl()], {
+            windowsHide: true,
+        });
+
+        const parseOutput = (chunk: Buffer) => {
+            const text = chunk.toString();
+            const match = text.match(/https:\/\/[-a-z0-9]+\.trycloudflare\.com/i);
+            if (match) finish({ mode, state: 'connected', url: match[0] });
+        };
+
+        localPairingTunnelProcess.stdout.on('data', parseOutput);
+        localPairingTunnelProcess.stderr.on('data', parseOutput);
+        localPairingTunnelProcess.on('error', (error) => {
+            finish({
+                error: error.message,
+                mode,
+                state: 'unavailable',
+            });
+        });
+        localPairingTunnelProcess.on('exit', () => {
+            if (!settled) {
+                finish({
+                    error: 'Cloudflare Tunnel exited before publishing a URL.',
+                    mode,
+                    state: 'unavailable',
+                });
+            }
+        });
+
+        setTimeout(() => {
+            if (!settled) {
+                finish({
+                    error: 'Timed out waiting for Cloudflare Tunnel URL.',
+                    mode,
+                    state: 'unavailable',
+                });
+            }
+        }, 15000);
+    });
+
+    return getLocalFirstStatus();
 };
 
 const sendImportJobEvent = (job: ImportJob) => {
@@ -1440,7 +1642,10 @@ const processImportQueue = () => {
 
 const sanitizeFilenamePart = (value: string, fallback: string) => {
     const cleaned = value
-        .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '')
+        .replace(/[<>:"/\\|?*]/g, '')
+        .split('')
+        .filter((char) => char.charCodeAt(0) >= 32)
+        .join('')
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 120);
@@ -1451,7 +1656,10 @@ const escapeFfmpegMetadataValue = (value: string) =>
     value.replace(/\\/g, '\\\\').replace(/=/g, '\\=').replace(/:/g, '\\:');
 
 const buildSpotifyMatchedOutputTemplate = (track: NormalizedImportTrack, libraryPath: string) => {
-    const artist = sanitizeFilenamePart(track.artist || track.artists?.join(', ') || '', 'Unknown Artist');
+    const artist = sanitizeFilenamePart(
+        track.artist || track.artists?.join(', ') || '',
+        'Unknown Artist',
+    );
     const title = sanitizeFilenamePart(track.title || '', 'Untitled');
     const videoId =
         extractYoutubeVideoId(track.resolvedSourceUrl) ||
@@ -3160,6 +3368,7 @@ const getLocalFirstStatus = (message = ''): LocalFirstStatus => {
             url: getUrl(),
             username: LOCAL_SERVER_USERNAME,
         },
+        pairing: withPairingUrl(localPairingStatus),
         tools: {
             deno: toolAvailable('deno', 'ROOFY_DENO_PATH'),
             ffmpeg: toolAvailable('ffmpeg', 'ROOFY_FFMPEG_PATH'),
@@ -3176,6 +3385,10 @@ ipcMain.handle('roofy-local-stop', () => {
     shutdownLocalFirst();
     return getLocalFirstStatus();
 });
+ipcMain.handle('roofy-local-start-pairing', (_event, mode: LocalPairingMode = 'tunnel') =>
+    startLocalPairing(mode),
+);
+ipcMain.handle('roofy-local-stop-pairing', () => stopLocalPairing());
 
 ipcMain.handle('roofy-local-select-library', async () => {
     const result = await dialog.showOpenDialog({

@@ -3,6 +3,8 @@ import {
     Badge,
     Button,
     Checkbox,
+    Code,
+    Divider,
     Group,
     PasswordInput,
     Progress,
@@ -47,6 +49,13 @@ type LocalStatus = {
         url: string;
         username: string;
     };
+    pairing: {
+        error?: string;
+        mode: 'lan' | 'tunnel';
+        pairingUrl?: string;
+        state: 'connected' | 'disabled' | 'starting' | 'unavailable';
+        url?: string;
+    };
     tools: {
         deno: boolean;
         ffmpeg: boolean;
@@ -72,6 +81,8 @@ export const LocalTab = () => {
     const [newUserName, setNewUserName] = useState('');
     const [newUserPassword, setNewUserPassword] = useState('');
     const [newUsername, setNewUsername] = useState('');
+    const [pairingQrDataUrl, setPairingQrDataUrl] = useState<null | string>(null);
+    const [pairingQrError, setPairingQrError] = useState(false);
 
     const refresh = async () => {
         const next = await window.api.localFirst.status();
@@ -99,6 +110,48 @@ export const LocalTab = () => {
         } finally {
             setBusy(false);
         }
+    };
+
+    useEffect(() => {
+        const pairingUrl = status?.pairing.pairingUrl;
+        if (!pairingUrl) {
+            setPairingQrDataUrl(null);
+            setPairingQrError(false);
+            return;
+        }
+
+        let cancelled = false;
+        import('qrcode')
+            .then(({ default: QRCode }) =>
+                QRCode.toDataURL(pairingUrl, {
+                    color: { dark: '#111111', light: '#ffffff' },
+                    margin: 2,
+                    width: 220,
+                }),
+            )
+            .then((dataUrl) => {
+                if (!cancelled) {
+                    setPairingQrDataUrl(dataUrl);
+                    setPairingQrError(false);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setPairingQrDataUrl(null);
+                    setPairingQrError(true);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [status?.pairing.pairingUrl]);
+
+    const copyPairingLink = async () => {
+        const pairingUrl = status?.pairing.pairingUrl;
+        if (!pairingUrl) return;
+        await navigator.clipboard.writeText(pairingUrl);
+        setMessage('Copied mobile pairing link.');
     };
 
     const createUser = async () => {
@@ -174,6 +227,123 @@ export const LocalTab = () => {
                 </Group>
             </Stack>
 
+            <Divider />
+
+            <Stack gap="md">
+                <Stack gap={4}>
+                    <Text fw={600}>Pair phone with Personal Library</Text>
+                    <Text c="dimmed" size="sm">
+                        Start a private connection to the bundled Navidrome engine, then scan the QR
+                        code from the mobile Personal Library setup.
+                    </Text>
+                </Stack>
+
+                <Group align="flex-start" gap="xl">
+                    <Stack gap="xs" style={{ minWidth: 260 }}>
+                        <Group gap="xs">
+                            <Badge
+                                color={
+                                    status?.pairing.state === 'connected'
+                                        ? 'green'
+                                        : status?.pairing.state === 'starting'
+                                          ? 'yellow'
+                                          : status?.pairing.state === 'unavailable'
+                                            ? 'red'
+                                            : 'gray'
+                                }
+                                variant="light"
+                            >
+                                {status?.pairing.mode || 'tunnel'}:{' '}
+                                {status?.pairing.state || 'disabled'}
+                            </Badge>
+                        </Group>
+
+                        <Text c="dimmed" size="sm">
+                            Tunnel mode works away from home through the bundled cloudflared binary.
+                            LAN mode keeps traffic on the current Wi-Fi network.
+                        </Text>
+
+                        {status?.pairing.url && (
+                            <Stack gap={4}>
+                                <Text size="sm">Server URL</Text>
+                                <Code block>{status.pairing.url}</Code>
+                            </Stack>
+                        )}
+
+                        {status?.pairing.error && (
+                            <Alert color="red" title="Pairing unavailable">
+                                {status.pairing.error}
+                            </Alert>
+                        )}
+
+                        <Group>
+                            <Button
+                                disabled={busy || status?.pairing.state === 'starting'}
+                                onClick={() =>
+                                    run(() => window.api.localFirst.startPairing('tunnel'))
+                                }
+                                variant="filled"
+                            >
+                                Start tunnel
+                            </Button>
+                            <Button
+                                disabled={busy || status?.pairing.state === 'starting'}
+                                onClick={() => run(() => window.api.localFirst.startPairing('lan'))}
+                                variant="light"
+                            >
+                                Use LAN
+                            </Button>
+                            <Button
+                                disabled={busy || status?.pairing.state === 'disabled'}
+                                onClick={() => run(() => window.api.localFirst.stopPairing())}
+                                variant="subtle"
+                            >
+                                Stop
+                            </Button>
+                        </Group>
+                    </Stack>
+
+                    <Stack align="center" gap="xs">
+                        {pairingQrDataUrl ? (
+                            <img
+                                alt="Mobile Personal Library pairing QR code"
+                                height={220}
+                                src={pairingQrDataUrl}
+                                width={220}
+                            />
+                        ) : (
+                            <div
+                                style={{
+                                    alignItems: 'center',
+                                    border: '1px solid var(--mantine-color-gray-4)',
+                                    display: 'flex',
+                                    height: 220,
+                                    justifyContent: 'center',
+                                    width: 220,
+                                }}
+                            >
+                                <Text c="dimmed" size="sm" ta="center">
+                                    {pairingQrError
+                                        ? 'Could not generate QR code'
+                                        : 'Start tunnel or LAN pairing'}
+                                </Text>
+                            </div>
+                        )}
+
+                        <Button
+                            disabled={!status?.pairing.pairingUrl}
+                            onClick={copyPairingLink}
+                            size="compact-sm"
+                            variant="default"
+                        >
+                            Copy pairing link
+                        </Button>
+                    </Stack>
+                </Group>
+            </Stack>
+
+            <Divider />
+
             <Stack gap="md">
                 <Stack gap={4}>
                     <Text fw={600}>Import sources</Text>
@@ -184,10 +354,7 @@ export const LocalTab = () => {
                 </Stack>
 
                 <Group gap="xs">
-                    <Badge
-                        color={status?.tools.spotdl ? 'green' : 'yellow'}
-                        variant="light"
-                    >
+                    <Badge color={status?.tools.spotdl ? 'green' : 'yellow'} variant="light">
                         Spotify: {status?.tools.spotdl ? 'spotDL ready' : 'spotDL missing'}
                     </Badge>
                     <Badge color="green" variant="light">
