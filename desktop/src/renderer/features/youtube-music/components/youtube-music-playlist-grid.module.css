@@ -6,9 +6,10 @@
     row-gap: var(--theme-spacing-xs);
     align-content: start;
     align-items: start;
+    flex: 1;
+    min-height: 0;
     padding: var(--theme-spacing-md);
     overflow-y: auto;
-    height: 100%;
 }
 
 /*

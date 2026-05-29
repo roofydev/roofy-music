@@ -12,29 +12,91 @@ import { YoutubeMusicSongsTable } from '/@/renderer/features/youtube-music/compo
 import { queryClient } from '/@/renderer/lib/react-query';
 import { AppRoute } from '/@/renderer/router/routes';
 import { addToQueueByData, useCurrentServer, useImportJobActions } from '/@/renderer/store';
+import { ActionIcon } from '/@/shared/components/action-icon/action-icon';
 import { Badge } from '/@/shared/components/badge/badge';
 import { Button } from '/@/shared/components/button/button';
 import { Checkbox } from '/@/shared/components/checkbox/checkbox';
 import { Group } from '/@/shared/components/group/group';
 import { Icon } from '/@/shared/components/icon/icon';
 import { Image } from '/@/shared/components/image/image';
+import { Popover } from '/@/shared/components/popover/popover';
 import { Stack } from '/@/shared/components/stack/stack';
 import { TextInput } from '/@/shared/components/text-input/text-input';
 import { Text } from '/@/shared/components/text/text';
 import { toast } from '/@/shared/components/toast/toast';
 import { useDebouncedValue } from '/@/shared/hooks/use-debounced-value';
-import { Playlist } from '/@/shared/types/domain-types';
+import {
+    ExplicitStatus,
+    Genre,
+    LibraryItem,
+    Playlist,
+    RelatedArtist,
+    ServerType,
+    Song,
+} from '/@/shared/types/domain-types';
 import { Play } from '/@/shared/types/types';
-import { YoutubeMusicAuthStatus } from '/@/shared/types/youtube-music-types';
+import { extractYoutubeVideoId } from '/@/shared/utils/youtube-video-id';
+import {
+    YOUTUBE_MUSIC_SOURCE_ID,
+    YoutubeMusicAuthStatus,
+} from '/@/shared/types/youtube-music-types';
+import { Spinner } from '/@/shared/components/spinner/spinner';
 
 type ImportPreview = {
+    album?: string;
+    albumArtist?: string;
+    artist?: string;
+    artists?: string[];
+    artworkUrl?: string;
     count: number;
+    discNumber?: number;
     duration: null | number;
+    durationMs?: number;
+    explicit?: boolean;
     isPlaylist: boolean;
+    isrc?: string;
+    matchConfidence?: number;
+    matchState?: ImportTrackPreview['matchState'];
+    releaseDate?: string;
+    resolvedSource?: ImportSource;
+    resolvedSourceTrackId?: string;
+    resolvedSourceUrl?: string;
+    source: ImportSource;
+    sourcePlaylistId?: string;
+    sourceTrackId?: string;
+    sourceUrl: string;
     thumbnail: string;
     title: string;
+    trackNumber?: number;
+    tracks?: ImportTrackPreview[];
     uploader: string;
+    useSpotdl?: boolean;
     webpageUrl: string;
+};
+
+type ImportSource = 'soundcloud' | 'spotify' | 'youtube_music';
+
+type ImportTrackPreview = {
+    album?: string;
+    albumArtist?: string;
+    artist?: string;
+    artists?: string[];
+    artworkUrl?: string;
+    discNumber?: number;
+    durationMs?: number;
+    explicit?: boolean;
+    isrc?: string;
+    matchConfidence?: number;
+    matchState?: 'in_library' | 'matched' | 'needs_review' | 'unavailable';
+    releaseDate?: string;
+    resolvedSource?: ImportSource;
+    resolvedSourceTrackId?: string;
+    resolvedSourceUrl?: string;
+    source?: ImportSource;
+    sourceTrackId?: string;
+    sourceUrl?: string;
+    title: string;
+    trackNumber?: number;
 };
 
 type QuickImportProps = {
@@ -60,6 +122,42 @@ const isYoutubeUrl = (value: string) => {
     }
 };
 
+const getImportSource = (value: string): 'unknown' | ImportSource => {
+    if (!isUrl(value)) return 'youtube_music';
+    try {
+        const url = new URL(value.trim());
+        const host = url.hostname.replace(/^www\./, '').toLowerCase();
+        if (host === 'open.spotify.com') return 'spotify';
+        if (host === 'soundcloud.com' || host === 'on.soundcloud.com') return 'soundcloud';
+        if (
+            host === 'youtube.com' ||
+            host === 'm.youtube.com' ||
+            host === 'music.youtube.com' ||
+            host === 'youtu.be'
+        ) {
+            return 'youtube_music';
+        }
+        return 'unknown';
+    } catch {
+        return 'unknown';
+    }
+};
+
+const getSourceLabel = (source?: ImportSource) => {
+    if (source === 'spotify') return 'Spotify';
+    if (source === 'soundcloud') return 'SoundCloud';
+    return 'YouTube Music';
+};
+
+const hasYoutubeMatchUrl = (track: ImportTrackPreview) =>
+    Boolean(extractYoutubeVideoId(track.resolvedSourceUrl));
+
+const isImportableMatch = (track: ImportTrackPreview) =>
+    track.matchState === 'matched' && hasYoutubeMatchUrl(track);
+
+const getTrackKey = (track: ImportTrackPreview, index: number) =>
+    track.sourceTrackId || `${track.title}-${track.artist || ''}-${index}`;
+
 const getVideoId = (value: string) => {
     if (!isYoutubeUrl(value)) return undefined;
     try {
@@ -84,10 +182,126 @@ const getPlaylistId = (value: string) => {
     }
 };
 
+const toRelatedArtist = (name: string): RelatedArtist => ({
+    id: name,
+    imageId: null,
+    imageUrl: null,
+    name,
+    userFavorite: false,
+    userRating: null,
+});
+
+const emptyGenre = (): Genre => ({
+    _itemType: LibraryItem.GENRE,
+    _serverId: YOUTUBE_MUSIC_SOURCE_ID,
+    _serverType: ServerType.YOUTUBE_MUSIC,
+    albumCount: null,
+    id: 'unknown-genre',
+    imageId: null,
+    imageUrl: null,
+    name: 'Unknown',
+    songCount: null,
+});
+
+const previewTrackToSong = (
+    track: ImportTrackPreview,
+    index: number,
+    fallback?: Pick<ImportPreview, 'durationMs' | 'thumbnail' | 'title' | 'uploader'>,
+): Song => {
+    const videoId =
+        extractYoutubeVideoId(track.resolvedSourceUrl) ||
+        extractYoutubeVideoId(track.resolvedSourceTrackId);
+    const artistNames =
+        track.artists?.filter(Boolean) ||
+        (track.artist ? [track.artist] : fallback?.uploader ? [fallback.uploader] : ['Unknown Artist']);
+    const artists = artistNames.map(toRelatedArtist);
+    const name = track.title || fallback?.title || 'Untitled';
+    const createdAt = new Date().toISOString();
+    const songId = videoId ? `ytm:${videoId}` : `spotify-preview:${track.sourceTrackId || index}`;
+
+    return {
+        _itemType: LibraryItem.SONG,
+        _serverId: YOUTUBE_MUSIC_SOURCE_ID,
+        _serverType: ServerType.YOUTUBE_MUSIC,
+        album: track.album || null,
+        albumArtistName: track.albumArtist || artists[0]?.name || 'Unknown Artist',
+        albumArtists: artists,
+        albumId: '',
+        artistName: artists.map((artist) => artist.name).join(', '),
+        artists,
+        bitDepth: null,
+        bitRate: 0,
+        bpm: null,
+        channels: null,
+        comment: null,
+        compilation: null,
+        container: null,
+        createdAt,
+        discNumber: track.discNumber || 0,
+        discSubtitle: null,
+        duration: track.durationMs ?? fallback?.durationMs ?? 0,
+        explicitStatus: track.explicit ? ExplicitStatus.EXPLICIT : ExplicitStatus.CLEAN,
+        gain: null,
+        genres: [emptyGenre()],
+        id: songId,
+        imageId: null,
+        imageUrl: track.artworkUrl || fallback?.thumbnail || null,
+        lastPlayedAt: null,
+        lyrics: null,
+        mbzRecordingId: null,
+        mbzTrackId: null,
+        name,
+        participants: null,
+        path: null,
+        peak: null,
+        playCount: 0,
+        releaseDate: track.releaseDate || null,
+        releaseYear: null,
+        sampleRate: null,
+        size: 0,
+        sortName: name,
+        tags: null,
+        trackNumber: track.trackNumber || 0,
+        trackSubtitle: null,
+        updatedAt: createdAt,
+        userFavorite: false,
+        userRating: null,
+        youtubeMusic: videoId
+            ? {
+                  mediaType: 'song',
+                  videoId,
+                  watchUrl:
+                      track.resolvedSourceUrl ||
+                      `https://music.youtube.com/watch?v=${videoId}`,
+              }
+            : undefined,
+    };
+};
+
+const previewToSongs = (preview: ImportPreview): Song[] => {
+    const tracks =
+        preview.tracks?.length && preview.tracks.length > 0
+            ? preview.tracks
+            : [
+                  {
+                      album: preview.album,
+                      artist: preview.artist || preview.uploader,
+                      artworkUrl: preview.artworkUrl || preview.thumbnail,
+                      durationMs: preview.durationMs,
+                      matchState: preview.matchState,
+                      sourceTrackId: preview.sourceTrackId,
+                      title: preview.title,
+                  } satisfies ImportTrackPreview,
+              ];
+
+    return tracks.map((track, index) => previewTrackToSong(track, index, preview));
+};
+
 export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) => {
     const [input, setInput] = useState('');
     const [submittedInput, setSubmittedInput] = useState('');
     const [preview, setPreview] = useState<ImportPreview | null>(null);
+    const [acceptedReviewMatches, setAcceptedReviewMatches] = useState<Set<string>>(new Set());
     const [previewLoading, setPreviewLoading] = useState(false);
     const [saveVideo, setSaveVideo] = useState(false);
     const [error, setError] = useState('');
@@ -97,17 +311,26 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
     const { setJob } = useImportJobActions();
 
     const statusQuery = useQuery({
+        enabled: isElectron() && Boolean(window.api?.localFirst?.status),
+        queryFn: () => window.api.localFirst.status(),
+        queryKey: ['local-first', 'quick-import-status'],
+        staleTime: 15_000,
+    });
+
+    const ytmStatusQuery = useQuery({
         enabled: isElectron() && Boolean(window.api?.youtubeMusic?.status),
         queryFn: () => window.api.youtubeMusic.status(),
         queryKey: ['youtube-music', 'quick-import-status'],
     });
 
     const isConnected = Boolean(
-        (statusQuery.data as undefined | YoutubeMusicAuthStatus)?.connected,
+        (ytmStatusQuery.data as undefined | YoutubeMusicAuthStatus)?.connected,
     );
     const isInline = variant === 'inline';
     const submittedIsUrl = isUrl(submittedInput);
-    const submittedIsYoutubeUrl = isYoutubeUrl(submittedInput);
+    const submittedSource = getImportSource(submittedInput);
+    const importInput = submittedInput;
+    const spotdlAvailable = Boolean(statusQuery.data?.tools?.spotdl);
     const liveSearchInput = debouncedInput && !isUrl(debouncedInput) ? debouncedInput : '';
 
     const searchQuery = useQuery({
@@ -132,8 +355,30 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
     }, [server?.id]);
 
     useEffect(() => {
+        const v = debouncedInput;
+        if (!v) {
+            setSubmittedInput('');
+            setError('');
+            return;
+        }
+        if (!isUrl(v)) {
+            setSubmittedInput('');
+            setError('');
+            return;
+        }
+        if (getImportSource(v) === 'unknown') {
+            setSubmittedInput('');
+            setError('Paste a Spotify, SoundCloud, YouTube, or YouTube Music link.');
+            return;
+        }
+        setError('');
+        setSubmittedInput((prev) => (prev === v ? prev : v));
+    }, [debouncedInput]);
+
+    useEffect(() => {
         if (!submittedInput || !submittedIsUrl) {
             setPreview(null);
+            setAcceptedReviewMatches(new Set());
             return;
         }
 
@@ -146,7 +391,10 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                 playlist: Boolean(getPlaylistId(submittedInput)),
             })
             .then((result) => {
-                if (!cancelled) setPreview(result);
+                if (!cancelled) {
+                    setPreview(result);
+                    setAcceptedReviewMatches(new Set());
+                }
             })
             .catch((err) => {
                 if (!cancelled) {
@@ -173,8 +421,7 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
         previewLoading ||
         preview ||
         (liveSearchInput && !isConnected) ||
-        (liveSearchInput && isConnected) ||
-        (submittedIsUrl && !submittedIsYoutubeUrl),
+        (liveSearchInput && isConnected),
     );
 
     const handleSubmit = (event: FormEvent) => {
@@ -182,14 +429,13 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
         const value = input.trim();
         if (!value || !isUrl(value)) return;
 
-        setError('');
-        setPreview(null);
-
-        if (isUrl(value) && !isYoutubeUrl(value)) {
-            setError('Paste a YouTube or YouTube Music link, or search by title/artist.');
+        if (getImportSource(value) === 'unknown') {
+            setError('Paste a Spotify, SoundCloud, YouTube, or YouTube Music link.');
+            setSubmittedInput('');
             return;
         }
 
+        setError('');
         setSubmittedInput(value);
     };
 
@@ -218,19 +464,85 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
     }, []);
 
     const handleImportPreview = useCallback(async () => {
-        if (!preview || !submittedInput) return;
+        if (!preview || !importInput) return;
 
         try {
+            if (preview.source === 'spotify') {
+                const tracks = (preview.tracks || [])
+                    .map((track, index) =>
+                        acceptedReviewMatches.has(getTrackKey(track, index))
+                            ? { ...track, matchState: 'matched' as const }
+                            : track,
+                    )
+                    .filter((track, index) => {
+                        const trackKey = getTrackKey(track, index);
+                        return (
+                            isImportableMatch(track) ||
+                            (track.matchState === 'needs_review' &&
+                                hasYoutubeMatchUrl(track) &&
+                                acceptedReviewMatches.has(trackKey))
+                        );
+                    });
+
+                if (tracks.length > 0) {
+                    const primaryUrl = tracks[0].resolvedSourceUrl || importInput;
+                    const videoId = extractYoutubeVideoId(primaryUrl);
+                    const job = await window.api.localFirst.createImport({
+                        artist: preview.uploader,
+                        artists: preview.artists,
+                        artworkUrl: preview.artworkUrl || preview.thumbnail || undefined,
+                        createPlaylist: preview.isPlaylist,
+                        imageUrl: preview.thumbnail || undefined,
+                        input: primaryUrl,
+                        playlist: preview.isPlaylist,
+                        playlistName: preview.isPlaylist ? preview.title : undefined,
+                        source: 'spotify',
+                        sourcePlaylistId: preview.sourcePlaylistId,
+                        sourceTrackId: preview.sourceTrackId,
+                        sourceTracks: tracks,
+                        sourceUrl: preview.sourceUrl,
+                        title: preview.title,
+                        videoId,
+                    });
+                    setJob(job);
+                    return;
+                }
+
+                if (preview.useSpotdl) {
+                    const job = await window.api.localFirst.createImport({
+                        artworkUrl: preview.artworkUrl || preview.thumbnail || undefined,
+                        createPlaylist: preview.isPlaylist,
+                        imageUrl: preview.thumbnail || undefined,
+                        input: importInput,
+                        playlist: preview.isPlaylist,
+                        playlistName: preview.isPlaylist ? preview.title : undefined,
+                        source: 'spotify',
+                        sourcePlaylistId: preview.sourcePlaylistId,
+                        sourceTrackId: preview.sourceTrackId,
+                        sourceTracks: preview.tracks,
+                        sourceUrl: preview.sourceUrl,
+                        title: preview.title,
+                    });
+                    setJob(job);
+                    return;
+                }
+
+                toast.error({ message: 'No matched Spotify tracks are ready to import.' });
+                return;
+            }
+
             const job = await window.api.localFirst.createImport({
                 artist: preview.uploader,
                 createPlaylist: preview.isPlaylist,
                 imageUrl: preview.thumbnail || undefined,
-                input: submittedInput,
+                input: importInput,
                 playlist: preview.isPlaylist,
                 playlistName: preview.isPlaylist ? preview.title : undefined,
-                saveVideo,
-                source: 'youtube_music',
-                sourceTrackId: preview.webpageUrl || submittedInput,
+                saveVideo: preview.source === 'youtube_music' ? saveVideo : false,
+                source: preview.source,
+                sourcePlaylistId: preview.sourcePlaylistId,
+                sourceTrackId: preview.webpageUrl || importInput,
+                sourceUrl: preview.sourceUrl || preview.webpageUrl || importInput,
                 title: preview.title,
                 videoId: getVideoId(submittedInput),
             });
@@ -238,7 +550,45 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
         } catch (err: any) {
             toast.error({ message: err?.message || 'Import failed' });
         }
-    }, [preview, saveVideo, setJob, submittedInput]);
+    }, [acceptedReviewMatches, importInput, preview, saveVideo, setJob, submittedInput]);
+
+    const getImportableSpotifyTrackCount = useCallback(
+        (tracks: ImportTrackPreview[] = []) =>
+            tracks.filter(
+                (track, index) =>
+                    isImportableMatch(track) ||
+                    (track.matchState === 'needs_review' &&
+                        hasYoutubeMatchUrl(track) &&
+                        acceptedReviewMatches.has(getTrackKey(track, index))),
+            ).length,
+        [acceptedReviewMatches],
+    );
+    const spotifyPreviewSongs = useMemo(
+        () => (preview?.source === 'spotify' ? previewToSongs(preview) : []),
+        [preview],
+    );
+
+    const spotifyReviewTracks = useMemo(() => {
+        if (preview?.source !== 'spotify' || !preview.tracks?.length) return [];
+        return preview.tracks
+            .map((track, index) => ({ index, track, trackKey: getTrackKey(track, index) }))
+            .filter(
+                ({ track, trackKey }) =>
+                    track.matchState === 'needs_review' &&
+                    hasYoutubeMatchUrl(track) &&
+                    !acceptedReviewMatches.has(trackKey),
+            );
+    }, [acceptedReviewMatches, preview]);
+
+    const spotifyImportDisabled =
+        preview?.source === 'spotify' &&
+        !preview.useSpotdl &&
+        getImportableSpotifyTrackCount(preview.tracks) === 0;
+
+    const isSpotifyLink =
+        submittedSource === 'spotify' ||
+        preview?.source === 'spotify' ||
+        (isUrl(input.trim()) && getImportSource(input.trim()) === 'spotify');
 
     return (
         <section className={clsx(styles.container, isInline && styles.inline, className)}>
@@ -247,11 +597,13 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                     <Stack gap={4}>
                         <Group gap="xs">
                             <Icon icon="download" size="md" />
-                            <Text fw={700}>Find or import from YouTube Music</Text>
+                            <Text fw={700}>Import music</Text>
                         </Group>
                         <Text isMuted size="sm">
-                            Search by song, artist, or album, or paste a YouTube video/playlist
-                            link.
+                            Search by song, artist, or album, or paste a Spotify, SoundCloud,
+                            YouTube, or YouTube Music link.
+                            {!spotdlAvailable &&
+                                ' Spotify links require spotDL (see Local settings).'}
                         </Text>
                     </Stack>
                 )}
@@ -264,15 +616,13 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                             onChange={(event) => setInput(event.currentTarget.value)}
                             placeholder={
                                 isInline
-                                    ? 'Search or paste a YouTube link'
-                                    : 'Search YouTube Music or paste a link'
+                                    ? 'Search or paste a music link'
+                                    : 'Search or paste a Spotify, SoundCloud, YouTube, or YouTube Music link'
                             }
                             value={input}
                         />
-                        {isUrl(input) && (
-                            <Button disabled={!input.trim()} loading={previewLoading} type="submit">
-                                {isInline ? 'Preview' : 'Preview link'}
-                            </Button>
+                        {isSpotifyLink && (
+                            <SpotifyImportInfoPopover useSpotdl={preview?.useSpotdl} />
                         )}
                     </Group>
                 </form>
@@ -291,6 +641,8 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                                     <Badge variant="light">Songs</Badge>
                                     <Badge variant="light">Albums</Badge>
                                     <Badge variant="light">Playlists</Badge>
+                                    <Badge variant="light">Spotify links</Badge>
+                                    <Badge variant="light">SoundCloud links</Badge>
                                     <Badge variant="light">YouTube links</Badge>
                                 </Group>
                             )}
@@ -306,53 +658,112 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                             )}
 
                             {previewLoading && (
-                                <div className={styles.emptyState}>
-                                    <Text fw={600}>Reading link metadata</Text>
-                                    <Text isMuted size="sm">
-                                        Fetching title, artwork, and playlist details.
-                                    </Text>
+                                <div className={styles.loadingState}>
+                                    <Spinner size={22} />
+                                    <Stack gap={4}>
+                                        <Text fw={600}>Reading link metadata</Text>
+                                        <Text isMuted size="sm">
+                                            Fetching title, artwork, and playlist details.
+                                        </Text>
+                                    </Stack>
                                 </div>
                             )}
 
-                            {preview && (
-                                <div className={styles.preview}>
-                                    <Image
-                                        className={styles.previewImageInner}
-                                        containerClassName={styles.previewImage}
-                                        includeLoader={false}
-                                        src={preview.thumbnail || undefined}
-                                        unloaderIcon={
-                                            preview.isPlaylist
-                                                ? 'emptyPlaylistImage'
-                                                : 'emptySongImage'
-                                        }
-                                    />
-                                    <Stack className={styles.previewBody} gap="xs">
-                                        <Group gap="xs">
-                                            <Badge variant="light">
-                                                {preview.isPlaylist ? 'Playlist' : 'Video'}
-                                            </Badge>
-                                            {preview.isPlaylist && (
-                                                <Badge>{preview.count} tracks</Badge>
-                                            )}
-                                        </Group>
-                                        <Text className={styles.previewTitle} fw={700}>
-                                            {preview.title}
+                            {preview && preview.source === 'spotify' && (
+                                <Stack gap="sm">
+                                    <Group className={styles.spotifyInfoRow} gap="xs" wrap="nowrap">
+                                        <Text className={styles.spotifyInfoLabel} isMuted size="sm">
+                                            Spotify link — matched on YouTube Music
                                         </Text>
-                                        <Text isMuted size="sm">
-                                            {preview.uploader}
-                                        </Text>
-                                    </Stack>
-                                    <Stack align="flex-end" gap="xs">
-                                        <Checkbox
-                                            checked={saveVideo}
-                                            label="Save MP4 video"
-                                            onChange={(event) =>
-                                                setSaveVideo(event.currentTarget.checked)
+                                        <SpotifyImportInfoPopover useSpotdl={preview.useSpotdl} />
+                                    </Group>
+                                    <div className={styles.songsResultPanel}>
+                                        <YoutubeMusicSongsTable songs={spotifyPreviewSongs} />
+                                    </div>
+                                    {spotifyReviewTracks.length > 0 && (
+                                        <div className={styles.spotifyReviewActions}>
+                                            {spotifyReviewTracks.map(({ index, track, trackKey }) => (
+                                                <Button
+                                                    key={trackKey}
+                                                    onClick={() =>
+                                                        setAcceptedReviewMatches((current) =>
+                                                            new Set(current).add(trackKey),
+                                                        )
+                                                    }
+                                                    size="compact-sm"
+                                                    variant="subtle"
+                                                >
+                                                    Accept: {track.title || `Track ${index + 1}`}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <div className={styles.spotifyImportFooter}>
+                                        <Button
+                                            disabled={spotifyImportDisabled}
+                                            onClick={handleImportPreview}
+                                        >
+                                            {preview.useSpotdl ? 'Import' : 'Import matched'}
+                                        </Button>
+                                    </div>
+                                </Stack>
+                            )}
+
+                            {preview && preview.source !== 'spotify' && (
+                                <div className={styles.previewCard}>
+                                    <div className={styles.previewMain}>
+                                        <Image
+                                            className={styles.previewImageInner}
+                                            containerClassName={styles.previewThumb}
+                                            includeLoader={false}
+                                            src={preview.thumbnail || undefined}
+                                            unloaderIcon={
+                                                preview.isPlaylist
+                                                    ? 'emptyPlaylistImage'
+                                                    : 'emptySongImage'
                                             }
                                         />
-                                        <Button onClick={handleImportPreview}>Import</Button>
-                                    </Stack>
+                                        <div className={styles.previewInfo}>
+                                            <Group className={styles.previewMeta} gap="xs" wrap="wrap">
+                                                <Badge variant="light">
+                                                    {getSourceLabel(preview.source)}
+                                                </Badge>
+                                                <Badge variant="light">
+                                                    {preview.isPlaylist
+                                                        ? 'Playlist'
+                                                        : preview.source === 'soundcloud'
+                                                          ? 'Track'
+                                                          : 'Video'}
+                                                </Badge>
+                                                {preview.isPlaylist && (
+                                                    <Badge>{preview.count} tracks</Badge>
+                                                )}
+                                            </Group>
+                                            <Text className={styles.previewTitle} fw={700} size="lg">
+                                                {preview.title}
+                                            </Text>
+                                            <Text className={styles.previewArtist} isMuted size="sm">
+                                                {preview.uploader}
+                                            </Text>
+                                        </div>
+                                    </div>
+                                    <div className={styles.previewFooter}>
+                                        {preview.source === 'youtube_music' && (
+                                            <Checkbox
+                                                checked={saveVideo}
+                                                label="Save MP4 video"
+                                                onChange={(event) =>
+                                                    setSaveVideo(event.currentTarget.checked)
+                                                }
+                                            />
+                                        )}
+                                        <Button
+                                            className={styles.previewImport}
+                                            onClick={handleImportPreview}
+                                        >
+                                            Import
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
 
@@ -399,14 +810,6 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                                 </Stack>
                             )}
 
-                            {submittedIsUrl && !submittedIsYoutubeUrl && (
-                                <div className={styles.emptyState}>
-                                    <Text fw={600}>Unsupported link</Text>
-                                    <Text isMuted size="sm">
-                                        Use a YouTube or YouTube Music URL.
-                                    </Text>
-                                </div>
-                            )}
                         </Stack>
                     </div>
                 )}
@@ -420,4 +823,53 @@ const ResultSection = ({ children, title }: { children: React.ReactNode; title: 
         <Text fw={600}>{title}</Text>
         {children}
     </Stack>
+);
+
+type SpotifyImportInfoPopoverProps = {
+    useSpotdl?: boolean;
+};
+
+const SpotifyImportInfoPopover = ({ useSpotdl }: SpotifyImportInfoPopoverProps) => (
+    <Popover position="bottom-start" width={360} withArrow>
+        <Popover.Target>
+            <ActionIcon
+                aria-label="About importing from Spotify"
+                className={styles.spotifyInfoButton}
+                size="sm"
+                variant="subtle"
+            >
+                <Icon icon="info" size="sm" />
+            </ActionIcon>
+        </Popover.Target>
+        <Popover.Dropdown className={styles.spotifyInfoPopover}>
+            <Stack gap="sm">
+                <Text fw={600} size="sm">
+                    Importing from Spotify
+                </Text>
+                <Text isMuted size="sm">
+                    Roofy reads track and playlist details from your Spotify link. Audio is not taken
+                    from Spotify itself — each track is matched to an equivalent upload on YouTube
+                    Music before it is imported into your library.
+                </Text>
+                <Text isMuted size="sm">
+                    Matching is best-effort using title, artist, album, and length. The imported
+                    file may be a different version, live recording, remix, or re-upload than the
+                    Spotify track you linked.
+                </Text>
+                {useSpotdl ? (
+                    <Text isMuted size="sm">
+                        When spotDL is available, some links may download through spotDL instead of
+                        a manual YouTube Music match. Results can still differ from what you hear on
+                        Spotify.
+                    </Text>
+                ) : (
+                    <Text isMuted size="sm">
+                        Tracks that need review require you to accept the suggested YouTube Music
+                        match. Imports can fail when no close match exists or when YouTube blocks
+                        requests — use Import settings to add browser cookies if that happens.
+                    </Text>
+                )}
+            </Stack>
+        </Popover.Dropdown>
+    </Popover>
 );

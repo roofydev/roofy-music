@@ -2,7 +2,9 @@ import { create } from 'zustand';
 
 export type ImportJob = {
     album?: string;
+    albumArtist?: string;
     artist?: string;
+    artists?: string[];
     createdAt?: string;
     downloadedCount?: number;
     error?: string;
@@ -14,8 +16,10 @@ export type ImportJob = {
     progress: number;
     saveVideo?: boolean;
     skippedCount?: number;
-    source: 'youtube_music';
+    source: 'soundcloud' | 'spotify' | 'youtube_music';
+    sourcePlaylistId?: string;
     sourceTrackId?: string;
+    sourceUrl?: string;
     status: ImportJobStatus;
     targetPlaylistIds?: string[];
     targetPlaylistNames?: string[];

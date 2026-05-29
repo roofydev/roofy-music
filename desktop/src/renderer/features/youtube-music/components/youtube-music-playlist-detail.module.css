@@ -1,3 +1,11 @@
+.detail {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
 .headerRow {
     display: flex;
     flex-wrap: wrap;

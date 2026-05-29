@@ -15,7 +15,9 @@
 }
 
 .quick-import {
-    min-width: min(34rem, 100%);
+    flex: 1;
+    min-width: 0;
+    max-width: min(48rem, 100%);
 }
 
 .sections {

@@ -55,7 +55,7 @@ export const YoutubeMusicPlaylistDetail = forwardRef<
         }, [playlist?.owner, songs.length]);
 
         return (
-            <Stack gap={0} ref={ref}>
+            <Stack className={styles.detail} gap={0} ref={ref}>
                 <PageHeader>
                     <div className={styles.headerRow}>
                         <Group gap="md" wrap="nowrap">

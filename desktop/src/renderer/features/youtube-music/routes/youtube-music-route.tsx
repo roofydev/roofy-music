@@ -267,18 +267,22 @@ const YoutubeMusicRoute = () => {
                                     />
                                 </LibraryHeaderBar>
                             </PageHeader>
-                            <ListWithSidebarContainer>
-                                <div className={styles.contentPanel}>
-                                    {!isConnected ? (
-                                        <Text isMuted>
-                                            Login to enable recommendations, search, account songs,
-                                            and playlists.
-                                        </Text>
-                                    ) : (
-                                        <YoutubeMusicHomeCarousels maxHeight="calc(100vh - 12rem)" />
-                                    )}
-                                </div>
-                            </ListWithSidebarContainer>
+                            <div className={styles.listSection}>
+                                <ListWithSidebarContainer>
+                                    <div className={styles.contentPanel}>
+                                        <div className={styles.contentPanelBody}>
+                                            {!isConnected ? (
+                                                <Text isMuted>
+                                                    Login to enable recommendations, search, account
+                                                    songs, and playlists.
+                                                </Text>
+                                            ) : (
+                                                <YoutubeMusicHomeCarousels maxHeight="calc(100vh - 12rem)" />
+                                            )}
+                                        </div>
+                                    </div>
+                                </ListWithSidebarContainer>
+                            </div>
                         </Stack>
                     )}
 
@@ -314,36 +318,40 @@ const YoutubeMusicRoute = () => {
                                 </Group>
                             </PageHeader>
                             <FilterBar />
-                            <ListWithSidebarContainer>
-                                {isConnected ? (
-                                    <div className={styles.contentPanel}>
-                                        {searchQuery.isLoading || searchQuery.isFetching ? (
-                                            <LoadingState label="Loading search results" />
-                                        ) : searchQuery.error ? (
-                                            <ErrorState error={searchQuery.error} />
-                                        ) : (
-                                            <>
-                                                {searchQuery.data?.songs &&
-                                                searchQuery.data.songs.length > 0 ? (
-                                                    <YoutubeMusicSongsTable
-                                                        songs={searchQuery.data.songs}
-                                                    />
+                            <div className={styles.listSection}>
+                                <ListWithSidebarContainer>
+                                    {isConnected ? (
+                                        <div className={styles.contentPanel}>
+                                            <div className={styles.contentPanelBody}>
+                                                {searchQuery.isLoading || searchQuery.isFetching ? (
+                                                    <LoadingState label="Loading search results" />
+                                                ) : searchQuery.error ? (
+                                                    <ErrorState error={searchQuery.error} />
                                                 ) : (
-                                                    <Text isMuted>
-                                                        {debouncedQuery
-                                                            ? 'No tracks found.'
-                                                            : 'Type a query to search YouTube Music.'}
-                                                    </Text>
+                                                    <>
+                                                        {searchQuery.data?.songs &&
+                                                        searchQuery.data.songs.length > 0 ? (
+                                                            <YoutubeMusicSongsTable
+                                                                songs={searchQuery.data.songs}
+                                                            />
+                                                        ) : (
+                                                            <Text isMuted>
+                                                                {debouncedQuery
+                                                                    ? 'No tracks found.'
+                                                                    : 'Type a query to search YouTube Music.'}
+                                                            </Text>
+                                                        )}
+                                                    </>
                                                 )}
-                                            </>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className={styles.contentPanel}>
-                                        <Text isMuted>Login to search YouTube Music.</Text>
-                                    </div>
-                                )}
-                            </ListWithSidebarContainer>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className={styles.contentPanel}>
+                                            <Text isMuted>Login to search YouTube Music.</Text>
+                                        </div>
+                                    )}
+                                </ListWithSidebarContainer>
+                            </div>
                         </Stack>
                     )}
 
@@ -383,70 +391,84 @@ const YoutubeMusicRoute = () => {
                                 </Group>
                             </PageHeader>
                             <FilterBar />
-                            <ListWithSidebarContainer>
-                                {isConnected ? (
-                                    <div className={styles.contentPanel}>
-                                        {accountSongsQuery.isLoading ? (
-                                            <LoadingState label="Loading YouTube Music songs" />
-                                        ) : accountSongsQuery.error ? (
-                                            <ErrorState error={accountSongsQuery.error} />
-                                        ) : (
-                                            <>
-                                                {filteredSongs.length > 0 ? (
-                                                    <YoutubeMusicSongsTable songs={filteredSongs} />
+                            <div className={styles.listSection}>
+                                <ListWithSidebarContainer>
+                                    {isConnected ? (
+                                        <div className={styles.contentPanel}>
+                                            <div className={styles.contentPanelBody}>
+                                                {accountSongsQuery.isLoading ? (
+                                                    <LoadingState label="Loading YouTube Music songs" />
+                                                ) : accountSongsQuery.error ? (
+                                                    <ErrorState error={accountSongsQuery.error} />
                                                 ) : (
-                                                    <Text isMuted>No tracks found.</Text>
+                                                    <>
+                                                        {filteredSongs.length > 0 ? (
+                                                            <YoutubeMusicSongsTable
+                                                                songs={filteredSongs}
+                                                            />
+                                                        ) : (
+                                                            <Text isMuted>No tracks found.</Text>
+                                                        )}
+                                                    </>
                                                 )}
-                                            </>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className={styles.contentPanel}>
-                                        <Text isMuted>Login to load your YouTube Music songs.</Text>
-                                    </div>
-                                )}
-                            </ListWithSidebarContainer>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className={styles.contentPanel}>
+                                            <Text isMuted>Login to load your YouTube Music songs.</Text>
+                                        </div>
+                                    )}
+                                </ListWithSidebarContainer>
+                            </div>
                         </Stack>
                     )}
 
                     {activeView === 'playlists' && (
                         <Stack gap={0} style={{ flex: 1, minHeight: 0 }}>
                             {activePlaylistId ? (
-                                <ListWithSidebarContainer>
-                                    {isConnected ? (
-                                        <div className={styles.contentPanel}>
-                                            {accountPlaylistDetailQuery.isLoading ||
-                                            accountPlaylistSongsQuery.isLoading ? (
-                                                <LoadingState label="Loading playlist" />
-                                            ) : accountPlaylistDetailQuery.error ? (
-                                                <ErrorState
-                                                    error={accountPlaylistDetailQuery.error}
-                                                />
-                                            ) : (
-                                                <YoutubeMusicPlaylistDetail
-                                                    onBack={handleClosePlaylist}
-                                                    onImportPlaylist={handlePlaylistImport}
-                                                    onImportTracks={handlePlaylistImportTracks}
-                                                    onPlayPlaylist={handlePlaylistPlay}
-                                                    onRefresh={() => {
-                                                        accountPlaylistDetailQuery.refetch();
-                                                        accountPlaylistSongsQuery.refetch();
-                                                    }}
-                                                    playlist={accountPlaylistDetailQuery.data}
-                                                    saveVideoImports={saveVideoImports}
-                                                    setSaveVideoImports={setSaveVideoImports}
-                                                    songs={accountPlaylistSongsQuery.data || []}
-                                                />
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className={styles.contentPanel}>
-                                            <Text isMuted>
-                                                Login to load your YouTube Music playlists.
-                                            </Text>
-                                        </div>
-                                    )}
-                                </ListWithSidebarContainer>
+                                <div className={styles.listSection}>
+                                    <ListWithSidebarContainer>
+                                        {isConnected ? (
+                                            <div className={styles.contentPanel}>
+                                                <div className={styles.contentPanelBody}>
+                                                    {accountPlaylistDetailQuery.isLoading ||
+                                                    accountPlaylistSongsQuery.isLoading ? (
+                                                        <LoadingState label="Loading playlist" />
+                                                    ) : accountPlaylistDetailQuery.error ? (
+                                                        <ErrorState
+                                                            error={accountPlaylistDetailQuery.error}
+                                                        />
+                                                    ) : (
+                                                        <YoutubeMusicPlaylistDetail
+                                                            onBack={handleClosePlaylist}
+                                                            onImportPlaylist={handlePlaylistImport}
+                                                            onImportTracks={
+                                                                handlePlaylistImportTracks
+                                                            }
+                                                            onPlayPlaylist={handlePlaylistPlay}
+                                                            onRefresh={() => {
+                                                                accountPlaylistDetailQuery.refetch();
+                                                                accountPlaylistSongsQuery.refetch();
+                                                            }}
+                                                            playlist={accountPlaylistDetailQuery.data}
+                                                            saveVideoImports={saveVideoImports}
+                                                            setSaveVideoImports={setSaveVideoImports}
+                                                            songs={
+                                                                accountPlaylistSongsQuery.data || []
+                                                            }
+                                                        />
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className={styles.contentPanel}>
+                                                <Text isMuted>
+                                                    Login to load your YouTube Music playlists.
+                                                </Text>
+                                            </div>
+                                        )}
+                                    </ListWithSidebarContainer>
+                                </div>
                             ) : (
                                 <>
                                     <PageHeader>
@@ -481,37 +503,47 @@ const YoutubeMusicRoute = () => {
                                         </Group>
                                     </PageHeader>
                                     <FilterBar />
-                                    <ListWithSidebarContainer>
-                                        {isConnected ? (
-                                            <div className={styles.contentPanel}>
-                                                {accountPlaylistsQuery.isLoading ? (
-                                                    <LoadingState label="Loading YouTube Music playlists" />
-                                                ) : accountPlaylistsQuery.error ? (
-                                                    <ErrorState
-                                                        error={accountPlaylistsQuery.error}
-                                                    />
-                                                ) : (
-                                                    <>
-                                                        {filteredPlaylists.length > 0 ? (
-                                                            <YoutubeMusicPlaylistGrid
-                                                                onOpenPlaylist={handleOpenPlaylist}
-                                                                onPlayPlaylist={handlePlaylistPlay}
-                                                                playlists={filteredPlaylists}
+                                    <div className={styles.listSection}>
+                                        <ListWithSidebarContainer>
+                                            {isConnected ? (
+                                                <div className={styles.contentPanel}>
+                                                    <div className={styles.contentPanelBody}>
+                                                        {accountPlaylistsQuery.isLoading ? (
+                                                            <LoadingState label="Loading YouTube Music playlists" />
+                                                        ) : accountPlaylistsQuery.error ? (
+                                                            <ErrorState
+                                                                error={accountPlaylistsQuery.error}
                                                             />
                                                         ) : (
-                                                            <Text isMuted>No playlists found.</Text>
+                                                            <>
+                                                                {filteredPlaylists.length > 0 ? (
+                                                                    <YoutubeMusicPlaylistGrid
+                                                                        onOpenPlaylist={
+                                                                            handleOpenPlaylist
+                                                                        }
+                                                                        onPlayPlaylist={
+                                                                            handlePlaylistPlay
+                                                                        }
+                                                                        playlists={filteredPlaylists}
+                                                                    />
+                                                                ) : (
+                                                                    <Text isMuted>
+                                                                        No playlists found.
+                                                                    </Text>
+                                                                )}
+                                                            </>
                                                         )}
-                                                    </>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div className={styles.contentPanel}>
-                                                <Text isMuted>
-                                                    Login to load your YouTube Music playlists.
-                                                </Text>
-                                            </div>
-                                        )}
-                                    </ListWithSidebarContainer>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className={styles.contentPanel}>
+                                                    <Text isMuted>
+                                                        Login to load your YouTube Music playlists.
+                                                    </Text>
+                                                </div>
+                                            )}
+                                        </ListWithSidebarContainer>
+                                    </div>
                                 </>
                             )}
                         </Stack>

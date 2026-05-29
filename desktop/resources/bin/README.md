@@ -19,13 +19,20 @@ During development, you can point the app at system/downloaded tools:
 ```powershell
 $env:ROOFY_NAVIDROME_PATH="C:\Tools\navidrome\navidrome.exe"
 $env:ROOFY_YT_DLP_PATH="C:\Tools\yt-dlp.exe"
+$env:ROOFY_SPOTDL_PATH="C:\Tools\spotdl.exe"
 $env:ROOFY_FFMPEG_PATH="C:\Tools\ffmpeg.exe"
 $env:ROOFY_DENO_PATH="C:\Tools\deno.exe"
 $env:ROOFY_CLOUDFLARED_PATH="C:\Tools\cloudflared.exe"
 pnpm dev
 ```
 
-The app also falls back to `yt-dlp`, `ffmpeg`, `ffprobe`, `deno`, `cloudflared`, and `node` on `PATH`.
+The app also falls back to `spotdl`, `yt-dlp`, `ffmpeg`, `ffprobe`, `deno`, `cloudflared`, and `node` on `PATH`.
+
+Install spotDL for Spotify link imports:
+
+```powershell
+pip install spotdl
+```
 
 If `cloudflared` is missing when starting a party with tunnel mode, the app downloads it automatically to user data.
 

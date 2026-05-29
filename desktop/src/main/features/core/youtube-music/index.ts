@@ -10,6 +10,8 @@ import vm from 'vm';
 
 import { store } from '../settings';
 
+import { getYtDlpCookieArgs } from './yt-dlp-cookies';
+
 import {
     Album,
     AlbumArtist,
@@ -21,6 +23,7 @@ import {
     ServerType,
     Song,
 } from '/@/shared/types/domain-types';
+import { isYoutubeVideoId } from '/@/shared/utils/youtube-video-id';
 import {
     YOUTUBE_MUSIC_SOURCE_ID,
     YOUTUBE_MUSIC_SOURCE_NAME,
@@ -514,6 +517,12 @@ const startYtProxyServer = () => {
 
             const isVideoProxy = match[1] === 'video-stream';
             const videoId = match[2];
+            if (!isYoutubeVideoId(videoId)) {
+                res.statusCode = 400;
+                res.end();
+                return;
+            }
+
             let streamUrl: null | string = null;
 
             try {
@@ -522,13 +531,20 @@ const startYtProxyServer = () => {
                     : await resolveStreamUrl(videoId);
             } catch (error) {
                 console.error('Failed to resolve YouTube stream URL:', error);
-                res.statusCode = 502;
-                res.end();
-                return;
             }
 
             if (!streamUrl) {
-                res.statusCode = 404;
+                try {
+                    streamUrl = isVideoProxy
+                        ? await resolveVideoStreamUrlWithYtdlp(videoId)
+                        : await resolveStreamUrlWithYtdlp(videoId);
+                } catch (fallbackError) {
+                    console.error('yt-dlp stream fallback failed:', fallbackError);
+                }
+            }
+
+            if (!streamUrl) {
+                res.statusCode = 502;
                 res.end();
                 return;
             }
@@ -806,12 +822,14 @@ const getYtDlpPath = () => {
 const resolveStreamUrlWithYtdlp = async (videoId: string): Promise<null | string> => {
     const ytDlpPath = getYtDlpPath();
     const stored = getStoredSession();
-    const args = ['--no-check-certificates', '--no-warnings', '-f', 'bestaudio', '--get-url'];
-
-    if (stored?.cookie) {
-        args.push('--add-header', `Cookie:${stored.cookie}`);
-        args.push('--add-header', 'Referer:https://music.youtube.com/');
-    }
+    const args = [
+        '--no-check-certificates',
+        '--no-warnings',
+        '-f',
+        'bestaudio/best',
+        '--get-url',
+        ...getYtDlpCookieArgs(stored?.cookie),
+    ];
 
     args.push(`https://music.youtube.com/watch?v=${videoId}`);
 
@@ -855,12 +873,8 @@ const resolveVideoStreamUrlWithYtdlp = async (videoId: string): Promise<null | s
         '-f',
         'bestvideo[ext=mp4][vcodec^=avc1]/best[ext=mp4]/bestvideo[ext=mp4]/bestvideo',
         '--get-url',
+        ...getYtDlpCookieArgs(stored?.cookie),
     ];
-
-    if (stored?.cookie) {
-        args.push('--add-header', `Cookie:${stored.cookie}`);
-        args.push('--add-header', 'Referer:https://music.youtube.com/');
-    }
 
     args.push(`https://music.youtube.com/watch?v=${videoId}`);
 
@@ -904,15 +918,11 @@ const pipeStreamWithYtdlp = (videoId: string, res: http.ServerResponse) => {
         '--quiet',
         '--no-playlist',
         '-f',
-        'bestaudio[ext=m4a]/bestaudio',
+        'bestaudio/best',
         '-o',
         '-',
+        ...getYtDlpCookieArgs(stored?.cookie),
     ];
-
-    if (stored?.cookie) {
-        args.push('--add-header', `Cookie:${stored.cookie}`);
-        args.push('--add-header', 'Referer:https://music.youtube.com/');
-    }
 
     args.push(`https://music.youtube.com/watch?v=${videoId}`);
 
@@ -975,12 +985,8 @@ const pipeVideoStreamWithYtdlp = (videoId: string, res: http.ServerResponse) => 
         'bestvideo[ext=mp4][vcodec^=avc1]/best[ext=mp4]/bestvideo[ext=mp4]/bestvideo',
         '-o',
         '-',
+        ...getYtDlpCookieArgs(stored?.cookie),
     ];
-
-    if (stored?.cookie) {
-        args.push('--add-header', `Cookie:${stored.cookie}`);
-        args.push('--add-header', 'Referer:https://music.youtube.com/');
-    }
 
     args.push(`https://music.youtube.com/watch?v=${videoId}`);
 
@@ -1041,7 +1047,10 @@ const resolveStreamUrl = async (
         return cached.url;
     }
 
-    const yt = await getInnertube();
+    const yt = await getInnertube().catch((error) => {
+        console.warn('[YT Stream] Innertube unavailable, using yt-dlp fallback:', error);
+        return null;
+    });
     let contentPoToken: null | string | undefined;
     const getContentPoToken = async () => {
         if (contentPoToken !== undefined) return contentPoToken;
@@ -1071,8 +1080,7 @@ const resolveStreamUrl = async (
         return url;
     };
 
-    // Method 1: TV_EMBEDDED client (often bypasses bot checks without po_token)
-    if (!rejectedClients.has('TVHTML5_SIMPLY_EMBEDDED_PLAYER')) {
+    if (yt && !rejectedClients.has('TVHTML5_SIMPLY_EMBEDDED_PLAYER')) {
         try {
             const info = await yt.getBasicInfo(videoId, { client: 'TV_EMBEDDED' });
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
@@ -1087,7 +1095,7 @@ const resolveStreamUrl = async (
     }
 
     // Method 2: WEB_REMIX with auth
-    if (!rejectedClients.has('WEB_REMIX')) {
+    if (yt && !rejectedClients.has('WEB_REMIX')) {
         try {
             const poToken = await getContentPoToken();
             const info = await yt.music.getInfo(
@@ -1108,7 +1116,7 @@ const resolveStreamUrl = async (
     }
 
     // Method 3: WEB client with auth
-    if (!rejectedClients.has('WEB')) {
+    if (yt && !rejectedClients.has('WEB')) {
         try {
             const poToken = await getContentPoToken();
             const info = await yt.getBasicInfo(
@@ -1127,7 +1135,7 @@ const resolveStreamUrl = async (
     }
 
     // Method 4: iOS native client
-    if (!rejectedClients.has('IOS') && !rejectedClients.has('iOS')) {
+    if (yt && !rejectedClients.has('IOS') && !rejectedClients.has('iOS')) {
         try {
             const info = await yt.getBasicInfo(videoId, { client: 'IOS' });
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
@@ -1142,7 +1150,7 @@ const resolveStreamUrl = async (
     }
 
     // Method 5: Android Music native client
-    if (!rejectedClients.has('ANDROID_MUSIC')) {
+    if (yt && !rejectedClients.has('ANDROID_MUSIC')) {
         try {
             const info = await yt.getBasicInfo(videoId, { client: 'YTMUSIC_ANDROID' });
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
@@ -1157,7 +1165,7 @@ const resolveStreamUrl = async (
     }
 
     // Method 6: Android native client
-    if (!rejectedClients.has('ANDROID')) {
+    if (yt && !rejectedClients.has('ANDROID')) {
         try {
             const info = await yt.getBasicInfo(videoId, { client: 'ANDROID' });
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
@@ -1193,7 +1201,10 @@ const resolveVideoStreamUrl = async (
         return cached.url;
     }
 
-    const yt = await getInnertube();
+    const yt = await getInnertube().catch((error) => {
+        console.warn('[YT Video Stream] Innertube unavailable, using yt-dlp fallback:', error);
+        return null;
+    });
     let contentPoToken: null | string | undefined;
     const getContentPoToken = async () => {
         if (contentPoToken !== undefined) return contentPoToken;
@@ -1223,7 +1234,7 @@ const resolveVideoStreamUrl = async (
         return url;
     };
 
-    if (!rejectedClients.has('WEB')) {
+    if (yt && !rejectedClients.has('WEB')) {
         try {
             const poToken = await getContentPoToken();
             const info = await yt.getBasicInfo(
@@ -1241,7 +1252,7 @@ const resolveVideoStreamUrl = async (
         }
     }
 
-    if (!rejectedClients.has('IOS') && !rejectedClients.has('iOS')) {
+    if (yt && !rejectedClients.has('IOS') && !rejectedClients.has('iOS')) {
         try {
             const info = await yt.getBasicInfo(videoId, { client: 'IOS' });
             const url = await decipherFormatUrl(
@@ -1255,7 +1266,7 @@ const resolveVideoStreamUrl = async (
         }
     }
 
-    if (!rejectedClients.has('ANDROID')) {
+    if (yt && !rejectedClients.has('ANDROID')) {
         try {
             const info = await yt.getBasicInfo(videoId, { client: 'ANDROID' });
             const url = await decipherFormatUrl(
@@ -3148,6 +3159,9 @@ const getAccountPlaylistSongs = async (id: string): Promise<Song[]> => {
 const getStreamUrl = async (id: string): Promise<string> => {
     await startYtProxyServer();
     const videoId = id.startsWith('ytm:') ? id.slice(4) : id;
+    if (!isYoutubeVideoId(videoId)) {
+        throw new Error('Invalid YouTube video id for streaming.');
+    }
     return `http://127.0.0.1:${ytProxyPort}/yt-stream/${videoId}`;
 };
 
@@ -3170,6 +3184,14 @@ ipcMain.handle(
     async (_event, args: { id: string; reason?: 'playback' | 'preload' | 'retry' }) => {
         await startYtProxyServer();
         const videoId = args.id.startsWith('ytm:') ? args.id.slice(4) : args.id;
+        if (!isYoutubeVideoId(videoId)) {
+            return {
+                error: 'Invalid YouTube video id for streaming.',
+                resolvedAt: Date.now(),
+                source: 'youtube_music',
+                trackId: `youtube_music:${videoId}`,
+            };
+        }
         const cached = streamCache.get(videoId);
 
         // If cached and not expired, return the proxy URL (never leak raw googlevideo URLs to renderer)

@@ -18,25 +18,64 @@ const previewImport = (args: { cookieBrowser?: string; input: string; playlist?:
     return ipcRenderer.invoke('roofy-local-preview-import', args);
 };
 
+type ImportSource = 'soundcloud' | 'spotify' | 'youtube_music';
+
+type ImportSourceTrack = {
+    album?: string;
+    albumArtist?: string;
+    artist?: string;
+    artists?: string[];
+    artworkUrl?: string;
+    discNumber?: number;
+    durationMs?: number;
+    explicit?: boolean;
+    isrc?: string;
+    matchConfidence?: number;
+    matchState?: 'in_library' | 'matched' | 'needs_review' | 'unavailable';
+    releaseDate?: string;
+    resolvedSource?: ImportSource;
+    resolvedSourceTrackId?: string;
+    resolvedSourceUrl?: string;
+    source?: ImportSource;
+    sourceTrackId?: string;
+    sourceUrl?: string;
+    title: string;
+    trackNumber?: number;
+};
+
 const createImport = (args: {
     album?: string;
+    albumArtist?: string;
     artist?: string;
+    artists?: string[];
+    artworkUrl?: string;
     audioFormat?: string;
     cookieBrowser?: string;
     createPlaylist?: boolean;
+    discNumber?: number;
     imageUrl?: string;
     input: string;
     playlist?: boolean;
     playlistName?: string;
+    releaseDate?: string;
     saveVideo?: boolean;
-    source?: 'youtube_music';
+    source?: ImportSource;
+    sourcePlaylistId?: string;
     sourceTrackId?: string;
+    sourceTracks?: ImportSourceTrack[];
+    sourceUrl?: string;
     title?: string;
+    trackNumber?: number;
     videoId?: string;
 }) => {
     return ipcRenderer.invoke('roofy-local-create-import', args);
 };
 
+const spotifyStatus = () => ipcRenderer.invoke('roofy-local-spotify-status');
+const connectSpotify = () => ipcRenderer.invoke('roofy-local-spotify-connect');
+const disconnectSpotify = () => ipcRenderer.invoke('roofy-local-spotify-disconnect');
+const setSpotifyClientId = (clientId: string) =>
+    ipcRenderer.invoke('roofy-local-spotify-client-id', clientId);
 const cancelImport = (id: string) => {
     return ipcRenderer.invoke('roofy-local-cancel-import', id);
 };
@@ -83,10 +122,12 @@ const onPlaylistImported = (cb: () => void) => {
 export const localFirst = {
     cancelImport,
     clearImports,
+    connectSpotify,
     createImport,
     createUser,
     credentials,
     deleteTracks,
+    disconnectSpotify,
     downloadVideoForSong,
     getVideoMetadata,
     onPlaylistImported,
@@ -94,6 +135,8 @@ export const localFirst = {
     previewImport,
     removeImport,
     selectLibrary,
+    setSpotifyClientId,
+    spotifyStatus,
     start,
     status,
     stop,

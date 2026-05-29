@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import {
     Alert,
     Badge,
@@ -12,6 +11,7 @@ import {
     TextInput,
     Title,
 } from '@mantine/core';
+import { useEffect, useState } from 'react';
 
 type LocalStatus = {
     dataPath: string;
@@ -23,6 +23,20 @@ type LocalStatus = {
         progress: number;
         status: string;
     }>;
+    importSources?: {
+        soundcloud: {
+            configured: boolean;
+            message: string;
+        };
+        spotify: {
+            clientId: string;
+            configured: boolean;
+            connected: boolean;
+            displayName?: string;
+            message: string;
+            redirectUri?: string;
+        };
+    };
     libraryPath: string;
     navidrome: {
         available: boolean;
@@ -37,6 +51,7 @@ type LocalStatus = {
         deno: boolean;
         ffmpeg: boolean;
         navidrome: boolean;
+        spotdl: boolean;
         ytDlp: boolean;
     };
 };
@@ -126,6 +141,7 @@ export const LocalTab = () => {
             <Stack gap="md">
                 <Group gap="xs">
                     {toolBadge(Boolean(status?.tools.navidrome), 'Navidrome')}
+                    {toolBadge(Boolean(status?.tools.spotdl), 'spotDL')}
                     {toolBadge(Boolean(status?.tools.ytDlp), 'yt-dlp')}
                     {toolBadge(Boolean(status?.tools.ffmpeg), 'ffmpeg')}
                     {toolBadge(Boolean(status?.tools.deno), 'Deno')}
@@ -155,6 +171,28 @@ export const LocalTab = () => {
                     >
                         Stop
                     </Button>
+                </Group>
+            </Stack>
+
+            <Stack gap="md">
+                <Stack gap={4}>
+                    <Text fw={600}>Import sources</Text>
+                    <Text c="dimmed" size="sm">
+                        Spotify track, playlist, album, and artist links import through spotDL when
+                        it is installed. Public SoundCloud links import through yt-dlp.
+                    </Text>
+                </Stack>
+
+                <Group gap="xs">
+                    <Badge
+                        color={status?.tools.spotdl ? 'green' : 'yellow'}
+                        variant="light"
+                    >
+                        Spotify: {status?.tools.spotdl ? 'spotDL ready' : 'spotDL missing'}
+                    </Badge>
+                    <Badge color="green" variant="light">
+                        SoundCloud: public links supported
+                    </Badge>
                 </Group>
             </Stack>
 
@@ -223,7 +261,10 @@ export const LocalTab = () => {
                         label="Admin"
                         onChange={(event) => setNewUserIsAdmin(event.currentTarget.checked)}
                     />
-                    <Button disabled={busy || !newUsername || !newUserPassword} onClick={createUser}>
+                    <Button
+                        disabled={busy || !newUsername || !newUserPassword}
+                        onClick={createUser}
+                    >
                         Create user
                     </Button>
                 </Group>
@@ -256,7 +297,7 @@ export const LocalTab = () => {
                 <Text fw={600}>Import queue</Text>
                 {status?.imports.length ? (
                     status.imports.map((job) => (
-                        <Stack key={job.id} gap={4}>
+                        <Stack gap={4} key={job.id}>
                             <Group justify="space-between">
                                 <Text size="sm">{job.input}</Text>
                                 <Badge variant="light">{job.status}</Badge>

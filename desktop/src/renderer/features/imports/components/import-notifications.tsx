@@ -40,9 +40,11 @@ const getDownloadedCopy = (count?: number) => {
 
 const getVideoCopy = (job: {
     saveVideo?: boolean;
+    source?: string;
     videoDownloadedCount?: number;
     warning?: string;
 }) => {
+    if (job.source === 'spotify') return ' Spotify metadata applied.';
     if (!job.saveVideo) return '';
     if (job.videoDownloadedCount && job.videoDownloadedCount > 0) return ' MP4 video saved.';
     return ' Audio imported; MP4 video was not saved.';

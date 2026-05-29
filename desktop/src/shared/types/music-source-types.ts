@@ -1,4 +1,12 @@
-export type MusicSource = 'local' | 'navidrome' | 'subsonic' | 'jellyfin' | 'youtube_music' | 'radio';
+export type MusicSource =
+    | 'local'
+    | 'navidrome'
+    | 'soundcloud'
+    | 'spotify'
+    | 'subsonic'
+    | 'jellyfin'
+    | 'youtube_music'
+    | 'radio';
 
 export type TrackAvailability =
     | 'remote_only'

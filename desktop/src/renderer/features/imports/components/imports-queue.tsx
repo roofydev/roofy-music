@@ -52,15 +52,24 @@ const getStatusBadge = (status: string) => {
 
 const getVideoImportBadge = (job: {
     saveVideo?: boolean;
+    source?: string;
     status: string;
     videoDownloadedCount?: number;
 }) => {
+    if (job.source === 'spotify') return <Badge variant="light">Metadata match</Badge>;
+    if (job.source === 'soundcloud') return <Badge variant="light">Audio import</Badge>;
     if (!job.saveVideo) return <Badge variant="light">Audio only</Badge>;
     if (job.videoDownloadedCount && job.videoDownloadedCount > 0) {
         return <Badge color="green">MP4 saved</Badge>;
     }
     if (job.status === 'failed') return <Badge color="red">MP4 not saved</Badge>;
     return <Badge color="blue">MP4 requested</Badge>;
+};
+
+const getSourceBadge = (source?: string) => {
+    if (source === 'spotify') return <Badge color="green">Spotify</Badge>;
+    if (source === 'soundcloud') return <Badge color="orange">SoundCloud</Badge>;
+    return <Badge color="red">YouTube Music</Badge>;
 };
 
 export const ImportsQueue = () => {
@@ -123,7 +132,7 @@ export const ImportsQueue = () => {
         <Stack className={styles.container} gap="md">
             <Group justify="space-between" wrap="nowrap">
                 <Text isMuted size="sm">
-                    Imported songs, imported playlists, and YouTube Music download jobs.
+                    Imported songs, imported playlists, and matched download jobs.
                 </Text>
                 <Group className={styles.headerActions} gap="xs" wrap="nowrap">
                     <Button
@@ -197,7 +206,7 @@ export const ImportsQueue = () => {
                         </Text>
                         <Text isMuted size="sm">
                             {stats.total === 0
-                                ? 'Imported YouTube Music tracks will appear here while they download and after they finish.'
+                                ? 'Imported tracks will appear here while they download and after they finish.'
                                 : 'Switch filters to see other import states.'}
                         </Text>
                     </Stack>
@@ -217,7 +226,13 @@ export const ImportsQueue = () => {
                         {visibleJobs.map((job) => {
                             const title =
                                 job.name || job.title || job.sourceTrackId || 'Unknown track';
-                            const artist = job.artist || 'YouTube Music';
+                            const artist =
+                                job.artist ||
+                                (job.source === 'spotify'
+                                    ? 'Spotify'
+                                    : job.source === 'soundcloud'
+                                      ? 'SoundCloud'
+                                      : 'YouTube Music');
                             const target = job.targetPlaylistNames?.join(', ') || 'Library';
                             const canDismiss =
                                 job.status === 'completed' || job.status === 'failed';
@@ -245,6 +260,7 @@ export const ImportsQueue = () => {
                                                     <Text isMuted size="xs">
                                                         {artist}
                                                     </Text>
+                                                    {getSourceBadge(job.source)}
                                                     {getVideoImportBadge(job)}
                                                 </Group>
                                                 {job.error && (

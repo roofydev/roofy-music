@@ -24,6 +24,7 @@
 
 .search-input {
     flex: 1;
+    min-width: 0;
 }
 
 .inline .search-row {
@@ -31,7 +32,8 @@
 }
 
 .inline .empty-state,
-.inline .preview {
+.inline .preview-card,
+.inline .songs-result-panel {
     margin-top: var(--theme-spacing-xs);
 }
 
@@ -40,49 +42,131 @@
     top: calc(100% + var(--theme-spacing-xs));
     left: 0;
     z-index: 50;
-    width: min(64rem, calc(100vw - 4rem));
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
     max-height: min(62vh, 42rem);
     padding: var(--theme-spacing-md);
     overflow: auto;
     background: var(--theme-colors-background);
     border: 1px solid var(--theme-colors-border);
+    border-radius: 8px;
     box-shadow: 0 18px 40px rgb(0 0 0 / 35%);
 }
 
 .songs-result-panel {
     height: min(36vh, 24rem);
     min-height: 14rem;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.spotify-info-row {
+    align-items: center;
+    min-width: 0;
+}
+
+.spotify-info-label {
+    flex: 1;
+    min-width: 0;
+}
+
+.spotify-info-button {
+    flex-shrink: 0;
+    color: var(--theme-colors-foreground-muted);
+}
+
+.spotify-info-popover {
+    max-width: 22rem;
+}
+
+.spotify-import-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--theme-spacing-sm);
+}
+
+.spotify-review-actions {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--theme-spacing-xs);
+    min-width: 0;
 }
 
 .playlists-result-panel {
+    display: flex;
+    flex-direction: column;
     height: min(28vh, 18rem);
     min-height: 12rem;
+    min-width: 0;
     overflow: hidden;
     border: 1px solid var(--theme-colors-border);
 }
 
-.preview {
-    display: grid;
-    grid-template-columns: 88px minmax(0, 1fr) auto;
+.playlists-result-panel > * {
+    flex: 1;
+    min-height: 0;
+}
+
+.preview-card {
+    display: flex;
+    flex-direction: column;
     gap: var(--theme-spacing-md);
-    align-items: center;
+    box-sizing: border-box;
+    width: 100%;
     padding: var(--theme-spacing-md);
     background: var(--theme-colors-surface);
     border: 1px solid var(--theme-colors-border);
-    border-radius: 8px;
+    border-radius: 10px;
 }
 
-.preview-image {
-    width: 88px;
-    height: 88px;
-    border-radius: 6px;
+.preview-main {
+    display: flex;
+    gap: var(--theme-spacing-md);
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.preview-thumb {
+    flex-shrink: 0;
+    width: 104px;
+    height: 104px;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .preview-image-inner {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 6px;
+    border-radius: 8px;
+}
+
+.preview-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--theme-spacing-xs);
+    min-width: 0;
+}
+
+.preview-meta {
+    align-items: center;
+}
+
+.preview-title {
+    margin-top: 2px;
+    line-height: 1.25;
+    word-break: break-word;
+}
+
+.preview-artist {
+    line-height: 1.35;
 }
 
 .result-image-fallback {
@@ -93,55 +177,80 @@
     border: 1px solid var(--theme-colors-border);
 }
 
-.preview-body,
 .preview-title,
 .result-title {
     min-width: 0;
 }
 
-.preview-title,
+.match-list {
+    display: grid;
+    gap: var(--theme-spacing-xs);
+    max-height: 13rem;
+    margin-top: var(--theme-spacing-xs);
+    padding-top: var(--theme-spacing-sm);
+    border-top: 1px solid color-mix(in srgb, var(--theme-colors-border) 80%, transparent);
+    overflow: auto;
+}
+
+.match-row {
+    justify-content: space-between;
+    min-width: 0;
+    padding: var(--theme-spacing-xs);
+    background: color-mix(in srgb, var(--theme-colors-background) 70%, transparent);
+    border: 1px solid var(--theme-colors-border);
+    border-radius: 6px;
+}
+
 .result-title {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.result-row {
-    border-bottom: 1px solid var(--theme-colors-border);
+.preview-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--theme-spacing-sm);
+    padding-top: var(--theme-spacing-md);
+    border-top: 1px solid var(--theme-colors-border);
 }
 
-.result-image,
-.result-image-fallback {
-    width: 42px;
-    height: 42px;
-    border-radius: 6px;
+.preview-import {
+    margin-left: auto;
 }
 
-.result-image-inner {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 6px;
-}
-
-.empty-state {
+.empty-state,
+.loading-state {
     padding: var(--theme-spacing-lg);
     border: 1px dashed var(--theme-colors-border);
     border-radius: 8px;
 }
 
+.loading-state {
+    display: flex;
+    gap: var(--theme-spacing-md);
+    align-items: center;
+    border-style: solid;
+    background: color-mix(in srgb, var(--theme-colors-surface) 65%, transparent);
+}
+
 @media (width <= 720px) {
-    .preview {
-        grid-template-columns: 64px minmax(0, 1fr);
+    .preview-main {
+        flex-direction: column;
+        align-items: stretch;
     }
 
-    .preview button {
-        grid-column: 1 / -1;
+    .preview-thumb {
+        width: 100%;
+        max-width: 200px;
+        height: auto;
+        aspect-ratio: 1;
     }
 
-    .preview-image {
-        width: 64px;
-        height: 64px;
+    .preview-import {
+        width: 100%;
+        margin-left: 0;
     }
 }
 
@@ -153,17 +262,18 @@
     border-radius: 0;
 }
 
-:global([data-theme="retroMonochrome"]) .preview {
+:global([data-theme="retroMonochrome"]) .preview-card {
     background: var(--retro-panel, #0b0b0b);
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 0;
 }
 
-:global([data-theme="retroMonochrome"]) .preview-image,
-:global([data-theme="retroMonochrome"]) .preview-image-inner,
-:global([data-theme="retroMonochrome"]) .result-image,
-:global([data-theme="retroMonochrome"]) .result-image-inner,
-:global([data-theme="retroMonochrome"]) .result-image-fallback {
+:global([data-theme="retroMonochrome"]) .inline-dropdown {
+    border-radius: 0;
+}
+
+:global([data-theme="retroMonochrome"]) .preview-thumb,
+:global([data-theme="retroMonochrome"]) .preview-image-inner {
     border-radius: 0;
     border: 1px solid rgba(255, 255, 255, 0.25);
 }
