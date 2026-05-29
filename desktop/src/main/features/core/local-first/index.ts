@@ -28,6 +28,7 @@ import {
     summarizeSpotdlPreview,
 } from './spotdl';
 import { enrichAudioFileMetadata, probeAudioTags } from './metadata-enrichment';
+import { buildImportPairingUrl, buildSubsonicPairingUrl } from './pairing-urls';
 
 import { applyHandoffState, requestHandoffState } from '/@/main/features/core/handoff';
 import { getMainWindow } from '/@/main/index';
@@ -177,6 +178,8 @@ type LocalPairingMode = 'lan' | 'tunnel';
 
 type LocalPairingStatus = {
     error?: string;
+    /** Other IPv4 addresses on this PC (LAN mode troubleshooting). */
+    lanHosts?: string[];
     mode: LocalPairingMode;
     pairingUrl?: string;
     state: 'connected' | 'disabled' | 'starting' | 'unavailable';
@@ -597,14 +600,44 @@ const getPort = () => {
 
 const getUrl = () => `http://127.0.0.1:${getPort()}`;
 
-const commandExists = (command: string) => {
+const TOOL_PROBE_CACHE_TTL_MS = 60_000;
+const toolProbeCache = new Map<string, { available: boolean; expiresAt: number }>();
+
+const probeCommandExists = (command: string) => {
+    if (process.platform === 'win32') {
+        const where = spawnSync('where.exe', [command], {
+            encoding: 'utf8',
+            timeout: 2000,
+            windowsHide: true,
+        });
+        if (!where.error && where.status === 0 && where.stdout?.trim()) {
+            return true;
+        }
+    }
+
     const result = spawnSync(command, ['--version'], {
         encoding: 'utf8',
-        timeout: 5000,
+        timeout: 3000,
         windowsHide: true,
     });
 
     return !result.error && result.status === 0;
+};
+
+const commandExists = (command: string) => {
+    const cached = toolProbeCache.get(command);
+    const now = Date.now();
+    if (cached && cached.expiresAt > now) {
+        return cached.available;
+    }
+
+    const available = probeCommandExists(command);
+    toolProbeCache.set(command, { available, expiresAt: now + TOOL_PROBE_CACHE_TTL_MS });
+    return available;
+};
+
+export const invalidateLocalFirstToolProbeCache = () => {
+    toolProbeCache.clear();
 };
 
 const bundledExecutableName = (baseName: string) => {
@@ -859,16 +892,53 @@ export const shutdownLocalFirst = () => {
     }
 };
 
-const getLanHost = () => {
-    const interfaces = networkInterfaces();
-    for (const entries of Object.values(interfaces)) {
+const PRIVATE_IPV4 =
+    /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/;
+
+const VIRTUAL_INTERFACE =
+    /^(lo|loopback|docker|veth|br-|vmware|virtualbox|vethernet|wsl|hyper-v|npcap|tailscale|zerotier|hamachi|nordlynx|wireguard|tun|tap)/i;
+
+const PREFERRED_INTERFACE = /(wi-?fi|wlan|ethernet|eth|en\d|local area connection)/i;
+
+const isIPv4Address = (family: string | number) => family === 'IPv4' || family === 4;
+
+const getLanHostCandidates = () => {
+    const scored: Array<{ address: string; score: number }> = [];
+
+    for (const [name, entries] of Object.entries(networkInterfaces())) {
+        if (VIRTUAL_INTERFACE.test(name)) continue;
+
         for (const entry of entries || []) {
-            if (entry.family === 'IPv4' && !entry.internal) {
-                return entry.address;
-            }
+            if (!isIPv4Address(entry.family) || entry.internal) continue;
+
+            let score = 0;
+            if (PRIVATE_IPV4.test(entry.address)) score += 20;
+            if (PREFERRED_INTERFACE.test(name)) score += 10;
+            if (entry.address.startsWith('169.254.')) score -= 30;
+
+            scored.push({ address: entry.address, score });
         }
     }
-    return undefined;
+
+    return [...new Map(scored.map((item) => [item.address, item])).values()]
+        .sort((left, right) => right.score - left.score)
+        .map((item) => item.address);
+};
+
+const getLanHost = () => {
+    const configured = process.env.ROOFY_LAN_HOST?.trim();
+    if (configured) return configured;
+
+    return getLanHostCandidates()[0];
+};
+
+const withLanHostHints = (status: LocalPairingStatus): LocalPairingStatus => {
+    if (status.mode !== 'lan' || status.state !== 'connected') return status;
+    const candidates = getLanHostCandidates();
+    return {
+        ...status,
+        lanHosts: candidates.length > 1 ? candidates : undefined,
+    };
 };
 
 const getLanPairingUrl = (port: number) => {
@@ -877,19 +947,18 @@ const getLanPairingUrl = (port: number) => {
     return `http://${host}:${port}`;
 };
 
-const getPairingUrl = (serverUrl: string) => {
-    const url = new URL('roofymusic://pair/subsonic');
-    url.searchParams.set('name', 'Roofy Local Library');
-    url.searchParams.set('serverUrl', serverUrl);
-    url.searchParams.set('username', LOCAL_SERVER_USERNAME);
-    url.searchParams.set('password', getPassword());
-    return url.toString();
-};
+const getPairingUrl = (serverUrl: string) =>
+    buildSubsonicPairingUrl({
+        password: getPassword(),
+        serverUrl,
+        username: LOCAL_SERVER_USERNAME,
+    });
 
-const withPairingUrl = (status: LocalPairingStatus): LocalPairingStatus => ({
-    ...status,
-    pairingUrl: status.url ? getPairingUrl(status.url) : undefined,
-});
+const withPairingUrl = (status: LocalPairingStatus): LocalPairingStatus =>
+    withLanHostHints({
+        ...status,
+        pairingUrl: status.url ? getPairingUrl(status.url) : undefined,
+    });
 
 const stopLocalPairing = () => {
     localPairingTunnelProcess?.kill();
@@ -1043,12 +1112,11 @@ const startLocalPairing = async (mode: LocalPairingMode): Promise<LocalFirstStat
     return getLocalFirstStatus();
 };
 
-const getMobileImportPairingUrl = (endpointUrl: string) => {
-    const url = new URL('roofymusic://pair/import');
-    url.searchParams.set('endpointUrl', endpointUrl);
-    url.searchParams.set('token', getMobileImportToken());
-    return url.toString();
-};
+const getMobileImportPairingUrl = (endpointUrl: string) =>
+    buildImportPairingUrl({
+        endpointUrl,
+        token: getMobileImportToken(),
+    });
 
 const withMobileImportPairingUrl = (
     status: Omit<LocalMobileImportStatus, 'token'>,

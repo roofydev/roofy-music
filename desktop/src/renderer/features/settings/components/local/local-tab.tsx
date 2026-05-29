@@ -13,7 +13,7 @@ import {
     TextInput,
     Title,
 } from '@mantine/core';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type LocalStatus = {
     dataPath: string;
@@ -59,6 +59,7 @@ type LocalStatus = {
     };
     pairing: {
         error?: string;
+        lanHosts?: string[];
         mode: 'lan' | 'tunnel';
         pairingUrl?: string;
         state: 'connected' | 'disabled' | 'starting' | 'unavailable';
@@ -103,16 +104,65 @@ export const LocalTab = () => {
     const [tagAlbumArtist, setTagAlbumArtist] = useState('');
     const [tagArtworkUrl, setTagArtworkUrl] = useState('');
 
-    const refresh = async () => {
+    const statusRef = useRef<LocalStatus | null>(null);
+
+    const refresh = useCallback(async () => {
         const next = await window.api.localFirst.status();
+        statusRef.current = next;
         setStatus(next);
-    };
+    }, []);
 
     useEffect(() => {
-        refresh();
-        const timer = window.setInterval(refresh, 1500);
-        return () => window.clearInterval(timer);
-    }, []);
+        let cancelled = false;
+        let timer: number | undefined;
+
+        const scheduleNext = () => {
+            const current = statusRef.current;
+            const pairingStarting = current?.pairing.state === 'starting';
+            const importStarting = current?.mobileImport.state === 'starting';
+            const hasActiveImports = Boolean(
+                current?.imports.some(
+                    (job) => job.status === 'running' || job.status === 'pending',
+                ),
+            );
+            const delayMs =
+                pairingStarting || importStarting ? 2000 : hasActiveImports ? 4000 : 8000;
+            timer = window.setTimeout(tick, delayMs);
+        };
+
+        const tick = async () => {
+            if (cancelled || document.hidden) {
+                scheduleNext();
+                return;
+            }
+            await refresh();
+            if (!cancelled) {
+                scheduleNext();
+            }
+        };
+
+        void refresh().finally(() => {
+            if (!cancelled) {
+                scheduleNext();
+            }
+        });
+
+        const onVisibility = () => {
+            if (!document.hidden && !cancelled) {
+                window.clearTimeout(timer);
+                void refresh().finally(scheduleNext);
+            }
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+
+        return () => {
+            cancelled = true;
+            document.removeEventListener('visibilitychange', onVisibility);
+            if (timer !== undefined) {
+                window.clearTimeout(timer);
+            }
+        };
+    }, [refresh]);
 
     const run = async (action: () => Promise<any>) => {
         setBusy(true);
@@ -455,8 +505,24 @@ export const LocalTab = () => {
 
                         <Text c="dimmed" size="sm">
                             Tunnel mode works away from home through the bundled cloudflared binary.
-                            LAN mode keeps traffic on the current Wi-Fi network.
+                            LAN mode keeps traffic on the current Wi-Fi network (phone and PC must be on
+                            the same network; guest Wi-Fi with client isolation will fail).
                         </Text>
+
+                        {status?.pairing.mode === 'lan' && status.pairing.state === 'connected' && (
+                            <Alert color="blue" title="LAN pairing tips">
+                                Allow Roofy through Windows Firewall when prompted. If the phone reports
+                                &quot;No route to host&quot;, try Start tunnel instead, or set server URL
+                                manually to an address your phone can reach (same subnet as Wi‑Fi).
+                                {status.pairing.lanHosts?.length ? (
+                                    <>
+                                        {' '}
+                                        Other IPs on this PC:{' '}
+                                        {status.pairing.lanHosts.join(', ')}
+                                    </>
+                                ) : null}
+                            </Alert>
+                        )}
 
                         {status?.pairing.url && (
                             <Stack gap={4}>

@@ -60,29 +60,61 @@ export const findSpotdlExecutable = (envName = 'ROOFY_SPOTDL_PATH') => {
     return binaryName;
 };
 
-const commandExists = (command: string, prefixArgs: string[] = []) => {
+const SPOTDL_PROBE_CACHE_TTL_MS = 60_000;
+let spotdlInvocationCache:
+    | null
+    | { expiresAt: number; invocation: null | { command: string; prefixArgs: string[] } } = null;
+
+const probeCommandExists = (command: string, prefixArgs: string[] = []) => {
+    if (process.platform === 'win32' && prefixArgs.length === 0) {
+        const where = spawnSync('where.exe', [command], {
+            encoding: 'utf8',
+            timeout: 2000,
+            windowsHide: true,
+        });
+        if (!where.error && where.status === 0 && where.stdout?.trim()) {
+            return true;
+        }
+    }
+
     const result = spawnSync(command, [...prefixArgs, '--version'], {
         encoding: 'utf8',
-        timeout: 8000,
+        timeout: 3000,
         windowsHide: true,
     });
     return !result.error && result.status === 0;
 };
 
 export const getSpotdlInvocation = (): null | { command: string; prefixArgs: string[] } => {
-    const configured = process.env.ROOFY_SPOTDL_PATH || (store.get('roofy.spotdlPath') as string);
-    if (configured && existsSync(configured)) {
-        return { command: configured, prefixArgs: [] };
+    const now = Date.now();
+    if (spotdlInvocationCache && spotdlInvocationCache.expiresAt > now) {
+        return spotdlInvocationCache.invocation;
     }
 
-    if (commandExists('spotdl')) return { command: 'spotdl', prefixArgs: [] };
-    if (commandExists('python', ['-m', 'spotdl'])) return { command: 'python', prefixArgs: ['-m', 'spotdl'] };
-    if (commandExists('py', ['-m', 'spotdl'])) return { command: 'py', prefixArgs: ['-m', 'spotdl'] };
+    const configured = process.env.ROOFY_SPOTDL_PATH || (store.get('roofy.spotdlPath') as string);
+    let invocation: null | { command: string; prefixArgs: string[] } = null;
+    if (configured && existsSync(configured)) {
+        invocation = { command: configured, prefixArgs: [] };
+    } else if (probeCommandExists('spotdl')) {
+        invocation = { command: 'spotdl', prefixArgs: [] };
+    } else if (probeCommandExists('python', ['-m', 'spotdl'])) {
+        invocation = { command: 'python', prefixArgs: ['-m', 'spotdl'] };
+    } else if (probeCommandExists('py', ['-m', 'spotdl'])) {
+        invocation = { command: 'py', prefixArgs: ['-m', 'spotdl'] };
+    }
 
-    return null;
+    spotdlInvocationCache = {
+        expiresAt: now + SPOTDL_PROBE_CACHE_TTL_MS,
+        invocation,
+    };
+    return invocation;
 };
 
 export const spotdlAvailable = () => Boolean(getSpotdlInvocation());
+
+export const invalidateSpotdlProbeCache = () => {
+    spotdlInvocationCache = null;
+};
 
 const buildSpotdlArgs = (context: SpotdlRunContext, extra: string[] = []) => {
     const args = ['--log-level', 'ERROR', ...extra];

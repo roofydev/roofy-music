@@ -1,0 +1,45 @@
+import { describe, expect, it } from 'vitest';
+
+import { buildImportPairingUrl, buildSubsonicPairingUrl } from './pairing-urls';
+
+describe('pairing URLs', () => {
+    it('builds a Subsonic deep link with encoded credentials', () => {
+        const url = buildSubsonicPairingUrl({
+            serverUrl: 'http://192.168.1.10:4533',
+            username: 'roofy',
+            password: 'secret&token',
+        });
+
+        const parsed = new URL(url);
+        expect(parsed.protocol).toBe('roofymusic:');
+        expect(parsed.hostname).toBe('pair');
+        expect(parsed.pathname).toBe('/subsonic');
+        expect(parsed.searchParams.get('serverUrl')).toBe('http://192.168.1.10:4533');
+        expect(parsed.searchParams.get('username')).toBe('roofy');
+        expect(parsed.searchParams.get('password')).toBe('secret&token');
+    });
+
+    it('builds a desktop import deep link', () => {
+        const url = buildImportPairingUrl({
+            endpointUrl: 'http://192.168.1.10:8765',
+            token: 'import-token',
+        });
+
+        const parsed = new URL(url);
+        expect(parsed.pathname).toBe('/import');
+        expect(parsed.searchParams.get('endpointUrl')).toBe('http://192.168.1.10:8765');
+        expect(parsed.searchParams.get('token')).toBe('import-token');
+    });
+
+    it('round-trips Subsonic params through URLSearchParams', () => {
+        const built = buildSubsonicPairingUrl({
+            serverUrl: 'http://10.0.0.5:8080',
+            username: 'user',
+            password: 'p@ss',
+        });
+        const parsed = new URL(built);
+        expect(parsed.searchParams.get('serverUrl')).toBe('http://10.0.0.5:8080');
+        expect(parsed.searchParams.get('username')).toBe('user');
+        expect(parsed.searchParams.get('password')).toBe('p@ss');
+    });
+});
