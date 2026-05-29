@@ -1,7 +1,9 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { getItemImageUrl } from '/@/renderer/components/item-image/item-image';
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
+import { getSongById } from '/@/renderer/features/player/utils';
 import { useAuthStore, usePlayerStore } from '/@/renderer/store';
 import { useTimestampStoreBase } from '/@/renderer/store/timestamp.store';
 import { toast } from '/@/shared/components/toast/toast';
@@ -10,10 +12,11 @@ import {
     HandoffTrack,
     HandoffTrackSource,
 } from '/@/shared/types/handoff-types';
-import { LibraryItem, QueueSong } from '/@/shared/types/domain-types';
+import { LibraryItem, QueueSong, Song } from '/@/shared/types/domain-types';
 import { Play, PlayerStatus, ServerType } from '/@/shared/types/types';
 
 const ipc = window.api?.ipc ?? null;
+const youtubeMusic = window.api?.youtubeMusic ?? null;
 
 const videoIdFromSong = (song: QueueSong | undefined): null | string => {
     const metadata = (song as (QueueSong & { youtubeMusic?: { videoId?: string } }) | undefined)
@@ -104,9 +107,40 @@ const findQueueSongForHandoffTrack = (track: HandoffTrack): QueueSong | undefine
 
 export const useHandoffBridge = () => {
     const player = usePlayer();
+    const queryClient = useQueryClient();
 
     useEffect(() => {
         if (!ipc) return;
+
+        const resolveHandoffTrack = async (track: HandoffTrack): Promise<null | Song> => {
+            if (track.source === 'youtube' && youtubeMusic) {
+                try {
+                    return await youtubeMusic.getSongDetail(track.id);
+                } catch {
+                    return null;
+                }
+            }
+
+            if (track.source === 'subsonic') {
+                const serverId = useAuthStore.getState().currentServer?.id;
+                if (!serverId) {
+                    return findQueueSongForHandoffTrack(track) ?? null;
+                }
+
+                try {
+                    const response = await getSongById({
+                        id: track.id,
+                        queryClient,
+                        serverId,
+                    });
+                    return response.items[0] ?? null;
+                } catch {
+                    return findQueueSongForHandoffTrack(track) ?? null;
+                }
+            }
+
+            return findQueueSongForHandoffTrack(track) ?? null;
+        };
 
         const collectState = () => {
             try {
@@ -125,17 +159,16 @@ export const useHandoffBridge = () => {
             }
         };
 
-        const applyState = (_event: unknown, snapshot: HandoffSnapshot) => {
+        const applyState = async (_event: unknown, snapshot: HandoffSnapshot) => {
             const tracks = [snapshot.nowPlaying, ...snapshot.queue].filter(
                 (track): track is HandoffTrack => Boolean(track),
             );
-            const songs = tracks
-                .map((track) => findQueueSongForHandoffTrack(track))
-                .filter((song): song is QueueSong => Boolean(song));
+            const resolved = await Promise.all(tracks.map((track) => resolveHandoffTrack(track)));
+            const songs = resolved.filter((song): song is Song => Boolean(song));
 
             if (songs.length === 0) {
                 toast.warn({
-                    message: 'Open the same library tracks on desktop first.',
+                    message: 'Could not resolve the incoming tracks on desktop.',
                     title: 'Playback handoff unavailable',
                 });
                 return;
@@ -160,7 +193,7 @@ export const useHandoffBridge = () => {
             ipc.removeListener('handoff:collect-state', collectState);
             ipc.removeListener('handoff:apply-state', applyState);
         };
-    }, [player]);
+    }, [player, queryClient]);
 };
 
 export const HandoffBridgeHook = () => {
