@@ -27,6 +27,7 @@ import {
     spotdlSongToNormalizedTrack,
     summarizeSpotdlPreview,
 } from './spotdl';
+import { enrichAudioFileMetadata } from './metadata-enrichment';
 
 import { applyHandoffState, requestHandoffState } from '/@/main/features/core/handoff';
 import { getMainWindow } from '/@/main/index';
@@ -151,6 +152,9 @@ type LocalFirstStatus = {
         username: string;
     };
     pairing: LocalPairingStatus;
+    metadata: {
+        autoEnrich: boolean;
+    };
     tools: {
         deno: boolean;
         ffmpeg: boolean;
@@ -210,6 +214,7 @@ type NormalizedImportTrack = {
     sourceUrl?: string;
     title: string;
     trackNumber?: number;
+    musicBrainzRecordingId?: string;
 };
 
 type SourceImportMetadata = {
@@ -244,6 +249,9 @@ const LOCAL_SERVER_USERNAME = 'admin';
 const IMPORT_JOBS_KEY = 'roofy.importJobs';
 const LOCAL_VIDEO_METADATA_KEY = 'roofy.localVideoMetadata';
 const MOBILE_IMPORT_TOKEN_KEY = 'roofy.mobileImportToken';
+const AUTO_ENRICH_METADATA_KEY = 'roofy.autoEnrichMetadata';
+
+const isAutoEnrichMetadataEnabled = () => Boolean(store.get(AUTO_ENRICH_METADATA_KEY));
 const SPOTIFY_SESSION_KEY = 'roofy.spotifySession';
 const DEFAULT_PORT = 4533;
 const DEFAULT_IMPORT_FORMAT = 'best';
@@ -2000,7 +2008,17 @@ const writeMetadataTags = async (filePath: string, track: NormalizedImportTrack)
         ['track', track.trackNumber ? String(track.trackNumber) : undefined],
         ['disc', track.discNumber ? String(track.discNumber) : undefined],
         ['isrc', track.isrc],
-        ['comment', track.sourceUrl ? `Source: ${track.sourceUrl}` : undefined],
+        [
+            'comment',
+            [
+                track.sourceUrl ? `Source: ${track.sourceUrl}` : undefined,
+                track.musicBrainzRecordingId
+                    ? `MusicBrainz: ${track.musicBrainzRecordingId}`
+                    : undefined,
+            ]
+                .filter(Boolean)
+                .join(' | ') || undefined,
+        ],
     ].flatMap(([key, value]) =>
         value ? ['-metadata', `${key}=${escapeFfmpegMetadataValue(value)}`] : [],
     );
@@ -2074,6 +2092,47 @@ const writeMetadataTags = async (filePath: string, track: NormalizedImportTrack)
         });
         child.on('error', () => resolve());
     });
+};
+
+const writeMetadataTagsWithOptionalEnrich = async (
+    filePath: string,
+    track: NormalizedImportTrack,
+) => {
+    if (!isAutoEnrichMetadataEnabled()) {
+        await writeMetadataTags(filePath, track);
+        return;
+    }
+
+    try {
+        const ffprobe = getToolCommand('ffprobe', 'ROOFY_FFPROBE_PATH');
+        const enriched = await enrichAudioFileMetadata(ffprobe, filePath, {
+            album: track.album,
+            albumArtist: track.albumArtist,
+            artist: track.artist || track.artists?.join(', '),
+            artworkUrl: track.artworkUrl,
+            isrc: track.isrc,
+            releaseDate: track.releaseDate,
+            title: track.title,
+        });
+
+        const mergedTrack: NormalizedImportTrack = {
+            ...track,
+            album: enriched.album || track.album,
+            albumArtist: enriched.albumArtist || track.albumArtist,
+            artist: enriched.artist || track.artist,
+            artists: enriched.artist ? [enriched.artist] : track.artists,
+            artworkUrl: enriched.artworkUrl || track.artworkUrl,
+            isrc: enriched.isrc || track.isrc,
+            musicBrainzRecordingId: enriched.mbzRecordingId || track.musicBrainzRecordingId,
+            releaseDate: enriched.releaseDate || track.releaseDate,
+            title: enriched.title || track.title,
+        };
+
+        await writeMetadataTags(filePath, mergedTrack);
+    } catch (error) {
+        console.warn('[local-first] Metadata enrichment failed, writing original tags:', error);
+        await writeMetadataTags(filePath, track);
+    }
 };
 
 const runSingleMatchedDownload = (
@@ -2234,7 +2293,7 @@ const runSpotifyMatchedImport = async (job: ImportJob) => {
             skippedCount += result.skipped;
             audioFiles.push(...result.audioFiles);
             for (const filePath of result.audioFiles) {
-                await writeMetadataTags(filePath, track);
+                await writeMetadataTagsWithOptionalEnrich(filePath, track);
                 upsertLocalVideoMetadata({
                     audioPath: filePath,
                     sourceUrl: track.sourceUrl || job.sourceUrl || job.input,
@@ -2979,7 +3038,7 @@ const runSpotdlImport = async (job: ImportJob) => {
             const filePath = audioFiles[index];
             const track = previewTracks[index];
             if (track) {
-                await writeMetadataTags(filePath, track);
+                await writeMetadataTagsWithOptionalEnrich(filePath, track);
             }
             try {
                 processSubtitleForFile(filePath);
@@ -3656,6 +3715,9 @@ const getLocalFirstStatus = (message = ''): LocalFirstStatus => {
             username: LOCAL_SERVER_USERNAME,
         },
         pairing: withPairingUrl(localPairingStatus),
+        metadata: {
+            autoEnrich: isAutoEnrichMetadataEnabled(),
+        },
         tools: {
             deno: toolAvailable('deno', 'ROOFY_DENO_PATH'),
             ffmpeg: toolAvailable('ffmpeg', 'ROOFY_FFMPEG_PATH'),
@@ -3665,6 +3727,36 @@ const getLocalFirstStatus = (message = ''): LocalFirstStatus => {
         },
     };
 };
+
+ipcMain.handle('roofy-local-set-auto-enrich-metadata', (_event, enabled: boolean) => {
+    store.set(AUTO_ENRICH_METADATA_KEY, Boolean(enabled));
+    return getLocalFirstStatus();
+});
+
+ipcMain.handle('roofy-local-enrich-audio-file', async (_event, filePath: string) => {
+    const normalizedPath = String(filePath || '').trim();
+    if (!normalizedPath || !existsSync(normalizedPath)) {
+        throw new Error('A valid audio file path is required.');
+    }
+
+    const ffprobe = getToolCommand('ffprobe', 'ROOFY_FFPROBE_PATH');
+    const enriched = await enrichAudioFileMetadata(ffprobe, normalizedPath, {
+        title: path.basename(normalizedPath, path.extname(normalizedPath)),
+    });
+
+    await writeMetadataTags(normalizedPath, {
+        album: enriched.album,
+        albumArtist: enriched.albumArtist,
+        artist: enriched.artist,
+        artworkUrl: enriched.artworkUrl,
+        isrc: enriched.isrc,
+        musicBrainzRecordingId: enriched.mbzRecordingId,
+        releaseDate: enriched.releaseDate,
+        title: enriched.title || path.basename(normalizedPath),
+    });
+
+    return enriched;
+});
 
 ipcMain.handle('roofy-local-status', () => getLocalFirstStatus());
 ipcMain.handle('roofy-local-start', async () => startLocalFirst());

@@ -11,6 +11,10 @@ const startMobileImport = (mode: 'lan' | 'tunnel' = 'tunnel') =>
 const stopMobileImport = () => ipcRenderer.invoke('roofy-local-stop-mobile-import');
 const selectLibrary = () => ipcRenderer.invoke('roofy-local-select-library');
 const openLibraryFolder = () => ipcRenderer.invoke('roofy-local-open-library-folder');
+const setAutoEnrichMetadata = (enabled: boolean) =>
+    ipcRenderer.invoke('roofy-local-set-auto-enrich-metadata', enabled);
+const enrichAudioFile = (filePath: string) =>
+    ipcRenderer.invoke('roofy-local-enrich-audio-file', filePath);
 const credentials = () => ipcRenderer.invoke('roofy-local-credentials');
 const createUser = (args: {
     email?: string;
@@ -134,6 +138,7 @@ export const localFirst = {
     credentials,
     deleteTracks,
     disconnectSpotify,
+    enrichAudioFile,
     downloadVideoForSong,
     getVideoMetadata,
     onPlaylistImported,
@@ -141,6 +146,7 @@ export const localFirst = {
     previewImport,
     removeImport,
     selectLibrary,
+    setAutoEnrichMetadata,
     setSpotifyClientId,
     spotifyStatus,
     start,

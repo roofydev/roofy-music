@@ -64,6 +64,9 @@ type LocalStatus = {
         state: 'connected' | 'disabled' | 'starting' | 'unavailable';
         url?: string;
     };
+    metadata: {
+        autoEnrich: boolean;
+    };
     tools: {
         deno: boolean;
         ffmpeg: boolean;
@@ -251,6 +254,21 @@ export const LocalTab = () => {
                     {toolBadge(Boolean(status?.tools.ffmpeg), 'ffmpeg')}
                     {toolBadge(Boolean(status?.tools.deno), 'Deno')}
                 </Group>
+
+                <Checkbox
+                    checked={Boolean(status?.metadata?.autoEnrich)}
+                    disabled={busy}
+                    label="Enrich imported tags with MusicBrainz (title, artist, album, cover art)"
+                    onChange={(event) =>
+                        run(() =>
+                            window.api.localFirst.setAutoEnrichMetadata(event.currentTarget.checked),
+                        )
+                    }
+                />
+                <Text c="dimmed" size="sm">
+                    Uses ffprobe for existing tags, then MusicBrainz (rate-limited, optional). No
+                    AcoustID fingerprinting yet.
+                </Text>
                 <Group align="end" gap="md">
                     <Stack gap={4}>
                         <Text fw={600}>Local engine</Text>
