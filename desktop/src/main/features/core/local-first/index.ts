@@ -136,6 +136,7 @@ type LocalFirstStatus = {
         };
     };
     libraryPath: string;
+    mobileImport: LocalMobileImportStatus;
     navidrome: {
         available: boolean;
         binaryPath: null | string;
@@ -155,6 +156,15 @@ type LocalFirstStatus = {
         spotdl: boolean;
         ytDlp: boolean;
     };
+};
+
+type LocalMobileImportStatus = {
+    error?: string;
+    mode: LocalPairingMode;
+    pairingUrl?: string;
+    state: 'connected' | 'disabled' | 'starting' | 'unavailable';
+    token: string;
+    url?: string;
 };
 
 type LocalPairingMode = 'lan' | 'tunnel';
@@ -231,6 +241,7 @@ const LOCAL_SERVER_ID = 'roofy-local-navidrome';
 const LOCAL_SERVER_USERNAME = 'admin';
 const IMPORT_JOBS_KEY = 'roofy.importJobs';
 const LOCAL_VIDEO_METADATA_KEY = 'roofy.localVideoMetadata';
+const MOBILE_IMPORT_TOKEN_KEY = 'roofy.mobileImportToken';
 const SPOTIFY_SESSION_KEY = 'roofy.spotifySession';
 const DEFAULT_PORT = 4533;
 const DEFAULT_IMPORT_FORMAT = 'best';
@@ -262,6 +273,12 @@ const now = () => new Date().toISOString();
 
 let navidromeProcess: ChildProcessWithoutNullStreams | null = null;
 let activeImport: null | { child: ChildProcessWithoutNullStreams; id: string } = null;
+let mobileImportServer: http.Server | null = null;
+let mobileImportTunnelProcess: ChildProcessWithoutNullStreams | null = null;
+let mobileImportStatus: Omit<LocalMobileImportStatus, 'token'> = {
+    mode: 'tunnel',
+    state: 'disabled',
+};
 let localPairingLanServer: http.Server | null = null;
 let localPairingTunnelProcess: ChildProcessWithoutNullStreams | null = null;
 let localPairingStatus: LocalPairingStatus = { mode: 'tunnel', state: 'disabled' };
@@ -555,6 +572,15 @@ const getPassword = () => {
     return password;
 };
 
+const getMobileImportToken = () => {
+    let token = store.get(MOBILE_IMPORT_TOKEN_KEY) as string | undefined;
+    if (!token) {
+        token = randomBytes(24).toString('base64url');
+        store.set(MOBILE_IMPORT_TOKEN_KEY, token);
+    }
+    return token;
+};
+
 const getPort = () => {
     return (store.get('roofy.navidromePort') as number | undefined) || DEFAULT_PORT;
 };
@@ -815,6 +841,7 @@ export const shutdownLocalFirst = () => {
     }
 
     stopLocalPairing();
+    stopMobileImport();
 
     if (navidromeProcess) {
         navidromeProcess.kill();
@@ -983,6 +1010,230 @@ const startLocalPairing = async (mode: LocalPairingMode): Promise<LocalFirstStat
             });
         });
         localPairingTunnelProcess.on('exit', () => {
+            if (!settled) {
+                finish({
+                    error: 'Cloudflare Tunnel exited before publishing a URL.',
+                    mode,
+                    state: 'unavailable',
+                });
+            }
+        });
+
+        setTimeout(() => {
+            if (!settled) {
+                finish({
+                    error: 'Timed out waiting for Cloudflare Tunnel URL.',
+                    mode,
+                    state: 'unavailable',
+                });
+            }
+        }, 15000);
+    });
+
+    return getLocalFirstStatus();
+};
+
+const getMobileImportPairingUrl = (endpointUrl: string) => {
+    const url = new URL('roofymusic://pair/import');
+    url.searchParams.set('endpointUrl', endpointUrl);
+    url.searchParams.set('token', getMobileImportToken());
+    return url.toString();
+};
+
+const withMobileImportPairingUrl = (
+    status: Omit<LocalMobileImportStatus, 'token'>,
+): LocalMobileImportStatus => ({
+    ...status,
+    pairingUrl: status.url ? getMobileImportPairingUrl(status.url) : undefined,
+    token: getMobileImportToken(),
+});
+
+const readJsonRequest = async (req: http.IncomingMessage) =>
+    new Promise<any>((resolve, reject) => {
+        let body = '';
+        req.on('data', (chunk) => {
+            body += chunk.toString();
+            if (body.length > 1024 * 1024) {
+                req.destroy();
+                reject(new Error('Request body is too large.'));
+            }
+        });
+        req.on('end', () => {
+            if (!body.trim()) {
+                resolve({});
+                return;
+            }
+            try {
+                resolve(JSON.parse(body));
+            } catch {
+                reject(new Error('Request body must be JSON.'));
+            }
+        });
+        req.on('error', reject);
+    });
+
+const writeJsonResponse = (res: http.ServerResponse, statusCode: number, body: unknown) => {
+    res.writeHead(statusCode, {
+        'Access-Control-Allow-Headers': 'authorization, content-type, x-roofy-import-token',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+    });
+    res.end(JSON.stringify(body));
+};
+
+const isMobileImportAuthorized = (req: http.IncomingMessage) => {
+    const authorization = req.headers.authorization || '';
+    const headerToken = req.headers['x-roofy-import-token'];
+    const token = Array.isArray(headerToken) ? headerToken[0] : headerToken;
+    return authorization === `Bearer ${getMobileImportToken()}` || token === getMobileImportToken();
+};
+
+const handleMobileImportRequest = async (req: http.IncomingMessage, res: http.ServerResponse) => {
+    if (req.method === 'OPTIONS') {
+        writeJsonResponse(res, 204, {});
+        return;
+    }
+
+    if (req.url?.startsWith('/health')) {
+        if (!isMobileImportAuthorized(req)) {
+            writeJsonResponse(res, 401, { error: 'Unauthorized' });
+            return;
+        }
+
+        writeJsonResponse(res, 200, { ok: true, service: 'roofy-mobile-import' });
+        return;
+    }
+
+    if (!req.url?.startsWith('/import') || req.method !== 'POST') {
+        writeJsonResponse(res, 404, { error: 'Not found' });
+        return;
+    }
+
+    if (!isMobileImportAuthorized(req)) {
+        writeJsonResponse(res, 401, { error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const body = await readJsonRequest(req);
+        const input = String(body.url || body.input || body.sourceUrl || '').trim();
+        if (!/^https?:\/\//i.test(input)) {
+            writeJsonResponse(res, 400, { error: 'A YouTube Music URL is required.' });
+            return;
+        }
+
+        const job = await createImportJob(
+            input,
+            false,
+            DEFAULT_IMPORT_FORMAT,
+            undefined,
+            false,
+            undefined,
+            {
+                artist: body.artist,
+                artists: Array.isArray(body.artists) ? body.artists : undefined,
+                imageUrl: body.thumbnailUrl || body.imageUrl,
+                source: 'youtube_music',
+                sourceUrl: input,
+                title: body.title,
+                videoId: body.videoId,
+            },
+        );
+        writeJsonResponse(res, 200, { id: job.id, ok: true, status: job.status });
+    } catch (error: any) {
+        writeJsonResponse(res, 500, { error: error?.message || 'Import failed' });
+    }
+};
+
+const closeMobileImportServer = () => {
+    mobileImportTunnelProcess?.kill();
+    mobileImportTunnelProcess = null;
+    mobileImportServer?.close();
+    mobileImportServer = null;
+};
+
+const startMobileImportServer = () =>
+    new Promise<number | undefined>((resolve) => {
+        mobileImportServer?.close();
+        mobileImportServer = http.createServer(handleMobileImportRequest);
+        mobileImportServer.once('error', () => {
+            mobileImportServer = null;
+            resolve(undefined);
+        });
+        mobileImportServer.listen(0, '0.0.0.0', () => {
+            const address = mobileImportServer?.address();
+            resolve(typeof address === 'object' && address ? address.port : undefined);
+        });
+    });
+
+const stopMobileImport = () => {
+    closeMobileImportServer();
+    mobileImportStatus = { mode: mobileImportStatus.mode, state: 'disabled' };
+    return getLocalFirstStatus();
+};
+
+const startMobileImport = async (mode: LocalPairingMode): Promise<LocalFirstStatus> => {
+    const port = await startMobileImportServer();
+    if (!port) {
+        mobileImportStatus = {
+            error: 'Could not start the mobile import command server.',
+            mode,
+            state: 'unavailable',
+        };
+        return getLocalFirstStatus();
+    }
+
+    if (mode === 'lan') {
+        const lanUrl = getLanPairingUrl(port);
+        mobileImportStatus = lanUrl
+            ? { mode, state: 'connected', url: lanUrl }
+            : {
+                  error: 'No LAN IPv4 address was found. Try Tunnel mode instead.',
+                  mode,
+                  state: 'unavailable',
+              };
+        return getLocalFirstStatus();
+    }
+
+    mobileImportStatus = { mode, state: 'starting' };
+    const binaryResult = await ensureCloudflared();
+    if (!binaryResult.ok) {
+        mobileImportStatus = {
+            error: binaryResult.error,
+            mode,
+            state: 'unavailable',
+        };
+        return getLocalFirstStatus();
+    }
+
+    await new Promise<void>((resolve) => {
+        let settled = false;
+        const finish = (status: Omit<LocalMobileImportStatus, 'token'>) => {
+            if (settled) return;
+            settled = true;
+            mobileImportStatus = status;
+            resolve();
+        };
+
+        mobileImportTunnelProcess = spawn(
+            binaryResult.path,
+            ['tunnel', '--url', `http://127.0.0.1:${port}`],
+            { windowsHide: true },
+        );
+
+        const parseOutput = (chunk: Buffer) => {
+            const text = chunk.toString();
+            const match = text.match(/https:\/\/[-a-z0-9]+\.trycloudflare\.com/i);
+            if (match) finish({ mode, state: 'connected', url: match[0] });
+        };
+
+        mobileImportTunnelProcess.stdout.on('data', parseOutput);
+        mobileImportTunnelProcess.stderr.on('data', parseOutput);
+        mobileImportTunnelProcess.on('error', (error) => {
+            finish({ error: error.message, mode, state: 'unavailable' });
+        });
+        mobileImportTunnelProcess.on('exit', () => {
             if (!settled) {
                 finish({
                     error: 'Cloudflare Tunnel exited before publishing a URL.',
@@ -3357,6 +3608,7 @@ const getLocalFirstStatus = (message = ''): LocalFirstStatus => {
             spotify: spotifyStatus(),
         },
         libraryPath: getLibraryPath(),
+        mobileImport: withMobileImportPairingUrl(mobileImportStatus),
         navidrome: {
             available: Boolean(binaryPath),
             binaryPath,
@@ -3389,6 +3641,10 @@ ipcMain.handle('roofy-local-start-pairing', (_event, mode: LocalPairingMode = 't
     startLocalPairing(mode),
 );
 ipcMain.handle('roofy-local-stop-pairing', () => stopLocalPairing());
+ipcMain.handle('roofy-local-start-mobile-import', (_event, mode: LocalPairingMode = 'tunnel') =>
+    startMobileImport(mode),
+);
+ipcMain.handle('roofy-local-stop-mobile-import', () => stopMobileImport());
 
 ipcMain.handle('roofy-local-select-library', async () => {
     const result = await dialog.showOpenDialog({

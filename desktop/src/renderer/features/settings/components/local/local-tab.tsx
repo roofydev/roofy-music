@@ -40,6 +40,14 @@ type LocalStatus = {
         };
     };
     libraryPath: string;
+    mobileImport: {
+        error?: string;
+        mode: 'lan' | 'tunnel';
+        pairingUrl?: string;
+        state: 'connected' | 'disabled' | 'starting' | 'unavailable';
+        token: string;
+        url?: string;
+    };
     navidrome: {
         available: boolean;
         configPath: string;
@@ -81,6 +89,8 @@ export const LocalTab = () => {
     const [newUserName, setNewUserName] = useState('');
     const [newUserPassword, setNewUserPassword] = useState('');
     const [newUsername, setNewUsername] = useState('');
+    const [mobileImportQrDataUrl, setMobileImportQrDataUrl] = useState<null | string>(null);
+    const [mobileImportQrError, setMobileImportQrError] = useState(false);
     const [pairingQrDataUrl, setPairingQrDataUrl] = useState<null | string>(null);
     const [pairingQrError, setPairingQrError] = useState(false);
 
@@ -147,11 +157,53 @@ export const LocalTab = () => {
         };
     }, [status?.pairing.pairingUrl]);
 
+    useEffect(() => {
+        const pairingUrl = status?.mobileImport.pairingUrl;
+        if (!pairingUrl) {
+            setMobileImportQrDataUrl(null);
+            setMobileImportQrError(false);
+            return;
+        }
+
+        let cancelled = false;
+        import('qrcode')
+            .then(({ default: QRCode }) =>
+                QRCode.toDataURL(pairingUrl, {
+                    color: { dark: '#111111', light: '#ffffff' },
+                    margin: 2,
+                    width: 220,
+                }),
+            )
+            .then((dataUrl) => {
+                if (!cancelled) {
+                    setMobileImportQrDataUrl(dataUrl);
+                    setMobileImportQrError(false);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setMobileImportQrDataUrl(null);
+                    setMobileImportQrError(true);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [status?.mobileImport.pairingUrl]);
+
     const copyPairingLink = async () => {
         const pairingUrl = status?.pairing.pairingUrl;
         if (!pairingUrl) return;
         await navigator.clipboard.writeText(pairingUrl);
         setMessage('Copied mobile pairing link.');
+    };
+
+    const copyMobileImportLink = async () => {
+        const pairingUrl = status?.mobileImport.pairingUrl;
+        if (!pairingUrl) return;
+        await navigator.clipboard.writeText(pairingUrl);
+        setMessage('Copied desktop import pairing link.');
     };
 
     const createUser = async () => {
@@ -224,6 +276,124 @@ export const LocalTab = () => {
                     >
                         Stop
                     </Button>
+                </Group>
+            </Stack>
+
+            <Divider />
+
+            <Stack gap="md">
+                <Stack gap={4}>
+                    <Text fw={600}>Add from phone to desktop</Text>
+                    <Text c="dimmed" size="sm">
+                        Let your phone send YouTube Music tracks into this desktop import queue.
+                        Start a private endpoint, pair the phone, then use Add to my library in the
+                        mobile song menu.
+                    </Text>
+                </Stack>
+
+                <Group align="flex-start" gap="xl">
+                    <Stack gap="xs" style={{ minWidth: 260 }}>
+                        <Group gap="xs">
+                            <Badge
+                                color={
+                                    status?.mobileImport.state === 'connected'
+                                        ? 'green'
+                                        : status?.mobileImport.state === 'starting'
+                                          ? 'yellow'
+                                          : status?.mobileImport.state === 'unavailable'
+                                            ? 'red'
+                                            : 'gray'
+                                }
+                                variant="light"
+                            >
+                                {status?.mobileImport.mode || 'tunnel'}:{' '}
+                                {status?.mobileImport.state || 'disabled'}
+                            </Badge>
+                        </Group>
+
+                        <Text c="dimmed" size="sm">
+                            Tunnel mode can receive imports outside your network. LAN mode keeps the
+                            import endpoint on the current Wi-Fi network.
+                        </Text>
+
+                        {status?.mobileImport.url && (
+                            <Stack gap={4}>
+                                <Text size="sm">Import endpoint</Text>
+                                <Code block>{status.mobileImport.url}</Code>
+                            </Stack>
+                        )}
+
+                        {status?.mobileImport.error && (
+                            <Alert color="red" title="Import endpoint unavailable">
+                                {status.mobileImport.error}
+                            </Alert>
+                        )}
+
+                        <Group>
+                            <Button
+                                disabled={busy || status?.mobileImport.state === 'starting'}
+                                onClick={() =>
+                                    run(() => window.api.localFirst.startMobileImport('tunnel'))
+                                }
+                                variant="filled"
+                            >
+                                Start tunnel
+                            </Button>
+                            <Button
+                                disabled={busy || status?.mobileImport.state === 'starting'}
+                                onClick={() =>
+                                    run(() => window.api.localFirst.startMobileImport('lan'))
+                                }
+                                variant="light"
+                            >
+                                Use LAN
+                            </Button>
+                            <Button
+                                disabled={busy || status?.mobileImport.state === 'disabled'}
+                                onClick={() => run(() => window.api.localFirst.stopMobileImport())}
+                                variant="subtle"
+                            >
+                                Stop
+                            </Button>
+                        </Group>
+                    </Stack>
+
+                    <Stack align="center" gap="xs">
+                        {mobileImportQrDataUrl ? (
+                            <img
+                                alt="Desktop import pairing QR code"
+                                height={220}
+                                src={mobileImportQrDataUrl}
+                                width={220}
+                            />
+                        ) : (
+                            <div
+                                style={{
+                                    alignItems: 'center',
+                                    border: '1px solid var(--mantine-color-gray-4)',
+                                    display: 'flex',
+                                    height: 220,
+                                    justifyContent: 'center',
+                                    width: 220,
+                                }}
+                            >
+                                <Text c="dimmed" size="sm" ta="center">
+                                    {mobileImportQrError
+                                        ? 'Could not generate QR code'
+                                        : 'Start tunnel or LAN import'}
+                                </Text>
+                            </div>
+                        )}
+
+                        <Button
+                            disabled={!status?.mobileImport.pairingUrl}
+                            onClick={copyMobileImportLink}
+                            size="compact-sm"
+                            variant="default"
+                        >
+                            Copy import pairing link
+                        </Button>
+                    </Stack>
                 </Group>
             </Stack>
 
