@@ -13,6 +13,7 @@ import { AutosaveHook } from '/@/renderer/features/player/hooks/use-autosave';
 import { MediaSessionHook } from '/@/renderer/features/player/hooks/use-media-session';
 import { MPRISHook } from '/@/renderer/features/player/hooks/use-mpris';
 import { PlaybackHotkeysHook } from '/@/renderer/features/player/hooks/use-playback-hotkeys';
+import { HandoffBridgeHook } from '/@/renderer/features/handoff/hooks/use-handoff-bridge';
 import { PartyHostHook } from '/@/renderer/features/party/hooks/use-party-host';
 import { PowerSaveBlockerHook } from '/@/renderer/features/player/hooks/use-power-save-blocker';
 import { QueueRestoreTimestampHook } from '/@/renderer/features/player/hooks/use-queue-restore';
@@ -137,6 +138,7 @@ export const AudioPlayers = () => {
             <PlaybackHotkeysHook />
             <RemoteHook />
             <PartyHostHook />
+            <HandoffBridgeHook />
             <AutoDJHook />
             <QueueRestoreTimestampHook />
             <UpdateCurrentSongHook />

@@ -285,8 +285,9 @@ export const LocalTab = () => {
                 <Stack gap={4}>
                     <Text fw={600}>Add from phone to desktop</Text>
                     <Text c="dimmed" size="sm">
-                        Let your phone send YouTube Music tracks into this desktop import queue.
-                        Start a private endpoint, pair the phone, then use Add to my library in the
+                        Let your phone send YouTube Music tracks into this desktop import queue and
+                        use Continue on phone for playback handoff. Start a private endpoint, pair the
+                        phone, then use Add to my library in
                         mobile song menu.
                     </Text>
                 </Stack>

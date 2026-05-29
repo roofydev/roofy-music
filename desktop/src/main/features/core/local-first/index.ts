@@ -28,7 +28,9 @@ import {
     summarizeSpotdlPreview,
 } from './spotdl';
 
+import { applyHandoffState, requestHandoffState } from '/@/main/features/core/handoff';
 import { getMainWindow } from '/@/main/index';
+import { HandoffSnapshot } from '/@/shared/types/handoff-types';
 import { extractYoutubeVideoId, isYoutubeVideoId } from '/@/shared/utils/youtube-video-id';
 
 type CreateLocalUserArgs = {
@@ -1102,6 +1104,39 @@ const handleMobileImportRequest = async (req: http.IncomingMessage, res: http.Se
         }
 
         writeJsonResponse(res, 200, { ok: true, service: 'roofy-mobile-import' });
+        return;
+    }
+
+    if (req.url?.startsWith('/handoff/state') && req.method === 'GET') {
+        if (!isMobileImportAuthorized(req)) {
+            writeJsonResponse(res, 401, { error: 'Unauthorized' });
+            return;
+        }
+
+        try {
+            const snapshot = await requestHandoffState();
+            writeJsonResponse(res, 200, snapshot);
+        } catch (error: any) {
+            writeJsonResponse(res, 503, {
+                error: error?.message || 'Desktop player is not ready for handoff.',
+            });
+        }
+        return;
+    }
+
+    if (req.url?.startsWith('/handoff/play') && req.method === 'POST') {
+        if (!isMobileImportAuthorized(req)) {
+            writeJsonResponse(res, 401, { error: 'Unauthorized' });
+            return;
+        }
+
+        try {
+            const body = await readJsonRequest(req);
+            applyHandoffState(body as HandoffSnapshot);
+            writeJsonResponse(res, 200, { ok: true });
+        } catch (error: any) {
+            writeJsonResponse(res, 400, { error: error?.message || 'Invalid handoff payload.' });
+        }
         return;
     }
 

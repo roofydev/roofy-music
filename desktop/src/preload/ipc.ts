@@ -2,6 +2,8 @@ import { ipcRenderer } from 'electron';
 
 const SEND_CHANNELS = new Set<string>([
     'app-restart',
+    'handoff:state-error',
+    'handoff:state-response',
     'set-global-shortcuts',
     'settings-set',
     'update-playback',
@@ -15,6 +17,8 @@ const INVOKE_CHANNELS = new Set<string>([
     'power-save-blocker-stop',
 ]);
 const LISTEN_CHANNELS = new Set<string>([
+    'handoff:apply-state',
+    'handoff:collect-state',
     'custom-font-error',
     'mpris-request-toggle-repeat',
     'mpris-request-toggle-shuffle',
