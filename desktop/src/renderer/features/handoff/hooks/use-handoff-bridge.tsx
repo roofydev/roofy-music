@@ -190,8 +190,8 @@ export const useHandoffBridge = () => {
             }
 
             toast.success({
-                message: t('productUx.action.continueOnDevice'),
-                title: t('page.setting.devices'),
+                message: t('productUx.devices.nowPlayingHere'),
+                title: t('productUx.devices.listenOn'),
             });
         };
 

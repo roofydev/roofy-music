@@ -10,6 +10,7 @@ import { useCurrentServer } from '/@/renderer/store';
 import { hasFeature } from '/@/shared/api/utils';
 import { ServerFeature } from '/@/shared/types/features-types';
 import { CacheSettings } from '/@/renderer/features/settings/components/window/cache-settngs';
+import { RemoteSettings } from '/@/renderer/features/settings/components/window/remote-settings';
 import { UpdateSettings } from '/@/renderer/features/settings/components/window/update-settings';
 import { Divider } from '/@/shared/components/divider/divider';
 import { Spinner } from '/@/shared/components/spinner/spinner';
@@ -57,6 +58,8 @@ export const AdvancedTab = memo(() => {
                     <Suspense fallback={<Spinner container />}>
                         <LocalTab />
                     </Suspense>
+                    <Divider />
+                    <RemoteSettings advanced />
                     <Divider />
                 </>
             )}

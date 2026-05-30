@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import { app, ipcMain } from 'electron';
 import axios from 'axios';
 import { promises, Stats } from 'fs';
@@ -9,6 +9,11 @@ import { WebSocket, WebSocketServer, Server as WsServer } from 'ws';
 import { deflate, gzip } from 'zlib';
 
 import manifest from './manifest.json';
+import {
+    getRemoteControlLinks,
+    readRemoteAccessToken,
+    type RemoteControlLinkConfig,
+} from './remote-control-link';
 
 import { getMainWindow } from '/@/main/index';
 import { isLinux } from '/@/main/utils';
@@ -128,9 +133,14 @@ const getEncoding = (encoding: string | string[]): Encoding => {
 const cache = new Map<string, Map<Encoding, [number, Buffer]>>();
 
 function authorize(req: IncomingMessage): boolean {
-    if (settings.username || settings.password) {
-        // https://stackoverflow.com/questions/23616371/basic-http-authentication-with-node-and-express-4
+    if (settings.password) {
+        const token = readRemoteAccessToken(req.url);
+        if (token && safeEqual(token, settings.password)) {
+            return true;
+        }
+    }
 
+    if (settings.username || settings.password) {
         const authorization = req.headers.authorization?.split(' ')[1] || '';
         const [login, password] = Buffer.from(authorization, 'base64').toString().split(':');
 
@@ -343,7 +353,7 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
                 }
             });
 
-            server.listen(config.port, '127.0.0.1', resolve);
+            server.listen(config.port, '0.0.0.0', resolve);
             wsServer = new WebSocketServer<typeof StatefulWebSocket>({ server });
 
             wsServer!.on('connection', (ws: StatefulWebSocket, req: IncomingMessage) => {
@@ -519,6 +529,39 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
         }
     });
 };
+
+const toLinkConfig = (): RemoteControlLinkConfig => ({
+    password: settings.password,
+    port: settings.port,
+});
+
+/** LAN URL for unified desktop QR when web control is already running. */
+export const getRemotePairingUrlIfEnabled = (): string | undefined => {
+    if (!settings.enabled || !settings.password.trim()) {
+        return undefined;
+    }
+
+    return getRemoteControlLinks(toLinkConfig()).primary;
+};
+
+/** Turn on web control and return the URL to embed in a device pairing QR. */
+export const ensureRemoteForPairing = async (): Promise<string | undefined> => {
+    if (!settings.password.trim()) {
+        settings.password = randomBytes(18).toString('base64url');
+    }
+
+    settings.enabled = true;
+
+    try {
+        await enableServer(settings);
+    } catch {
+        return undefined;
+    }
+
+    return getRemoteControlLinks(toLinkConfig()).primary;
+};
+
+ipcMain.handle('remote-control-links', () => getRemoteControlLinks(toLinkConfig()));
 
 ipcMain.handle('remote-enable', async (_event, enabled: boolean) => {
     settings.enabled = enabled;

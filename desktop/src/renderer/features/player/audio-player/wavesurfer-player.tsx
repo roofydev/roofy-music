@@ -11,6 +11,7 @@ import { usePlayerEvents } from '/@/renderer/features/player/audio-player/hooks/
 import { useSongUrl } from '/@/renderer/features/player/audio-player/hooks/use-stream-url';
 import { PlayerOnProgressProps } from '/@/renderer/features/player/audio-player/types';
 import {
+    setEngineDurationSec,
     usePlaybackSettings,
     usePlayerActions,
     usePlayerData,
@@ -71,10 +72,25 @@ export function WaveSurferPlayer() {
         [isTransitioning],
     );
 
+    const syncActivePlayerProgress = useCallback(
+        (playedSeconds: number, wavesurfer: null | WaveSurfer) => {
+            setTimestamp(playedSeconds);
+            const mediaDuration = getDuration(wavesurfer);
+            if (mediaDuration > 0) {
+                setEngineDurationSec(mediaDuration);
+            }
+        },
+        [setTimestamp],
+    );
+
     const onProgressPlayer1 = useCallback(
         (e: PlayerOnProgressProps) => {
             if (!playerRef.current?.player1()) {
                 return;
+            }
+
+            if (num === 1) {
+                syncActivePlayerProgress(e.playedSeconds, playerRef.current.player1().ref);
             }
 
             switch (transitionType) {
@@ -105,13 +121,17 @@ export function WaveSurferPlayer() {
                     break;
             }
         },
-        [crossfadeDuration, isTransitioning, num, player2, transitionType, volume],
+        [crossfadeDuration, isTransitioning, num, player2, syncActivePlayerProgress, transitionType, volume],
     );
 
     const onProgressPlayer2 = useCallback(
         (e: PlayerOnProgressProps) => {
             if (!playerRef.current?.player2()) {
                 return;
+            }
+
+            if (num === 2) {
+                syncActivePlayerProgress(e.playedSeconds, playerRef.current.player2().ref);
             }
 
             switch (transitionType) {
@@ -142,7 +162,7 @@ export function WaveSurferPlayer() {
                     break;
             }
         },
-        [crossfadeDuration, isTransitioning, num, player1, transitionType, volume],
+        [crossfadeDuration, isTransitioning, num, player1, syncActivePlayerProgress, transitionType, volume],
     );
 
     const handleOnEndedPlayer1 = useCallback(() => {
@@ -203,33 +223,6 @@ export function WaveSurferPlayer() {
         },
         [volume, num, isTransitioning],
     );
-
-    useEffect(() => {
-        if (localPlayerStatus !== PlayerStatus.PLAYING) {
-            return;
-        }
-
-        const interval = setInterval(() => {
-            const activePlayer =
-                num === 1 ? playerRef.current?.player1() : playerRef.current?.player2();
-            const wavesurfer = activePlayer?.ref;
-
-            if (!wavesurfer) {
-                return;
-            }
-
-            const currentTime = wavesurfer.getCurrentTime();
-
-            if (
-                transitionType === PlayerStyle.CROSSFADE ||
-                transitionType === PlayerStyle.GAPLESS
-            ) {
-                setTimestamp(Number(currentTime.toFixed(0)));
-            }
-        }, 500);
-
-        return () => clearInterval(interval);
-    }, [localPlayerStatus, num, setTimestamp, transitionType]);
 
     const player1Url = useSongUrl(player1, num === 1, transcode);
     const player2Url = useSongUrl(player2, num === 2, transcode);

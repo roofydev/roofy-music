@@ -1,8 +1,11 @@
+import clsx from 'clsx';
 import isElectron from 'is-electron';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { DevicesPicker } from '/@/renderer/features/devices/components/devices-picker';
+import panelStyles from '/@/renderer/features/devices/components/connect-desktop-panel.module.css';
+import popoverStyles from '/@/shared/components/popover/popover.module.css';
+import { ConnectDesktopPanel } from '/@/renderer/features/devices/components/connect-desktop-panel';
 import { useDevicesStatus } from '/@/renderer/features/devices/hooks/use-devices-status';
 import { ActionIcon } from '/@/shared/components/action-icon/action-icon';
 import { Popover } from '/@/shared/components/popover/popover';
@@ -12,10 +15,7 @@ export const DevicesButton = () => {
     const [opened, setOpened] = useState(false);
     const { status } = useDevicesStatus();
 
-    const hasActiveConnection =
-        status.pairing.state === 'connected' ||
-        status.mobileImport.state === 'connected' ||
-        status.webRemote.enabled;
+    const phoneLinked = status.phoneLink.phonePaired;
 
     if (!isElectron()) {
         return null;
@@ -23,18 +23,18 @@ export const DevicesButton = () => {
 
     return (
         <Popover
+            middlewares={{ flip: true, shift: { padding: 8 } }}
+            offset={12}
             onChange={setOpened}
             opened={opened}
-            position="top-end"
+            position="top"
             shadow="md"
-            width={340}
-            withArrow
         >
             <Popover.Target>
                 <ActionIcon
                     icon="arrowLeftRight"
                     iconProps={{
-                        color: hasActiveConnection ? 'primary' : undefined,
+                        color: phoneLinked ? 'primary' : undefined,
                         size: 'lg',
                     }}
                     onClick={(e) => {
@@ -43,14 +43,20 @@ export const DevicesButton = () => {
                     }}
                     size="sm"
                     tooltip={{
-                        label: t('page.setting.devices'),
+                        label: t('productUx.devices.connectPanel.tooltip'),
                         openDelay: 0,
                     }}
                     variant="subtle"
                 />
             </Popover.Target>
-            <Popover.Dropdown onClick={(e) => e.stopPropagation()}>
-                <DevicesPicker onClose={() => setOpened(false)} />
+            <Popover.Dropdown
+                classNames={{
+                    dropdown: clsx(popoverStyles.dropdown, panelStyles.popoverDropdown),
+                }}
+                onClick={(e) => e.stopPropagation()}
+                p={0}
+            >
+                <ConnectDesktopPanel onClose={() => setOpened(false)} opened={opened} />
             </Popover.Dropdown>
         </Popover>
     );

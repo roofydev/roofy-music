@@ -419,20 +419,20 @@
 }
 
 .partySetupScreen {
-    align-items: flex-start;
+    align-items: center;
     display: flex;
     flex: 1;
     justify-content: center;
     min-height: 0;
-    overflow-y: auto;
-    padding: 2rem 1.5rem 2.5rem;
+    overflow: hidden;
+    padding: 1.25rem 1.5rem;
 }
 
 .partySetupInner {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-    max-width: 42rem;
+    gap: 1rem;
+    max-width: 46rem;
     width: 100%;
 }
 
@@ -471,10 +471,9 @@
 
 .partySetupSubtitle {
     color: var(--theme-colors-text-muted);
-    font-size: 0.95rem;
-    line-height: 1.55;
+    font-size: 0.9rem;
+    line-height: 1.45;
     margin: 0;
-    max-width: 36rem;
 }
 
 .partySetupCard {
@@ -483,8 +482,8 @@
     border-radius: 0.85rem;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-    padding: 1.35rem 1.35rem 1.5rem;
+    gap: 1rem;
+    padding: 1.15rem 1.25rem 1.25rem;
 }
 
 .partySetupCardTitle {
@@ -498,27 +497,35 @@
 .partySetupForm {
     display: flex;
     flex-direction: column;
-    gap: 1.35rem;
+    gap: 1rem;
 }
 
 .partySetupSection {
-    display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
+    display: grid;
+    gap: 0.75rem 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
 }
 
 .partySetupSection + .partySetupSection {
     border-top: 1px solid var(--theme-colors-border);
-    padding-top: 1.35rem;
+    padding-top: 1rem;
 }
 
 .partySetupSectionTitle {
     color: var(--theme-colors-text-muted);
     font-size: 0.68rem;
     font-weight: 700;
+    grid-column: 1 / -1;
     letter-spacing: 0.08em;
     margin: 0;
     text-transform: uppercase;
+}
+
+.partySetupSectionPermissions .partySettingField,
+.partySetupSectionPermissions .partySettingSwitchesSetup,
+.partySetupSectionHost .partySettingHostRow {
+    grid-column: 1 / -1;
 }
 
 .partySettingField {
@@ -534,15 +541,29 @@
 
 .partySettingHint {
     color: var(--theme-colors-text-muted);
-    font-size: 0.78rem;
-    line-height: 1.45;
+    font-size: 0.75rem;
+    line-height: 1.35;
     margin: 0;
+}
+
+.partySetupCard .partySettingHint {
+    display: none;
 }
 
 .partySettingSwitches {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+}
+
+.partySettingSwitchesSetup {
+    display: grid;
+    gap: 0.45rem 0.65rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.partySettingSwitchesSetup > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
 }
 
 .partySettingHostRow {
@@ -565,6 +586,7 @@
     align-items: flex-start;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
     gap: 0.65rem;
 }
 
@@ -575,14 +597,54 @@
     margin: 0;
 }
 
+@media (width >= 640px) {
+    .partySetupFooter {
+        align-items: center;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+}
+
+@media (width <= 720px) {
+    .partySetupScreen {
+        align-items: flex-start;
+        overflow-y: auto;
+    }
+
+    .partySetupSection {
+        grid-template-columns: 1fr;
+    }
+
+    .partySettingSwitchesSetup {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (width <= 640px) {
     .partySetupScreen {
         padding: 1.25rem 1rem 2rem;
     }
+}
 
-    .partySettingHostRow {
-        grid-template-columns: 1fr;
-    }
+:global([data-theme='retroMonochrome']) .partySetupCard {
+    background: var(--retro-panel, #080808);
+    border-color: var(--retro-border, rgb(255 255 255 / 16%));
+    border-radius: var(--rm-radius-md, 6px);
+}
+
+:global([data-theme='retroMonochrome']) .partySetupBadge {
+    background: var(--retro-active-muted, rgb(255 255 255 / 5%));
+    border-color: var(--retro-border-muted, rgb(255 255 255 / 8%));
+    color: var(--retro-text-muted, #777);
+}
+
+:global([data-theme='retroMonochrome']) .partySetupTitle {
+    letter-spacing: 0.02em;
+}
+
+:global([data-theme='retroMonochrome']) .partySetupSection + .partySetupSection {
+    border-top-color: var(--retro-border-muted, rgb(255 255 255 / 8%));
 }
 
 .partyInviteModalContent {

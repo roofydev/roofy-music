@@ -15,6 +15,9 @@ import { PlayerOnProgressProps } from '/@/renderer/features/player/audio-player/
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
 import { useWebAudio } from '/@/renderer/features/player/hooks/use-webaudio';
 import {
+    resetPlaybackClock,
+    setEngineDurationSec,
+    setPlaybackSeekable,
     useMpvSettings,
     usePlaybackSettings,
     usePlayerActions,
@@ -34,6 +37,7 @@ const PLAY_PAUSE_FADE_INTERVAL = 10;
 
 export function WebPlayer() {
     const playerRef = useRef<null | WebPlayerEngineHandle>(null);
+    const queryClient = useQueryClient();
     const { t } = useTranslation();
     const { num, player1, player2, status } = usePlayerData();
     const { mediaAutoNext, mediaPause, setTimestamp } = usePlayerActions();
@@ -99,10 +103,25 @@ export function WebPlayer() {
         [],
     );
 
+    const syncActivePlayerProgress = useCallback(
+        (playedSeconds: number, playerRefInstance: null | ReactPlayer) => {
+            setTimestamp(playedSeconds);
+            const mediaDuration = getDuration(playerRefInstance);
+            if (mediaDuration > 0) {
+                setEngineDurationSec(mediaDuration);
+            }
+        },
+        [setTimestamp],
+    );
+
     const onProgressPlayer1 = useCallback(
         (e: PlayerOnProgressProps) => {
             if (!playerRef.current?.player1()) {
                 return;
+            }
+
+            if (num === 1) {
+                syncActivePlayerProgress(e.playedSeconds, playerRef.current.player1().ref);
             }
 
             switch (transitionType) {
@@ -134,13 +153,26 @@ export function WebPlayer() {
                     break;
             }
         },
-        [crossfadeDuration, crossfadeStyle, isTransitioning, num, player2, transitionType, volume],
+        [
+            crossfadeDuration,
+            crossfadeStyle,
+            isTransitioning,
+            num,
+            player2,
+            syncActivePlayerProgress,
+            transitionType,
+            volume,
+        ],
     );
 
     const onProgressPlayer2 = useCallback(
         (e: PlayerOnProgressProps) => {
             if (!playerRef.current?.player2()) {
                 return;
+            }
+
+            if (num === 2) {
+                syncActivePlayerProgress(e.playedSeconds, playerRef.current.player2().ref);
             }
 
             switch (transitionType) {
@@ -172,7 +204,16 @@ export function WebPlayer() {
                     break;
             }
         },
-        [crossfadeDuration, crossfadeStyle, isTransitioning, num, player1, transitionType, volume],
+        [
+            crossfadeDuration,
+            crossfadeStyle,
+            isTransitioning,
+            num,
+            player1,
+            syncActivePlayerProgress,
+            transitionType,
+            volume,
+        ],
     );
 
     const handleOnEndedPlayer1 = useCallback(() => {
@@ -219,8 +260,15 @@ export function WebPlayer() {
 
     usePlayerEvents(
         {
-            onCurrentSongChange: () => {
+            onCurrentSongChange: (properties, prev) => {
                 setIsTransitioning(false);
+                if (
+                    properties.song?.id !== prev.song?.id ||
+                    properties.song?._uniqueId !== prev.song?._uniqueId
+                ) {
+                    resetPlaybackClock();
+                    setPlaybackSeekable(true);
+                }
             },
             onPlayerSeekToTimestamp: (properties) => {
                 setIsTransitioning(false);
@@ -304,33 +352,15 @@ export function WebPlayer() {
         };
     }, []);
 
-    useEffect(() => {
-        if (localPlayerStatus !== PlayerStatus.PLAYING) {
-            return;
+    const handleSeekFailed = useCallback(() => {
+        const activeSong = num === 1 ? player1 : player2;
+        if (activeSong?._serverType === ServerType.YOUTUBE_MUSIC) {
+            invalidateYtStream(activeSong);
+            queryClient.invalidateQueries({
+                queryKey: [activeSong._serverId, 'stream-url', activeSong.id],
+            });
         }
-
-        const interval = setInterval(() => {
-            const activePlayer =
-                num === 1 ? playerRef.current?.player1() : playerRef.current?.player2();
-            const internalPlayer =
-                activePlayer?.ref?.getInternalPlayer() as HTMLAudioElement | null;
-
-            if (!internalPlayer) {
-                return;
-            }
-
-            const currentTime = internalPlayer.currentTime;
-
-            if (
-                transitionType === PlayerStyle.CROSSFADE ||
-                transitionType === PlayerStyle.GAPLESS
-            ) {
-                setTimestamp(Number(currentTime.toFixed(0)));
-            }
-        }, 500);
-
-        return () => clearInterval(interval);
-    }, [localPlayerStatus, num, setTimestamp, transitionType]);
+    }, [num, player1, player2, queryClient]);
 
     const calculateReplayGain = useCallback(
         (song: QueueSong): number => {
@@ -415,7 +445,6 @@ export function WebPlayer() {
         }
     }, [calculateReplayGain, num, player1, player2Source, player2, volume, webAudio]);
 
-    const queryClient = useQueryClient();
     const player1Url = useSongUrl(player1, num === 1, transcode);
     const player2Url = useSongUrl(player2, num === 2, transcode);
 
@@ -495,6 +524,7 @@ export function WebPlayer() {
             onNetworkErrorPlayer2={handleNetworkErrorPlayer2}
             onProgressPlayer1={onProgressPlayer1}
             onProgressPlayer2={onProgressPlayer2}
+            onSeekFailed={handleSeekFailed}
             onStartedPlayer1={handlePlayer1Start}
             onStartedPlayer2={handlePlayer2Start}
             playerNum={num}

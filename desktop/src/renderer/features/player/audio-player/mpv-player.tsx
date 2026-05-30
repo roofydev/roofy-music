@@ -6,6 +6,8 @@ import { MpvPlayerEngine, MpvPlayerEngineHandle } from './engine/mpv-player-engi
 import { usePlayerEvents } from '/@/renderer/features/player/audio-player/hooks/use-player-events';
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
 import {
+    resetPlaybackClock,
+    setPlaybackSeekable,
     usePlaybackSettings,
     usePlayerActions,
     usePlayerData,
@@ -20,6 +22,8 @@ const PLAY_PAUSE_FADE_DURATION = 300;
 const PLAY_PAUSE_FADE_INTERVAL = 10;
 
 const mpvPlayer = window.api?.mpvPlayer ?? null;
+const mpvPlayerListener = window.api?.mpvPlayerListener ?? null;
+const ipc = window.api?.ipc ?? null;
 
 export function MpvPlayer() {
     const playerRef = useRef<MpvPlayerEngineHandle>(null);
@@ -103,6 +107,15 @@ export function MpvPlayer() {
 
     usePlayerEvents(
         {
+            onCurrentSongChange: (properties, prev) => {
+                if (
+                    properties.song?.id !== prev.song?.id ||
+                    properties.song?._uniqueId !== prev.song?._uniqueId
+                ) {
+                    resetPlaybackClock();
+                    setPlaybackSeekable(true);
+                }
+            },
             onPlayerSeekToTimestamp: (properties) => {
                 const timestamp = properties.timestamp;
                 playerRef.current?.seekTo(timestamp);
@@ -150,7 +163,25 @@ export function MpvPlayer() {
     const hasCurrentSong = !!currentSong?.id;
 
     useEffect(() => {
-        if (localPlayerStatus !== PlayerStatus.PLAYING || !hasCurrentSong) {
+        if (!mpvPlayerListener || !ipc) {
+            return;
+        }
+
+        const handleCurrentTime = (_event: unknown, time: number) => {
+            if (typeof time === 'number' && Number.isFinite(time)) {
+                setTimestamp(time);
+            }
+        };
+
+        mpvPlayerListener.rendererCurrentTime(handleCurrentTime);
+
+        return () => {
+            ipc.removeAllListeners('renderer-player-current-time');
+        };
+    }, [setTimestamp]);
+
+    useEffect(() => {
+        if (localPlayerStatus !== PlayerStatus.PLAYING || !hasCurrentSong || mpvPlayerListener) {
             return;
         }
 

@@ -6,12 +6,9 @@ import { useRemoteSettings } from '/@/renderer/store';
 export type DeviceConnectionState = 'connected' | 'disabled' | 'starting' | 'unavailable';
 
 export type DevicesStatus = {
-    mobileImport: {
+    phoneLink: {
         error?: string;
-        state: DeviceConnectionState;
-    };
-    pairing: {
-        error?: string;
+        phonePaired: boolean;
         state: DeviceConnectionState;
     };
     webRemote: {
@@ -21,8 +18,7 @@ export type DevicesStatus = {
 };
 
 const defaultStatus: DevicesStatus = {
-    mobileImport: { state: 'disabled' },
-    pairing: { state: 'disabled' },
+    phoneLink: { phonePaired: false, state: 'disabled' },
     webRemote: { enabled: false, url: 'http://localhost:4534' },
 };
 
@@ -47,13 +43,10 @@ export const useDevicesStatus = (pollMs = 8000) => {
         try {
             const local = await window.api.localFirst.status();
             setStatus({
-                mobileImport: {
-                    error: local.mobileImport?.error,
-                    state: local.mobileImport?.state || 'disabled',
-                },
-                pairing: {
-                    error: local.pairing?.error,
-                    state: local.pairing?.state || 'disabled',
+                phoneLink: {
+                    error: local.phoneLink?.error,
+                    phonePaired: Boolean(local.phoneLink?.phonePaired),
+                    state: local.phoneLink?.state || 'disabled',
                 },
                 webRemote: {
                     enabled: remote.enabled,

@@ -3,8 +3,11 @@ import debounce from 'lodash/debounce';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { WebControlShare } from '/@/renderer/features/devices/components/web-control-share';
+import { useEnableWebControl } from '/@/renderer/features/devices/hooks/use-enable-web-control';
 import { SettingsSection } from '/@/renderer/features/settings/components/settings-section';
 import { useRemoteSettings, useSettingsStoreActions } from '/@/renderer/store';
+import { Stack } from '/@/shared/components/stack/stack';
 import { NumberInput } from '/@/shared/components/number-input/number-input';
 import { Switch } from '/@/shared/components/switch/switch';
 import { TextInput } from '/@/shared/components/text-input/text-input';
@@ -13,28 +16,14 @@ import { toast } from '/@/shared/components/toast/toast';
 
 const remote = window.api?.remote ?? null;
 
-export const RemoteSettings = memo(() => {
+export const RemoteSettings = memo(({ advanced = false }: { advanced?: boolean }) => {
     const { t } = useTranslation();
     const settings = useRemoteSettings();
     const { setSettings } = useSettingsStoreActions();
-
-    const url = `http://localhost:${settings.port}`;
+    const { setWebControlEnabled } = useEnableWebControl();
 
     const debouncedEnableRemote = debounce(async (enabled: boolean) => {
-        const errorMsg = await remote!.setRemoteEnabled(enabled);
-
-        if (errorMsg === null) {
-            setSettings({
-                remote: {
-                    enabled,
-                },
-            });
-        } else {
-            toast.error({
-                message: errorMsg,
-                title: enabled ? t('error.remoteEnableError') : t('error.remoteDisableError'),
-            });
-        }
+        await setWebControlEnabled(enabled);
     }, 50);
 
     const debouncedChangeRemotePort = debounce(async (port: number) => {
@@ -69,19 +58,16 @@ export const RemoteSettings = memo(() => {
                     }}
                 />
             ),
-            description: (
+            description: advanced ? (
                 <Text isMuted isNoSelect size="sm">
-                    {t('setting.enableRemote', {
-                        context: 'description',
-                    })}{' '}
-                    <a href={url} rel="noreferrer noopener" target="_blank">
-                        {url}
-                    </a>
+                    {t('productUx.devices.webControlAdvancedHint')}
                 </Text>
-            ),
+            ) : undefined,
             isHidden,
-            title: t('setting.enableRemote'),
+            title: advanced ? t('setting.enableRemote') : t('productUx.devices.webControl'),
         },
+        ...(advanced
+            ? [
         {
             control: (
                 <NumberInput
@@ -144,9 +130,21 @@ export const RemoteSettings = memo(() => {
             isHidden,
             title: t('setting.remotePassword'),
         },
+            ]
+            : []),
     ];
 
     return (
-        <SettingsSection options={controlOptions} title={t('productUx.devices.webRemote')} />
+        <Stack gap="md">
+            <SettingsSection
+                options={controlOptions}
+                title={
+                    advanced
+                        ? t('setting.remote', { defaultValue: 'Web control' })
+                        : t('productUx.devices.webControl')
+                }
+            />
+            {!advanced && settings.enabled && <WebControlShare />}
+        </Stack>
     );
 });

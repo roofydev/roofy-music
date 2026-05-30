@@ -5,6 +5,7 @@ import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'r
 
 import { AudioPlayer, PlayerOnProgressProps } from '/@/renderer/features/player/audio-player/types';
 import { convertToLogVolume } from '/@/renderer/features/player/audio-player/utils/player-utils';
+import { setEngineDurationSec } from '/@/renderer/store';
 import { LogCategory, logFn } from '/@/renderer/utils/logger';
 import { logMsg } from '/@/renderer/utils/logger-message';
 import { PlayerStatus } from '/@/shared/types/types';
@@ -30,6 +31,7 @@ interface WebPlayerEngineProps {
     onNetworkErrorPlayer2?: () => void;
     onProgressPlayer1: (e: PlayerOnProgressProps) => void;
     onProgressPlayer2: (e: PlayerOnProgressProps) => void;
+    onSeekFailed?: () => void;
     onStartedPlayer1: (player: ReactPlayer) => void;
     onStartedPlayer2: (player: ReactPlayer) => void;
     playerNum: number;
@@ -64,6 +66,7 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
         onNetworkErrorPlayer2,
         onProgressPlayer1,
         onProgressPlayer2,
+        onSeekFailed,
         onStartedPlayer1,
         onStartedPlayer2,
         playerNum,
@@ -147,6 +150,7 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
             const target = playerNum === 1 ? player1Ref.current : player2Ref.current;
             if (!target) return;
             const internal = target.getInternalPlayer() as HTMLAudioElement | null;
+            const beforeTime = internal?.currentTime ?? 0;
             console.debug('[WebPlayer] seekTo requested:', {
                 currentSrc: internal?.currentSrc || internal?.src,
                 playerNum,
@@ -162,14 +166,19 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
                 target.seekTo(seekTo, 'seconds');
             } catch (error) {
                 console.error('[WebPlayer] seekTo failed:', error);
+                onSeekFailed?.();
             }
             setTimeout(() => {
                 const afterInternal = target.getInternalPlayer() as HTMLAudioElement | null;
+                const actualTime = afterInternal?.currentTime ?? 0;
                 console.debug('[WebPlayer] seekTo completed:', {
-                    actualTime: afterInternal?.currentTime,
+                    actualTime,
                     currentSrc: afterInternal?.currentSrc || afterInternal?.src,
                     paused: afterInternal?.paused,
                 });
+                if (Math.abs(actualTime - seekTo) > 1.5 && Math.abs(actualTime - beforeTime) < 0.5) {
+                    onSeekFailed?.();
+                }
             }, 300);
         },
         setVolume(volume: number) {
@@ -289,15 +298,27 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
         }
     }, [preservesPitch]);
 
+    const bindMediaDurationListeners = useCallback((internal: HTMLAudioElement) => {
+        const publishDuration = () => {
+            if (Number.isFinite(internal.duration) && internal.duration > 0) {
+                setEngineDurationSec(internal.duration);
+            }
+        };
+        internal.addEventListener('loadedmetadata', publishDuration);
+        internal.addEventListener('durationchange', publishDuration);
+        publishDuration();
+    }, []);
+
     const handleOnReadyPlayer1 = useCallback(
         (player: ReactPlayer) => {
             const internal = player.getInternalPlayer();
             if (internal && internal instanceof HTMLAudioElement) {
                 internal.preservesPitch = preservesPitch;
+                bindMediaDurationListeners(internal);
             }
             onStartedPlayer1(player);
         },
-        [onStartedPlayer1, preservesPitch],
+        [bindMediaDurationListeners, onStartedPlayer1, preservesPitch],
     );
 
     const handleOnReadyPlayer2 = useCallback(
@@ -305,10 +326,11 @@ export const WebPlayerEngine = (props: WebPlayerEngineProps) => {
             const internal = player.getInternalPlayer();
             if (internal && internal instanceof HTMLAudioElement) {
                 internal.preservesPitch = preservesPitch;
+                bindMediaDurationListeners(internal);
             }
             onStartedPlayer2(player);
         },
-        [onStartedPlayer2, preservesPitch],
+        [bindMediaDurationListeners, onStartedPlayer2, preservesPitch],
     );
 
     if (isLoading || !ReactPlayerComponent) {

@@ -7,11 +7,12 @@ import { usePlayer } from '/@/renderer/features/player/context/player-context';
 import { usePlayerTimestamp } from '/@/renderer/store';
 
 interface PlayerbarSeekSliderProps {
+    disabled?: boolean;
     max: number;
     min: number;
 }
 
-export const PlayerbarSeekSlider = ({ max, min }: PlayerbarSeekSliderProps) => {
+export const PlayerbarSeekSlider = ({ disabled = false, max, min }: PlayerbarSeekSliderProps) => {
     const [isSeeking, setIsSeeking] = useState(false);
     const [seekValue, setSeekValue] = useState(0);
     const currentTime = usePlayerTimestamp();
@@ -21,6 +22,9 @@ export const PlayerbarSeekSlider = ({ max, min }: PlayerbarSeekSliderProps) => {
     const { mediaSeekToTimestamp } = usePlayer();
 
     const handleSeekToTimestamp = (timestamp: number) => {
+        if (disabled) {
+            return;
+        }
         mediaSeekToTimestamp(timestamp);
     };
 
@@ -49,6 +53,7 @@ export const PlayerbarSeekSlider = ({ max, min }: PlayerbarSeekSliderProps) => {
 
     return (
         <CustomPlayerbarSlider
+            disabled={disabled}
             label={(value) => formatDuration(value * 1000)}
             max={max}
             min={min}

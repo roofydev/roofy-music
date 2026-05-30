@@ -427,40 +427,39 @@ Mobile/desktop consistency: Same control order and icons. Desktop can add keyboa
 
 Final recommended UX: Player is the anchor of the app. Keep it clean; move rare controls into More.
 
-### Playback Handoff
+### Playback Handoff ("Listen on")
 
-User-facing purpose: Continue listening on another device.
+User-facing purpose: Move playback between phone and computer without thinking about direction or protocols.
 
-Recommended location: Player device button and Settings > Devices.
+Recommended location: **Listen on** control on Now Playing (beside Cast on mobile; player bar on desktop). Overflow menu entry uses the same sheet. Settings > Devices for pairing and advanced options.
 
-Simplified flow:
+Simplified flow (Spotify Connect / AirPlay mental model):
 
-1. User opens device picker from the player.
-2. App shows available devices.
-3. User chooses phone, desktop, or this device.
-4. Queue and position move to the selected device.
+1. User taps **Listen on** on the player.
+2. Sheet shows **This phone** and **This computer** with a clear **Playing here** indicator on the active device.
+3. User taps the other device.
+4. Queue and position transfer; brief **Switching…** state; confirmation **Now playing on …**
 
 UI abstraction:
 
-- Show: device names, current device, continue here.
-- Hide: remote manifest, handoff JSON, connection channel.
+- Show: device names, playing-here state, connect CTA when unpaired.
+- Hide: remote manifest, handoff JSON, connection channel, directional "continue on X" labels.
 
-Primary action: Continue on selected device.
+Primary action: Tap the device to listen on.
 
-Secondary actions: Rename device, remove device.
-
-Advanced actions: device diagnostics, connection logs.
+Secondary actions: Device settings (link, sync, web control).
 
 States:
 
-- Empty: "No other devices are connected."
-- Loading: "Connecting..."
-- Error: "Could not continue on that device. Make sure Roofy Music is open there."
-- Success: "Playing on Desktop" or "Playing on Phone."
+- Unpaired: short explanation + **Connect your computer** (QR).
+- Loading: **Checking your devices…**
+- Transferring: **Switching…**
+- Error: human recovery ("Open Roofy on your computer", "Start playing something first").
+- Success: **Now playing on this phone** / **Now playing on your computer**.
 
-Mobile/desktop consistency: Use the same device icon and "Devices" label. Mobile uses a bottom sheet. Desktop uses a popover.
+Mobile/desktop consistency: Same **Listen on** title and row labels. Mobile: bottom sheet from player + menu. Desktop: popover picker; phone row guides switch on phone when computer is playing (no fake remote-start until push exists).
 
-Final recommended UX: Present handoff like a device picker, not remote control infrastructure.
+Final recommended UX: One picker, one verb (**Listen on**), device rows—not "Continue on phone/desktop" pairs in a submenu.
 
 ### Metadata Enrichment
 

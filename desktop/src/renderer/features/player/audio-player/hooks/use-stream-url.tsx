@@ -2,9 +2,29 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 
 import { api } from '/@/renderer/api';
+import { resetPlaybackClock, setPlaybackSeekable } from '/@/renderer/store';
 import { TranscodingConfig } from '/@/renderer/store';
 import { QueueSong } from '/@/shared/types/domain-types';
 import { ServerType } from '/@/shared/types/domain-types';
+
+export type YoutubeStreamResolveResult = {
+    error?: string;
+    expiresAt?: number;
+    resolvedAt?: number;
+    seekable?: boolean;
+    source?: string;
+    trackId?: string;
+    url?: string;
+};
+
+const applyYoutubeStreamResolve = (result: YoutubeStreamResolveResult | undefined) => {
+    if (!result || result.error) {
+        return;
+    }
+    if (typeof result.seekable === 'boolean') {
+        setPlaybackSeekable(result.seekable);
+    }
+};
 
 export function useSongUrl(
     song: QueueSong | undefined,
@@ -24,13 +44,20 @@ export function useSongUrl(
         queryFn: async () => {
             // For YouTube Music, use the new stream resolver if available
             if (isYoutubeMusic && window.api?.youtubeMusic?.resolveStream) {
-                const result = await window.api.youtubeMusic.resolveStream(song!.id, 'playback');
+                const result = (await window.api.youtubeMusic.resolveStream(
+                    song!.id,
+                    'playback',
+                )) as YoutubeStreamResolveResult;
+                applyYoutubeStreamResolve(result);
                 if (result?.url) {
                     return result.url;
                 }
                 if (result?.error) {
                     throw new Error(result.error);
                 }
+            }
+            if (current) {
+                setPlaybackSeekable(true);
             }
             return api.controller.getStreamUrl({
                 apiClientProps: { serverId: song!._serverId },
@@ -76,6 +103,15 @@ export function useSongUrl(
         }
     }, [song?._serverId]);
 
+    // Reset playback position when the active stream URL changes (e.g. 403 refresh).
+    const activeStreamUrl = shouldReusePrior ? prior.current[1] : queryStreamUrl;
+    useEffect(() => {
+        if (!current || !activeStreamUrl) {
+            return;
+        }
+        resetPlaybackClock();
+    }, [activeStreamUrl, current]);
+
     // Expose invalidate function on the ref for the player engine to call on 403
     useEffect(() => {
         if (!song || !isYoutubeMusic) return;
@@ -94,7 +130,7 @@ export function useSongUrl(
         (useSongUrl as any)._invalidateYtStream = invalidate;
     }, [isYoutubeMusic, queryClient, song]);
 
-    return shouldReusePrior ? prior.current[1] : queryStreamUrl;
+    return activeStreamUrl;
 }
 
 export const invalidateYtStream = async (song: QueueSong) => {
@@ -113,7 +149,11 @@ export const getSongUrl = async (
 ) => {
     // For YouTube Music, prefer the stream resolver
     if (song._serverType === ServerType.YOUTUBE_MUSIC && window.api?.youtubeMusic?.resolveStream) {
-        const result = await window.api.youtubeMusic.resolveStream(song.id, 'playback');
+        const result = (await window.api.youtubeMusic.resolveStream(
+            song.id,
+            'playback',
+        )) as YoutubeStreamResolveResult;
+        applyYoutubeStreamResolve(result);
         if (result?.url) {
             return result.url;
         }

@@ -1,214 +1,160 @@
 import isElectron from 'is-electron';
+import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
 
+import styles from '/@/renderer/features/devices/components/devices-picker.module.css';
+import { useListenOnHandoff } from '/@/renderer/features/devices/hooks/use-listen-on-handoff';
 import {
     type DeviceConnectionState,
     useDevicesStatus,
 } from '/@/renderer/features/devices/hooks/use-devices-status';
-import { AppRoute } from '/@/renderer/router/routes';
-import { useSettingsStoreActions } from '/@/renderer/store/settings.store';
-import { ActionIcon } from '/@/shared/components/action-icon/action-icon';
-import { Badge } from '/@/shared/components/badge/badge';
-import { Button } from '/@/shared/components/button/button';
-import { Group } from '/@/shared/components/group/group';
+import { usePlayerStore } from '/@/renderer/store';
+import { Icon } from '/@/shared/components/icon/icon';
 import { Stack } from '/@/shared/components/stack/stack';
 import { Text } from '/@/shared/components/text/text';
+import { PlayerStatus } from '/@/shared/types/types';
 
-const stateColor = (state: DeviceConnectionState) => {
-    switch (state) {
-        case 'connected':
-            return 'green';
-        case 'starting':
-            return 'yellow';
-        case 'unavailable':
-            return 'red';
-        default:
-            return 'gray';
+interface DeviceRowProps {
+    active?: boolean;
+    icon: 'arrowLeftRight' | 'disc';
+    interactive?: boolean;
+    onClick?: () => void;
+    playingHere?: boolean;
+    subtitle?: string;
+    title: string;
+}
+
+const DeviceRow = ({
+    active,
+    icon,
+    interactive,
+    onClick,
+    playingHere,
+    subtitle,
+    title,
+}: DeviceRowProps) => (
+    <button
+        className={clsx(
+            styles.row,
+            interactive && styles.rowInteractive,
+            active && styles.rowActive,
+        )}
+        disabled={!interactive}
+        onClick={onClick}
+        type="button"
+    >
+        <span className={styles.rowIcon}>
+            <Icon icon={icon} size="md" />
+        </span>
+        <span className={styles.rowBody}>
+            <div className={styles.rowTitle}>{title}</div>
+            {subtitle && <div className={styles.rowSubtitle}>{subtitle}</div>}
+        </span>
+        <span className={styles.rowStatus}>
+            {playingHere ? (
+                <span aria-hidden className={styles.playingDot} />
+            ) : active ? (
+                <Icon color="success" icon="check" size="sm" />
+            ) : (
+                <Icon color="muted" icon="circle" size="sm" />
+            )}
+        </span>
+    </button>
+);
+
+const phoneSubtitleKey = (state: DeviceConnectionState, phonePaired: boolean) => {
+    if (phonePaired) {
+        return 'productUx.devices.phoneLinked';
     }
-};
-
-const stateLabelKey = (state: DeviceConnectionState) => {
     switch (state) {
         case 'connected':
-            return 'productUx.devices.status.connected';
+            return 'productUx.devices.phoneReadyToScan';
         case 'starting':
             return 'productUx.devices.status.connecting';
         case 'unavailable':
-            return 'productUx.devices.status.unavailable';
+            return 'productUx.devices.phoneLinkFailed';
         default:
-            return 'productUx.devices.status.notConnected';
+            return 'productUx.devices.phoneNotLinked';
     }
 };
 
 interface DevicesPickerProps {
     embedded?: boolean;
     onClose?: () => void;
+    onRequestLinkPhone?: () => void;
 }
 
-export const DevicesPicker = ({ embedded = false, onClose }: DevicesPickerProps) => {
+export const DevicesPicker = ({
+    embedded = false,
+    onClose,
+    onRequestLinkPhone,
+}: DevicesPickerProps) => {
     const { t } = useTranslation();
-    const navigate = useNavigate();
-    const { setSettings } = useSettingsStoreActions();
-    const { refresh, status } = useDevicesStatus(4000);
+    const { status } = useDevicesStatus(4000);
+    const { promptContinueOnPhone } = useListenOnHandoff();
 
-    const openDevicesSettings = () => {
-        setSettings({ tab: 'devices' });
-        navigate(AppRoute.SETTINGS);
-        onClose?.();
-    };
+    const phoneLinked = status.phoneLink.phonePaired;
+    const currentSong = usePlayerStore((s) => s.getCurrentSong());
+    const playerStatus = usePlayerStore((s) => s.player.status);
+    const playingOnComputer = Boolean(currentSong) && playerStatus === PlayerStatus.PLAYING;
+    const hasQueueOnComputer = Boolean(currentSong);
 
-    const openPersonalLibrarySettings = () => {
-        setSettings({ tab: 'advanced' });
-        navigate(AppRoute.SETTINGS);
-        onClose?.();
-    };
-
-    const openWebRemote = () => {
-        if (status.webRemote.enabled) {
-            window.open(status.webRemote.url, '_blank', 'noopener,noreferrer');
-        } else {
-            openDevicesSettings();
+    const handlePhoneClick = () => {
+        if (!phoneLinked) {
+            onRequestLinkPhone?.();
+            onClose?.();
+            return;
         }
-        onClose?.();
+
+        if (hasQueueOnComputer) {
+            promptContinueOnPhone();
+            onClose?.();
+            return;
+        }
+
+        promptContinueOnPhone();
     };
+
+    const computerSubtitle = playingOnComputer
+        ? t('productUx.devices.playingHere')
+        : hasQueueOnComputer
+          ? t('productUx.devices.pausedHere')
+          : t('productUx.devices.thisComputerHint');
+
+    const phoneSubtitle = phoneLinked
+        ? hasQueueOnComputer
+            ? t('productUx.devices.tapToSwitchOnPhone')
+            : t('productUx.devices.phoneLinked')
+        : t(phoneSubtitleKey(status.phoneLink.state, phoneLinked));
 
     return (
-        <Stack gap="md" p={embedded ? 0 : 'sm'} w={embedded ? '100%' : 320}>
+        <Stack className={styles.panel} gap="xs" p={embedded ? 0 : 'sm'}>
             {!embedded && (
-                <Group justify="space-between" wrap="nowrap">
-                    <Text fw={700} size="md">
-                        {t('page.setting.devices')}
-                    </Text>
-                    <ActionIcon
-                        icon="refresh"
-                        onClick={() => refresh()}
-                        size="sm"
-                        tooltip={{ label: t('common.refresh'), openDelay: 0 }}
-                        variant="subtle"
+                <Text fw={700} size="md">
+                    {t('productUx.devices.listenOn')}
+                </Text>
+            )}
+
+            <Stack gap={2}>
+                <DeviceRow
+                    active
+                    icon="disc"
+                    playingHere={playingOnComputer}
+                    subtitle={computerSubtitle}
+                    title={t('productUx.devices.thisComputer')}
+                />
+
+                {isElectron() && (
+                    <DeviceRow
+                        active={phoneLinked}
+                        icon="arrowLeftRight"
+                        interactive
+                        onClick={handlePhoneClick}
+                        subtitle={phoneSubtitle}
+                        title={t('productUx.devices.yourPhone')}
                     />
-                </Group>
-            )}
-
-            <Stack gap="xs">
-                <Group justify="space-between" wrap="nowrap">
-                    <Stack gap={2}>
-                        <Text fw={600} size="sm">
-                            {t('productUx.devices.thisComputer')}
-                        </Text>
-                        <Text isMuted size="xs">
-                            {t('productUx.devices.thisComputerHint')}
-                        </Text>
-                    </Stack>
-                    <Badge color="green">{t('productUx.devices.status.active')}</Badge>
-                </Group>
+                )}
             </Stack>
-
-            {isElectron() && (
-                <>
-                    <Stack gap="xs">
-                        <Group justify="space-between" wrap="nowrap">
-                            <Stack gap={2}>
-                                <Text fw={600} size="sm">
-                                    {t('productUx.devices.phone')}
-                                </Text>
-                                <Text isMuted size="xs">
-                                    {t('productUx.devices.phoneHint')}
-                                </Text>
-                            </Stack>
-                            <Badge color={stateColor(status.pairing.state)}>
-                                {t(stateLabelKey(status.pairing.state))}
-                            </Badge>
-                        </Group>
-                        {status.pairing.error && (
-                            <Text size="xs" style={{ color: 'var(--roofy-error-color, #fa5252)' }}>
-                                {status.pairing.error}
-                            </Text>
-                        )}
-                    </Stack>
-
-                    <Stack gap="xs">
-                        <Group justify="space-between" wrap="nowrap">
-                            <Stack gap={2}>
-                                <Text fw={600} size="sm">
-                                    {t('productUx.devices.phoneImports')}
-                                </Text>
-                                <Text isMuted size="xs">
-                                    {t('productUx.devices.phoneImportsHint')}
-                                </Text>
-                            </Stack>
-                            <Badge color={stateColor(status.mobileImport.state)}>
-                                {t(stateLabelKey(status.mobileImport.state))}
-                            </Badge>
-                        </Group>
-                    </Stack>
-                </>
-            )}
-
-            <Stack gap="xs">
-                <Group justify="space-between" wrap="nowrap">
-                    <Stack gap={2}>
-                        <Text fw={600} size="sm">
-                            {t('productUx.devices.webRemote')}
-                        </Text>
-                        <Text isMuted size="xs">
-                            {status.webRemote.enabled
-                                ? status.webRemote.url
-                                : t('productUx.devices.webRemoteOff')}
-                        </Text>
-                    </Stack>
-                    <Badge color={status.webRemote.enabled ? 'green' : 'gray'}>
-                        {status.webRemote.enabled
-                            ? t('productUx.devices.status.connected')
-                            : t('productUx.devices.status.notConnected')}
-                    </Badge>
-                </Group>
-                <Button onClick={openWebRemote} size="compact-sm" variant="light">
-                    {status.webRemote.enabled
-                        ? t('productUx.devices.openWebRemote')
-                        : t('productUx.devices.enableWebRemote')}
-                </Button>
-            </Stack>
-
-            <Stack gap="xs">
-                <Group justify="space-between" wrap="nowrap">
-                    <Stack gap={2}>
-                        <Text fw={600} size="sm">
-                            {t('productUx.devices.castTitle')}
-                        </Text>
-                        <Text isMuted size="xs">
-                            {t('productUx.devices.castHint')}
-                        </Text>
-                    </Stack>
-                    <Badge variant="light">{t('productUx.devices.comingSoon')}</Badge>
-                </Group>
-            </Stack>
-
-            <Stack gap="xs">
-                <Text fw={600} size="sm">
-                    {t('productUx.action.continueOnDevice')}
-                </Text>
-                <Text isMuted size="xs">
-                    {t('productUx.devices.handoffHint')}
-                </Text>
-            </Stack>
-
-            {!embedded && (
-                <Group gap="xs" grow>
-                    <Button onClick={openDevicesSettings} size="compact-sm" variant="filled">
-                        {t('productUx.devices.manageDevices')}
-                    </Button>
-                    {isElectron() && (
-                        <Button
-                            onClick={openPersonalLibrarySettings}
-                            size="compact-sm"
-                            variant="default"
-                        >
-                            {t('productUx.personalLibrary.settingsTab')}
-                        </Button>
-                    )}
-                </Group>
-            )}
         </Stack>
     );
 };

@@ -4,7 +4,7 @@ import { lazy, memo, Suspense } from 'react';
 import styles from './mobile-fullscreen-player.module.css';
 
 import { PlayerbarSeekSlider } from '/@/renderer/features/player/components/playerbar-seek-slider';
-import { usePlayerTimestamp } from '/@/renderer/store';
+import { usePlaybackDurationSec, usePlaybackSeekable, usePlayerTimestamp } from '/@/renderer/store';
 import { PlayerbarSliderType, usePlayerbarSlider } from '/@/renderer/store/settings.store';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Text } from '/@/shared/components/text/text';
@@ -25,7 +25,8 @@ export const MobileFullscreenPlayerProgress = memo(
     ({ currentSong }: MobileFullscreenPlayerProgressProps) => {
         const currentTime = usePlayerTimestamp();
         const playerbarSlider = usePlayerbarSlider();
-        const songDuration = currentSong?.duration ? currentSong.duration / 1000 : 0;
+        const songDuration = usePlaybackDurationSec(currentSong?.duration);
+        const seekable = usePlaybackSeekable();
         const formattedDuration = formatDuration(songDuration * 1000 || 0);
         const formattedTime = formatDuration(currentTime * 1000 || 0);
 
@@ -48,7 +49,11 @@ export const MobileFullscreenPlayerProgress = memo(
                             <PlayerbarWaveform />
                         </Suspense>
                     ) : (
-                        <PlayerbarSeekSlider max={songDuration} min={0} />
+                        <PlayerbarSeekSlider
+                            disabled={!seekable || songDuration <= 0}
+                            max={songDuration}
+                            min={0}
+                        />
                     )}
                 </div>
                 <div className={styles.timeContainer}>

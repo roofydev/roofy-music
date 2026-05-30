@@ -10,6 +10,7 @@ import { eventEmitter } from '/@/renderer/events/event-emitter';
 import { createSelectors } from '/@/renderer/lib/zustand';
 import { useSettingsStore } from '/@/renderer/store/settings.store';
 import {
+    resetPlaybackClock,
     setTimestamp as setTimestampStore,
     useTimestampStoreBase,
 } from '/@/renderer/store/timestamp.store';
@@ -245,7 +246,7 @@ function emitPlayerPlayEvent(
                     playIndex = queueIndex;
                 }
                 state.player.status = PlayerStatus.PLAYING;
-                setTimestampStore(0);
+                resetPlaybackClock();
             }
         });
 
@@ -486,7 +487,7 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                                 state.player.index = 0;
                                 state.player.status = PlayerStatus.PLAYING;
                                 state.player.playerNum = 1;
-                                setTimestampStore(0);
+                                resetPlaybackClock();
                                 state.queue.default = newUniqueIds;
 
                                 if (state.player.shuffle === PlayerShuffle.TRACK) {
@@ -543,7 +544,7 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                                 state.player.index = 0;
                                 state.player.status = PlayerStatus.PLAYING;
                                 state.player.playerNum = 1;
-                                setTimestampStore(0);
+                                resetPlaybackClock();
                                 state.queue.default = shuffledIds;
 
                                 // Always maintain shuffled array when using Play.SHUFFLE
@@ -664,7 +665,7 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                                     playIndex = queueIndex;
                                 }
                                 state.player.status = PlayerStatus.PLAYING;
-                                setTimestampStore(0);
+                                resetPlaybackClock();
                             }
                         });
 
@@ -899,7 +900,7 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                     set((state) => {
                         state.player.index = nextPlaybackIndex;
                         state.player.playerNum = newPlayerNum;
-                        setTimestampStore(0);
+                        resetPlaybackClock();
                         state.player.status = newStatus;
 
                         if (pauseOnNext) {
@@ -990,7 +991,7 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                     set((state) => {
                         state.player.index = nextIndex;
                         state.player.playerNum = 1;
-                        setTimestampStore(0);
+                        resetPlaybackClock();
                     });
 
                     eventEmitter.emit('MEDIA_NEXT', {
@@ -1035,7 +1036,7 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                                     state.player.index = queueIndex;
                                     playIndex = queueIndex;
                                 }
-                                setTimestampStore(0);
+                                resetPlaybackClock();
                             }
                         }
 
@@ -1080,7 +1081,7 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                             playIndex = index;
                             state.player.index = index;
                         }
-                        setTimestampStore(0);
+                        resetPlaybackClock();
 
                         state.player.status = PlayerStatus.PLAYING;
                     });
@@ -1123,7 +1124,7 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                     set((state) => {
                         state.player.index = previousIndex;
                         state.player.playerNum = 1;
-                        setTimestampStore(0);
+                        resetPlaybackClock();
                     });
 
                     eventEmitter.emit('MEDIA_PREV', {
@@ -1132,6 +1133,9 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                     });
                 },
                 mediaSeekToTimestamp: (timestamp: number) => {
+                    if (!useTimestampStoreBase.getState().seekable) {
+                        return;
+                    }
                     set((state) => {
                         state.player.seekToTimestamp = uniqueSeekToTimestamp(timestamp);
                     });
@@ -1152,17 +1156,22 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                     const queue = state.getQueue();
                     const index = state.player.index;
                     const currentTrack = queue.items[index];
-                    const duration = currentTrack?.duration;
+                    const durationSec = currentTrack?.duration
+                        ? currentTrack.duration / 1000
+                        : 0;
                     const offsetFromSettings =
                         useSettingsStore.getState().general.skipButtons.skipForwardSeconds;
                     const timeToSkip = offset ?? offsetFromSettings ?? 5;
 
-                    if (!duration) {
+                    if (!durationSec) {
                         return;
                     }
 
                     const currentTimestamp = useTimestampStoreBase.getState().timestamp;
-                    const newTimestamp = Math.min(duration - 1, currentTimestamp + timeToSkip);
+                    const newTimestamp = Math.min(
+                        Math.max(0, durationSec - 0.25),
+                        currentTimestamp + timeToSkip,
+                    );
 
                     set((state) => {
                         state.player.seekToTimestamp = uniqueSeekToTimestamp(newTimestamp);
@@ -1170,7 +1179,7 @@ export const usePlayerStoreBase = createWithEqualityFn<PlayerState>()(
                 },
                 mediaStop: (options?: { reset?: boolean }) => {
                     const reset = options?.reset !== false;
-                    setTimestampStore(0);
+                    resetPlaybackClock();
                     set((state) => {
                         state.player.status = PlayerStatus.PAUSED;
                         if (reset) {

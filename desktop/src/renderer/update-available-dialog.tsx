@@ -10,6 +10,8 @@ import { Stack } from '/@/shared/components/stack/stack';
 import { Text } from '/@/shared/components/text/text';
 import { useLocalStorage } from '/@/shared/hooks/use-local-storage';
 
+const ipc = window.api?.ipc ?? null;
+
 export const UpdateAvailableDialog = () => {
     const [opened, setOpened] = useState(false);
     const [version, setVersion] = useState<string>('');
@@ -19,19 +21,19 @@ export const UpdateAvailableDialog = () => {
     });
 
     useEffect(() => {
-        if (!isElectron()) return;
+        if (!isElectron() || !ipc) return;
 
-        const handleUpdateAvailable = (_event: any, newVersion: string) => {
+        const handleUpdateAvailable = (_event: unknown, newVersion: string) => {
             if (versionDismissed !== newVersion) {
                 setVersion(newVersion);
                 setOpened(true);
             }
         };
 
-        window.api.ipc.on('update-available', handleUpdateAvailable);
+        ipc.on('update-available', handleUpdateAvailable);
 
         return () => {
-            window.api.ipc.removeListener?.('update-available', handleUpdateAvailable);
+            ipc.removeListener?.('update-available', handleUpdateAvailable);
         };
     }, [versionDismissed]);
 

@@ -24,6 +24,8 @@ export const PartySettingsPanel = ({ layout = 'stack' }: PartySettingsPanelProps
         }
     };
 
+    const isSetupLayout = layout === 'setup';
+
     const exposureControl = !isLive ? (
         <div className={styles.partySettingField}>
             <label className={styles.partySettingLabel} htmlFor="party-exposure">
@@ -91,7 +93,11 @@ export const PartySettingsPanel = ({ layout = 'stack' }: PartySettingsPanelProps
     );
 
     const guestOptions = (
-        <div className={styles.partySettingSwitches}>
+        <div
+            className={
+                isSetupLayout ? styles.partySettingSwitchesSetup : styles.partySettingSwitches
+            }
+        >
             <Switch
                 checked={settings.allowGuestQueueReorder ?? false}
                 label="Allow guests to reorder the queue"
@@ -153,13 +159,15 @@ export const PartySettingsPanel = ({ layout = 'stack' }: PartySettingsPanelProps
                     {accessControl}
                 </div>
 
-                <div className={styles.partySetupSection}>
+                <div
+                    className={`${styles.partySetupSection} ${styles.partySetupSectionPermissions}`}
+                >
                     <h3 className={styles.partySetupSectionTitle}>Permissions</h3>
                     {controlModeField}
                     {guestOptions}
                 </div>
 
-                <div className={styles.partySetupSection}>
+                <div className={`${styles.partySetupSection} ${styles.partySetupSectionHost}`}>
                     <h3 className={styles.partySetupSectionTitle}>Host details</h3>
                     {hostFields}
                 </div>

@@ -4,7 +4,11 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '/@/renderer/api';
 import { useCurrentServer, useImportJobActions } from '/@/renderer/store';
-import { getDownloadActionLabelKey, showImportError } from '/@/shared/product-ux';
+import {
+    getDownloadActionLabelKey,
+    isTrackActionVisible,
+    showImportError,
+} from '/@/shared/product-ux';
 import { ContextMenu } from '/@/shared/components/context-menu/context-menu';
 import { toast } from '/@/shared/components/toast/toast';
 import { ServerType, Song } from '/@/shared/types/domain-types';
@@ -81,6 +85,13 @@ export const DownloadAction = ({ ids, songs = [] }: DownloadActionProps) => {
     }, [queueYoutubeImports, t]);
 
     const primaryLabelKey = getDownloadActionLabelKey(songs);
+    const showSaveOrLibrary =
+        isTrackActionVisible(songs, 'saveOffline') ||
+        isTrackActionVisible(songs, 'addToLibrary');
+
+    if (!showSaveOrLibrary && !isYoutubeOnlySelection) {
+        return null;
+    }
 
     return isYoutubeOnlySelection ? (
         <ContextMenu.Submenu>

@@ -17,6 +17,8 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { openLinkPhoneWizard } from '/@/renderer/features/devices/utils/open-link-phone-wizard';
+
 type LocalStatus = {
     dataPath: string;
     imports: Array<{
@@ -67,6 +69,11 @@ type LocalStatus = {
         state: 'connected' | 'disabled' | 'starting' | 'unavailable';
         url?: string;
     };
+    phoneLink: {
+        error?: string;
+        pairingUrl?: string;
+        state: 'connected' | 'disabled' | 'starting' | 'unavailable';
+    };
     metadata: {
         autoEnrich: boolean;
     };
@@ -85,10 +92,53 @@ const toolBadge = (available: boolean, label: string) => (
     </Badge>
 );
 
+const ServerLoginSection = ({ status }: { status: LocalStatus | null }) => {
+    const { t } = useTranslation();
+
+    return (
+        <Stack gap="sm">
+            <Text fw={600}>{t('productUx.personalLibrary.serverLoginTitle')}</Text>
+            <Text c="dimmed" size="sm">
+                {t('productUx.personalLibrary.serverLoginDescription')}
+            </Text>
+            {!status?.navidrome.running && (
+                <Text c="dimmed" size="sm">
+                    Click <strong>Start</strong> above if URL or password show as loading.
+                </Text>
+            )}
+            <Group align="flex-start" gap="xl">
+                <Stack gap={4}>
+                    <Text size="sm">Server URL</Text>
+                    <Text ff="monospace" size="sm">
+                        {status?.navidrome.url || 'http://127.0.0.1:4533'}
+                    </Text>
+                </Stack>
+                <Stack gap={4}>
+                    <Text size="sm">Username</Text>
+                    <Text ff="monospace" size="sm">
+                        {status?.navidrome.username || 'admin'}
+                    </Text>
+                </Stack>
+                <Stack gap={4}>
+                    <Text size="sm">Password</Text>
+                    <Text ff="monospace" size="sm">
+                        {status?.navidrome.password || 'Loading…'}
+                    </Text>
+                </Stack>
+            </Group>
+            <Text c="dimmed" size="xs">
+                Stored in {status?.navidrome.configPath || 'the app config file'} as
+                roofy.navidromePassword.
+            </Text>
+        </Stack>
+    );
+};
+
 export const LocalTab = () => {
     const { t } = useTranslation();
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const [advancedSetupOpen, setAdvancedSetupOpen] = useState(false);
+    const [manualConnectionOpen, setManualConnectionOpen] = useState(false);
     const [status, setStatus] = useState<LocalStatus | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
@@ -98,10 +148,6 @@ export const LocalTab = () => {
     const [newUserName, setNewUserName] = useState('');
     const [newUserPassword, setNewUserPassword] = useState('');
     const [newUsername, setNewUsername] = useState('');
-    const [mobileImportQrDataUrl, setMobileImportQrDataUrl] = useState<null | string>(null);
-    const [mobileImportQrError, setMobileImportQrError] = useState(false);
-    const [pairingQrDataUrl, setPairingQrDataUrl] = useState<null | string>(null);
-    const [pairingQrError, setPairingQrError] = useState(false);
     const [tagEditorPath, setTagEditorPath] = useState('');
     const [tagTitle, setTagTitle] = useState('');
     const [tagArtist, setTagArtist] = useState('');
@@ -186,88 +232,11 @@ export const LocalTab = () => {
         }
     };
 
-    useEffect(() => {
-        const pairingUrl = status?.pairing.pairingUrl;
-        if (!pairingUrl) {
-            setPairingQrDataUrl(null);
-            setPairingQrError(false);
-            return;
-        }
-
-        let cancelled = false;
-        import('qrcode')
-            .then(({ default: QRCode }) =>
-                QRCode.toDataURL(pairingUrl, {
-                    color: { dark: '#111111', light: '#ffffff' },
-                    margin: 2,
-                    width: 220,
-                }),
-            )
-            .then((dataUrl) => {
-                if (!cancelled) {
-                    setPairingQrDataUrl(dataUrl);
-                    setPairingQrError(false);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) {
-                    setPairingQrDataUrl(null);
-                    setPairingQrError(true);
-                }
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [status?.pairing.pairingUrl]);
-
-    useEffect(() => {
-        const pairingUrl = status?.mobileImport.pairingUrl;
-        if (!pairingUrl) {
-            setMobileImportQrDataUrl(null);
-            setMobileImportQrError(false);
-            return;
-        }
-
-        let cancelled = false;
-        import('qrcode')
-            .then(({ default: QRCode }) =>
-                QRCode.toDataURL(pairingUrl, {
-                    color: { dark: '#111111', light: '#ffffff' },
-                    margin: 2,
-                    width: 220,
-                }),
-            )
-            .then((dataUrl) => {
-                if (!cancelled) {
-                    setMobileImportQrDataUrl(dataUrl);
-                    setMobileImportQrError(false);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) {
-                    setMobileImportQrDataUrl(null);
-                    setMobileImportQrError(true);
-                }
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [status?.mobileImport.pairingUrl]);
-
-    const copyPairingLink = async () => {
-        const pairingUrl = status?.pairing.pairingUrl;
+    const copyPhoneLink = async () => {
+        const pairingUrl = status?.phoneLink?.pairingUrl;
         if (!pairingUrl) return;
         await navigator.clipboard.writeText(pairingUrl);
-        setMessage('Copied mobile pairing link.');
-    };
-
-    const copyMobileImportLink = async () => {
-        const pairingUrl = status?.mobileImport.pairingUrl;
-        if (!pairingUrl) return;
-        await navigator.clipboard.writeText(pairingUrl);
-        setMessage('Copied desktop import pairing link.');
+        setMessage('Copied link.');
     };
 
     const createUser = async () => {
@@ -361,252 +330,70 @@ export const LocalTab = () => {
                         Stop
                     </Button>
                 </Group>
+
+                <ServerLoginSection status={status} />
             </Stack>
 
             <Divider />
 
-            <Stack gap="md">
-                <Stack gap={4}>
-                    <Text fw={600}>{t('productUx.personalLibrary.connectPhoneTitle')}</Text>
-                    <Text c="dimmed" size="sm">
-                        {t('productUx.personalLibrary.connectPhoneDescription')}
-                    </Text>
-                </Stack>
-
-                <Group align="flex-start" gap="xl">
-                    <Stack gap="xs" style={{ minWidth: 260 }}>
-                        <Group gap="xs">
-                            <Badge
-                                color={
-                                    status?.mobileImport.state === 'connected'
-                                        ? 'green'
-                                        : status?.mobileImport.state === 'starting'
-                                          ? 'yellow'
-                                          : status?.mobileImport.state === 'unavailable'
-                                            ? 'red'
-                                            : 'gray'
-                                }
-                                variant="light"
-                            >
-                                {status?.mobileImport.mode || 'tunnel'}:{' '}
-                                {status?.mobileImport.state || 'disabled'}
-                            </Badge>
-                        </Group>
-
-                        <Text c="dimmed" size="sm">
-                            {t('productUx.personalLibrary.secureConnection')} works away from home.{' '}
-                            {t('productUx.personalLibrary.sameNetwork')} keeps setup on your Wi‑Fi.
-                        </Text>
-
-                        {status?.mobileImport.url && (
-                            <Stack gap={4}>
-                                <Text size="sm">Import endpoint</Text>
-                                <Code block>{status.mobileImport.url}</Code>
-                            </Stack>
+            <Stack gap="sm">
+                <Text fw={600}>{t('productUx.devices.linkPhone')}</Text>
+                <Text c="dimmed" size="sm">
+                    {t('productUx.personalLibrary.connectPhoneDescription')}
+                </Text>
+                <Button onClick={() => openLinkPhoneWizard()} variant="filled">
+                    {t('productUx.devices.linkPhone')}
+                </Button>
+                <Button
+                    onClick={() => setManualConnectionOpen((open) => !open)}
+                    size="compact-sm"
+                    variant="subtle"
+                >
+                    {t('productUx.devices.linkWizard.manualConnection')}
+                </Button>
+                <Collapse in={manualConnectionOpen}>
+                    <Stack gap="sm" mt="sm">
+                        <Badge variant="light">
+                            {status?.phoneLink?.state || 'disabled'}
+                        </Badge>
+                        {status?.phoneLink?.error && (
+                            <Text c="red" size="sm">
+                                {status.phoneLink.error}
+                            </Text>
                         )}
-
-                        {status?.mobileImport.error && (
-                            <Alert color="red" title="Import endpoint unavailable">
-                                {status.mobileImport.error}
-                            </Alert>
-                        )}
-
                         <Group>
                             <Button
-                                disabled={busy || status?.mobileImport.state === 'starting'}
-                                onClick={() =>
-                                    run(() => window.api.localFirst.startMobileImport('tunnel'))
-                                }
-                                variant="filled"
-                            >
-                                Start tunnel
-                            </Button>
-                            <Button
-                                disabled={busy || status?.mobileImport.state === 'starting'}
-                                onClick={() =>
-                                    run(() => window.api.localFirst.startMobileImport('lan'))
-                                }
+                                disabled={busy || status?.phoneLink?.state === 'starting'}
+                                onClick={() => run(() => window.api.localFirst.startPhoneLink('auto'))}
                                 variant="light"
                             >
-                                Use LAN
+                                {t('productUx.error.recovery.tryAgain')}
                             </Button>
                             <Button
-                                disabled={busy || status?.mobileImport.state === 'disabled'}
-                                onClick={() => run(() => window.api.localFirst.stopMobileImport())}
+                                disabled={busy || status?.phoneLink?.state === 'starting'}
+                                onClick={() => run(() => window.api.localFirst.startPhoneLink('lan'))}
+                                variant="subtle"
+                            >
+                                {t('productUx.devices.linkWizard.sameWifiOnly')}
+                            </Button>
+                            <Button
+                                disabled={busy || status?.phoneLink?.state === 'disabled'}
+                                onClick={() => run(() => window.api.localFirst.stopPhoneLink())}
                                 variant="subtle"
                             >
                                 Stop
                             </Button>
                         </Group>
-                    </Stack>
-
-                    <Stack align="center" gap="xs">
-                        {mobileImportQrDataUrl ? (
-                            <img
-                                alt="Desktop import pairing QR code"
-                                height={220}
-                                src={mobileImportQrDataUrl}
-                                width={220}
-                            />
-                        ) : (
-                            <div
-                                style={{
-                                    alignItems: 'center',
-                                    border: '1px solid var(--mantine-color-gray-4)',
-                                    display: 'flex',
-                                    height: 220,
-                                    justifyContent: 'center',
-                                    width: 220,
-                                }}
-                            >
-                                <Text c="dimmed" size="sm" ta="center">
-                                    {mobileImportQrError
-                                        ? 'Could not generate QR code'
-                                        : 'Start tunnel or LAN import'}
-                                </Text>
-                            </div>
-                        )}
-
                         <Button
-                            disabled={!status?.mobileImport.pairingUrl}
-                            onClick={copyMobileImportLink}
+                            disabled={!status?.phoneLink?.pairingUrl}
+                            onClick={copyPhoneLink}
                             size="compact-sm"
                             variant="default"
                         >
                             {t('productUx.personalLibrary.copySetupLink')}
                         </Button>
                     </Stack>
-                </Group>
-            </Stack>
-
-            <Divider />
-
-            <Stack gap="md">
-                <Stack gap={4}>
-                    <Text fw={600}>{t('productUx.personalLibrary.pairLibraryTitle')}</Text>
-                    <Text c="dimmed" size="sm">
-                        {t('productUx.personalLibrary.pairLibraryDescription')}
-                    </Text>
-                </Stack>
-
-                <Group align="flex-start" gap="xl">
-                    <Stack gap="xs" style={{ minWidth: 260 }}>
-                        <Group gap="xs">
-                            <Badge
-                                color={
-                                    status?.pairing.state === 'connected'
-                                        ? 'green'
-                                        : status?.pairing.state === 'starting'
-                                          ? 'yellow'
-                                          : status?.pairing.state === 'unavailable'
-                                            ? 'red'
-                                            : 'gray'
-                                }
-                                variant="light"
-                            >
-                                {status?.pairing.mode || 'tunnel'}:{' '}
-                                {status?.pairing.state || 'disabled'}
-                            </Badge>
-                        </Group>
-
-                        <Text c="dimmed" size="sm">
-                            {t('productUx.personalLibrary.secureConnection')} works away from home.{' '}
-                            {t('productUx.personalLibrary.sameNetwork')} requires phone and computer on
-                            the same Wi‑Fi.
-                        </Text>
-
-                        {status?.pairing.mode === 'lan' && status.pairing.state === 'connected' && (
-                            <Alert color="blue" title="LAN pairing tips">
-                                Allow Roofy through Windows Firewall when prompted. If the phone reports
-                                &quot;No route to host&quot;, try Start tunnel instead, or set server URL
-                                manually to an address your phone can reach (same subnet as Wi‑Fi).
-                                {status.pairing.lanHosts?.length ? (
-                                    <>
-                                        {' '}
-                                        Other IPs on this PC:{' '}
-                                        {status.pairing.lanHosts.join(', ')}
-                                    </>
-                                ) : null}
-                            </Alert>
-                        )}
-
-                        {status?.pairing.url && (
-                            <Stack gap={4}>
-                                <Text size="sm">Server URL</Text>
-                                <Code block>{status.pairing.url}</Code>
-                            </Stack>
-                        )}
-
-                        {status?.pairing.error && (
-                            <Alert color="red" title="Pairing unavailable">
-                                {status.pairing.error}
-                            </Alert>
-                        )}
-
-                        <Group>
-                            <Button
-                                disabled={busy || status?.pairing.state === 'starting'}
-                                onClick={() =>
-                                    run(() => window.api.localFirst.startPairing('tunnel'))
-                                }
-                                variant="filled"
-                            >
-                                Start tunnel
-                            </Button>
-                            <Button
-                                disabled={busy || status?.pairing.state === 'starting'}
-                                onClick={() => run(() => window.api.localFirst.startPairing('lan'))}
-                                variant="light"
-                            >
-                                Use LAN
-                            </Button>
-                            <Button
-                                disabled={busy || status?.pairing.state === 'disabled'}
-                                onClick={() => run(() => window.api.localFirst.stopPairing())}
-                                variant="subtle"
-                            >
-                                Stop
-                            </Button>
-                        </Group>
-                    </Stack>
-
-                    <Stack align="center" gap="xs">
-                        {pairingQrDataUrl ? (
-                            <img
-                                alt="Mobile Personal Library pairing QR code"
-                                height={220}
-                                src={pairingQrDataUrl}
-                                width={220}
-                            />
-                        ) : (
-                            <div
-                                style={{
-                                    alignItems: 'center',
-                                    border: '1px solid var(--mantine-color-gray-4)',
-                                    display: 'flex',
-                                    height: 220,
-                                    justifyContent: 'center',
-                                    width: 220,
-                                }}
-                            >
-                                <Text c="dimmed" size="sm" ta="center">
-                                    {pairingQrError
-                                        ? 'Could not generate QR code'
-                                        : 'Start tunnel or LAN pairing'}
-                                </Text>
-                            </div>
-                        )}
-
-                        <Button
-                            disabled={!status?.pairing.pairingUrl}
-                            onClick={copyPairingLink}
-                            size="compact-sm"
-                            variant="default"
-                        >
-                            {t('productUx.personalLibrary.copySetupLink')}
-                        </Button>
-                    </Stack>
-                </Group>
+                </Collapse>
             </Stack>
 
             <Divider />
@@ -660,37 +447,6 @@ export const LocalTab = () => {
                 {t('productUx.personalLibrary.advancedSetup')}
             </Button>
             <Collapse in={advancedSetupOpen}>
-            <Stack gap="sm">
-                <Text fw={600}>{t('productUx.personalLibrary.serverLoginTitle')}</Text>
-                <Text c="dimmed" size="sm">
-                    {t('productUx.personalLibrary.serverLoginDescription')}
-                </Text>
-                <Group align="flex-start" gap="xl">
-                    <Stack gap={4}>
-                        <Text size="sm">Server URL</Text>
-                        <Text ff="monospace" size="sm">
-                            {status?.navidrome.url || 'http://127.0.0.1:4533'}
-                        </Text>
-                    </Stack>
-                    <Stack gap={4}>
-                        <Text size="sm">Username</Text>
-                        <Text ff="monospace" size="sm">
-                            {status?.navidrome.username || 'admin'}
-                        </Text>
-                    </Stack>
-                    <Stack gap={4}>
-                        <Text size="sm">Password</Text>
-                        <Text ff="monospace" size="sm">
-                            {status?.navidrome.password || 'Loading'}
-                        </Text>
-                    </Stack>
-                </Group>
-                <Text c="dimmed" size="xs">
-                    Stored in {status?.navidrome.configPath || 'the app config file'} as
-                    roofy.navidromePassword.
-                </Text>
-            </Stack>
-
             <Stack gap="md">
                 <Stack gap={4}>
                     <Text fw={600}>{t('productUx.personalLibrary.createUserTitle')}</Text>
