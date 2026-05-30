@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { dedupeSidebarItemsById } from '/@/renderer/features/sidebar/sidebar-nav-utils';
 import { DraggableItems } from '/@/renderer/features/settings/components/general/draggable-items';
 import {
     sidebarItems as defaultSidebarItems,
@@ -52,12 +53,7 @@ export const SidebarReorder = () => {
             }
         });
 
-        // Remove any duplicates
-        const uniqueMerged = merged.filter(
-            (item, index, self) => index === self.findIndex((t) => t.id === item.id),
-        );
-
-        return uniqueMerged;
+        return dedupeSidebarItemsById(merged);
     }, [sidebarItems]);
 
     return (

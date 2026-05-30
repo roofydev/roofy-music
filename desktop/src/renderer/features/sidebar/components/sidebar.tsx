@@ -1,6 +1,5 @@
 import clsx from 'clsx';
 import isElectron from 'is-electron';
-import { AnimatePresence, motion } from 'motion/react';
 import { MouseEvent, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
@@ -25,6 +24,11 @@ import {
     SidebarPlaylistList,
     SidebarSharedPlaylistList,
 } from '/@/renderer/features/sidebar/components/sidebar-playlist-list';
+import {
+    dedupeSidebarItemsById,
+    isPrimarySidebarNavItem,
+    PRIMARY_SIDEBAR_NAV_IDS,
+} from '/@/renderer/features/sidebar/sidebar-nav-utils';
 import { YoutubeMusicAccountButton } from '/@/renderer/features/youtube-music/components/youtube-music-account-button';
 import { YoutubeMusicIcon } from '/@/renderer/features/youtube-music/components/youtube-music-icon';
 import { AppRoute } from '/@/renderer/router/routes';
@@ -91,7 +95,7 @@ export const Sidebar = () => {
     const sidebarItemsWithRoute: SidebarItemType[] = useMemo(() => {
         if (!sidebarItems) return [];
 
-        const items = sidebarItems
+        const items = dedupeSidebarItemsById(sidebarItems)
             .filter((item) => !item.disabled && item.route !== AppRoute.LOCAL_FIRST)
             .map((item) => ({
                 ...item,
@@ -103,14 +107,9 @@ export const Sidebar = () => {
         return items;
     }, [sidebarItems, translatedSidebarItemMap]);
 
-    const primaryNavIds = useMemo(
-        () => new Set(['Search', 'Now Playing', 'Settings']),
-        [],
-    );
-
     const primaryNavItems = useMemo(
-        () => sidebarItemsWithRoute.filter((item) => primaryNavIds.has(item.id)),
-        [primaryNavIds, sidebarItemsWithRoute],
+        () => sidebarItemsWithRoute.filter((item) => PRIMARY_SIDEBAR_NAV_IDS.has(item.id)),
+        [sidebarItemsWithRoute],
     );
 
     /* Library accordion: library routes only (not top-level nav) */
@@ -120,10 +119,11 @@ export const Sidebar = () => {
                 (item) =>
                     item.id !== 'Collections' &&
                     item.id !== 'Home' &&
-                    !primaryNavIds.has(item.id) &&
+                    item.id !== 'Offline' &&
+                    !isPrimarySidebarNavItem(item) &&
                     item.route,
             ),
-        [primaryNavIds, sidebarItemsWithRoute],
+        [sidebarItemsWithRoute],
     );
     const homeItem = useMemo(
         () => sidebarItemsWithRoute.find((item) => item.id === 'Home' && item.route),
@@ -133,12 +133,15 @@ export const Sidebar = () => {
     const isCustomWindowBar =
         windowBarStyle === Platform.WINDOWS || windowBarStyle === Platform.MACOS;
     const showYoutubeMusic = isElectron();
-    const youtubeMusicItems = [
-        { label: 'Browse', search: '?view=browse' },
-        { label: 'Search', search: '?view=search' },
-        { label: 'My Songs', search: '?view=songs' },
-        { label: 'My Playlists', search: '?view=playlists' },
-    ];
+    const youtubeMusicItems = useMemo(
+        () => [
+            { label: t('productUx.search.youtubeMusic.browse'), search: '?view=browse' },
+            { label: t('common.search'), search: '?view=search' },
+            { label: t('productUx.search.youtubeMusic.mySongs'), search: '?view=songs' },
+            { label: t('productUx.search.youtubeMusic.myPlaylists'), search: '?view=playlists' },
+        ],
+        [t],
+    );
 
     return (
         <div
@@ -176,6 +179,7 @@ export const Sidebar = () => {
                     }}
                     defaultValue={['library', 'youtube-music', 'collections', 'playlists']}
                     multiple
+                    transitionDuration={0}
                 >
                     <Accordion.Item value="library">
                         <Accordion.Control>
@@ -246,9 +250,7 @@ export const Sidebar = () => {
                     )}
                 </Accordion>
             </ScrollArea>
-            <AnimatePresence initial={false} mode="popLayout">
-                {showImage && <SidebarImage />}
-            </AnimatePresence>
+            {showImage && <SidebarImage />}
         </div>
     );
 };
@@ -321,17 +323,12 @@ const SidebarImage = () => {
     };
 
     return (
-        <motion.div
-            animate={{ opacity: 1, y: 0 }}
+        <div
             className={styles.imageContainer}
-            exit={{ opacity: 0, y: 200 }}
-            initial={{ opacity: 0, y: 200 }}
-            key="sidebar-image"
             onClick={expandFullScreenPlayer}
             onContextMenu={handleToggleContextMenu}
             role="button"
             style={{ aspectRatio: 1 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
         >
             <Tooltip label={t('player.toggleFullscreenPlayer')}>
                 {showVideo && videoMetadata ? (
@@ -423,6 +420,6 @@ const SidebarImage = () => {
                     openDelay: 500,
                 }}
             />
-        </motion.div>
+        </div>
     );
 };

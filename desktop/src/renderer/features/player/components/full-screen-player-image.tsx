@@ -231,7 +231,6 @@ export const FullScreenPlayerImage = () => {
                 {currentSong?.bpm} {t('common.bpm')}
             </Badge>
         ),
-        codec: currentSong?.container && <Badge>{currentSong?.container}</Badge>,
         disc_number: currentSong?.discNumber && (
             <Badge>
                 {t('common.disc')} {currentSong?.discNumber}
@@ -286,12 +285,19 @@ export const FullScreenPlayerImage = () => {
                             className={styles.visualModeButton}
                             data-active={!isVideoMode}
                             onClick={() => setStore({ visualMode: 'image' })}
-                            title="Show artwork"
+                            title={t('productUx.video.showArtwork')}
                             type="button"
                         >
                             <Icon icon="image" size="md" />
                         </button>
                         <button
+                            aria-label={
+                                videoButtonDisabled
+                                    ? isCheckingVideo
+                                        ? t('productUx.video.checkingVideo')
+                                        : t('productUx.video.noVideoAvailable')
+                                    : t('productUx.video.showVideo')
+                            }
                             className={clsx(styles.visualModeButton, {
                                 [styles.visualModeButtonDisabled]: videoButtonDisabled,
                             })}
@@ -301,9 +307,9 @@ export const FullScreenPlayerImage = () => {
                             title={
                                 videoButtonDisabled
                                     ? isCheckingVideo
-                                        ? 'Checking for video…'
-                                        : 'No video available for this track'
-                                    : 'Show video'
+                                        ? t('productUx.video.checkingVideo')
+                                        : t('productUx.video.noVideoAvailable')
+                                    : t('productUx.video.showVideo')
                             }
                             type="button"
                         >

@@ -213,7 +213,9 @@ const previewTrackToSong = (
 ): Song => {
     const videoId =
         extractYoutubeVideoId(track.resolvedSourceUrl) ||
-        extractYoutubeVideoId(track.resolvedSourceTrackId);
+        extractYoutubeVideoId(track.sourceUrl) ||
+        extractYoutubeVideoId(track.resolvedSourceTrackId) ||
+        extractYoutubeVideoId(track.sourceTrackId);
     const artistNames =
         track.artists?.filter(Boolean) ||
         (track.artist ? [track.artist] : fallback?.uploader ? [fallback.uploader] : ['Unknown Artist']);
@@ -292,6 +294,10 @@ const previewToSongs = (preview: ImportPreview): Song[] => {
                       artworkUrl: preview.artworkUrl || preview.thumbnail,
                       durationMs: preview.durationMs,
                       matchState: preview.matchState,
+                      resolvedSourceUrl:
+                          preview.resolvedSourceUrl ||
+                          preview.webpageUrl ||
+                          preview.sourceUrl,
                       sourceTrackId: preview.sourceTrackId,
                       title: preview.title,
                   } satisfies ImportTrackPreview,
@@ -572,6 +578,14 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
         [preview],
     );
 
+    const streamableLinkPreviewSongs = useMemo(() => {
+        if (!preview || preview.source === 'spotify') {
+            return [];
+        }
+
+        return previewToSongs(preview).filter((song) => Boolean(song.youtubeMusic?.videoId));
+    }, [preview]);
+
     const spotifyReviewTracks = useMemo(() => {
         if (preview?.source !== 'spotify' || !preview.tracks?.length) return [];
         return preview.tracks
@@ -712,63 +726,110 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                                 </Stack>
                             )}
 
-                            {preview && preview.source !== 'spotify' && (
-                                <div className={styles.previewCard}>
-                                    <div className={styles.previewMain}>
-                                        <Image
-                                            className={styles.previewImageInner}
-                                            containerClassName={styles.previewThumb}
-                                            includeLoader={false}
-                                            src={preview.thumbnail || undefined}
-                                            unloaderIcon={
-                                                preview.isPlaylist
-                                                    ? 'emptyPlaylistImage'
-                                                    : 'emptySongImage'
-                                            }
-                                        />
-                                        <div className={styles.previewInfo}>
-                                            <Group className={styles.previewMeta} gap="xs" wrap="wrap">
-                                                <Badge variant="light">
-                                                    {getSourceLabel(preview.source, t)}
-                                                </Badge>
-                                                <Badge variant="light">
-                                                    {preview.isPlaylist
-                                                        ? 'Playlist'
-                                                        : preview.source === 'soundcloud'
-                                                          ? 'Track'
-                                                          : 'Video'}
-                                                </Badge>
-                                                {preview.isPlaylist && (
-                                                    <Badge>{preview.count} tracks</Badge>
-                                                )}
-                                            </Group>
-                                            <Text className={styles.previewTitle} fw={700} size="lg">
-                                                {preview.title}
-                                            </Text>
-                                            <Text className={styles.previewArtist} isMuted size="sm">
-                                                {preview.uploader}
-                                            </Text>
+                            {preview &&
+                                preview.source !== 'spotify' &&
+                                streamableLinkPreviewSongs.length > 0 && (
+                                    <Stack gap="sm">
+                                        <Text isMuted size="sm">
+                                            {t('productUx.import.linkPreviewHint')}
+                                        </Text>
+                                        <div className={styles.songsResultPanel}>
+                                            <YoutubeMusicSongsTable
+                                                songs={streamableLinkPreviewSongs}
+                                            />
                                         </div>
-                                    </div>
-                                    <div className={styles.previewFooter}>
-                                        {preview.source === 'youtube_music' && (
-                                            <Checkbox
-                                                checked={saveVideo}
-                                                label={t('productUx.video.saveOnImport')}
-                                                onChange={(event) =>
-                                                    setSaveVideo(event.currentTarget.checked)
+                                        <div className={styles.previewFooter}>
+                                            {preview.source === 'youtube_music' && (
+                                                <Checkbox
+                                                    checked={saveVideo}
+                                                    label={t('productUx.video.saveOnImport')}
+                                                    onChange={(event) =>
+                                                        setSaveVideo(event.currentTarget.checked)
+                                                    }
+                                                />
+                                            )}
+                                            <Button
+                                                className={styles.previewImport}
+                                                onClick={handleImportPreview}
+                                                variant="default"
+                                            >
+                                                {t('productUx.import.saveToLibrary')}
+                                            </Button>
+                                        </div>
+                                    </Stack>
+                                )}
+
+                            {preview &&
+                                preview.source !== 'spotify' &&
+                                streamableLinkPreviewSongs.length === 0 && (
+                                    <div className={styles.previewCard}>
+                                        <div className={styles.previewMain}>
+                                            <Image
+                                                className={styles.previewImageInner}
+                                                containerClassName={styles.previewThumb}
+                                                includeLoader={false}
+                                                src={preview.thumbnail || undefined}
+                                                unloaderIcon={
+                                                    preview.isPlaylist
+                                                        ? 'emptyPlaylistImage'
+                                                        : 'emptySongImage'
                                                 }
                                             />
-                                        )}
-                                        <Button
-                                            className={styles.previewImport}
-                                            onClick={handleImportPreview}
-                                        >
-                                            Import
-                                        </Button>
+                                            <div className={styles.previewInfo}>
+                                                <Group
+                                                    className={styles.previewMeta}
+                                                    gap="xs"
+                                                    wrap="wrap"
+                                                >
+                                                    <Badge variant="light">
+                                                        {getSourceLabel(preview.source, t)}
+                                                    </Badge>
+                                                    <Badge variant="light">
+                                                        {preview.isPlaylist
+                                                            ? 'Playlist'
+                                                            : preview.source === 'soundcloud'
+                                                              ? 'Track'
+                                                              : 'Video'}
+                                                    </Badge>
+                                                    {preview.isPlaylist && (
+                                                        <Badge>{preview.count} tracks</Badge>
+                                                    )}
+                                                </Group>
+                                                <Text
+                                                    className={styles.previewTitle}
+                                                    fw={700}
+                                                    size="lg"
+                                                >
+                                                    {preview.title}
+                                                </Text>
+                                                <Text
+                                                    className={styles.previewArtist}
+                                                    isMuted
+                                                    size="sm"
+                                                >
+                                                    {preview.uploader}
+                                                </Text>
+                                            </div>
+                                        </div>
+                                        <div className={styles.previewFooter}>
+                                            {preview.source === 'youtube_music' && (
+                                                <Checkbox
+                                                    checked={saveVideo}
+                                                    label={t('productUx.video.saveOnImport')}
+                                                    onChange={(event) =>
+                                                        setSaveVideo(event.currentTarget.checked)
+                                                    }
+                                                />
+                                            )}
+                                            <Button
+                                                className={styles.previewImport}
+                                                onClick={handleImportPreview}
+                                            >
+                                                {t('productUx.import.saveToLibrary')}
+                                            </Button>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
                             {liveSearchInput && isConnected && (
                                 <Stack gap="md">

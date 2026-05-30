@@ -69,6 +69,8 @@ export const getRemoteControlLinks = (config: RemoteControlLinkConfig): RemoteCo
     };
 };
 
+export const REMOTE_SESSION_COOKIE = 'roofy_remote_token';
+
 export const readRemoteAccessToken = (requestUrl?: string) => {
     if (!requestUrl) return undefined;
     try {
@@ -76,5 +78,41 @@ export const readRemoteAccessToken = (requestUrl?: string) => {
         return url.searchParams.get('token') || undefined;
     } catch {
         return undefined;
+    }
+};
+
+/** Session cookie set after opening a tokenized link so JS/CSS/WebSocket load without Basic auth. */
+export const readRemoteSessionCookie = (cookieHeader?: string) => {
+    if (!cookieHeader?.trim()) return undefined;
+
+    for (const part of cookieHeader.split(';')) {
+        const [name, ...valueParts] = part.trim().split('=');
+        if (name !== REMOTE_SESSION_COOKIE) continue;
+
+        const value = valueParts.join('=').trim();
+        if (!value) return undefined;
+
+        try {
+            return decodeURIComponent(value);
+        } catch {
+            return value;
+        }
+    }
+
+    return undefined;
+};
+
+export const buildRemoteSessionCookie = (token: string) =>
+    `${REMOTE_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax`;
+
+/** Pathname only — Node passes full URL including `?token=` query on `/`. */
+export const resolveRemoteRequestPath = (requestUrl?: string): string => {
+    if (!requestUrl) return '/';
+
+    try {
+        return new URL(requestUrl, 'http://localhost').pathname || '/';
+    } catch {
+        const raw = requestUrl.split('?')[0]?.split('#')[0] || '/';
+        return raw.startsWith('/') ? raw : `/${raw}`;
     }
 };

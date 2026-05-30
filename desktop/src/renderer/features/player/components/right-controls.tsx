@@ -1,5 +1,5 @@
 import { t } from 'i18next';
-import { useCallback, useEffect, WheelEvent } from 'react';
+import { useCallback, useEffect, useState, WheelEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import styles from './right-controls.module.css';

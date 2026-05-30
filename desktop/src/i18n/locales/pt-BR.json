@@ -347,10 +347,10 @@
         "lyricOffset_description": "Compensar a letra pelo valor especificado em milissegundos",
         "minimizeToTray": "Minimizar para a bandeja",
         "minimizeToTray_description": "Minimizar a aplicação para a bandeja do sistema",
-        "minimumScrobblePercentage": "Duração mínima para scrobble (percentual)",
-        "minimumScrobblePercentage_description": "O percentual mínimo da música que deve ser reproduzido antes de ser scrobblada",
-        "minimumScrobbleSeconds": "Scrobble mínimo (segundos)",
-        "minimumScrobbleSeconds_description": "A duração mínima em segundos da música que deve ser reproduzida antes de ser scrobblada",
+        "minimumScrobblePercentage": "Minimum listening history duration (percentage)",
+        "minimumScrobblePercentage_description": "The minimum percentage of the song that must play before it is logged to your listening history",
+        "minimumScrobbleSeconds": "Minimum listening history (seconds)",
+        "minimumScrobbleSeconds_description": "The minimum number of seconds that must play before a song is logged to your listening history",
         "mpvExecutablePath": "Caminho do executável do mpv",
         "mpvExecutablePath_description": "Define o caminho para o executável do MPV. Se deixado vazio, o caminho padrão será usado",
         "mpvExtraParameters_help": "Um por linha",
@@ -392,8 +392,8 @@
         "sampleRate_description": "Selecione a taxa de amostragem (sample rate) de saída a ser usada se a frequência selecionada for diferente da do arquivo atual. Um valor menor que 8000 usará a frequência padrão",
         "savePlayQueue": "Salvar fila de reprodução",
         "savePlayQueue_description": "Salvar a fila de reprodução ao fechar a aplicação e restaurá-la ao abrir a aplicação",
-        "scrobble": "Scrobblar",
-        "scrobble_description": "Scrobblar reproduções para o seu servidor de mídia",
+        "scrobble": "Listening history",
+        "scrobble_description": "Send plays to your media server listening history",
         "showRatings": "Exibir avaliações por estrelas",
         "showRatings_description": "Exibir ou ocultar as avaliações por estrelas",
         "showSkipButton": "Exibir botões de pular",
@@ -452,7 +452,8 @@
         "windowBarStyle": "Estilo de barra da janela",
         "windowBarStyle_description": "Selecione o estilo da barra da janela",
         "zoom": "Porcentagem de zoom",
-        "zoom_description": "Define a porcentagem de zoom para o aplicativo"
+        "zoom_description": "Define a porcentagem de zoom para o aplicativo",
+        "scrobbleForceSubmit": "Log to listening history now"
     },
     "table": {
         "config": {
@@ -549,7 +550,8 @@
         "trackList": {
             "title": "$t(entity.track, {\"count\": 2})",
             "artistTracks": "Faixas de {{artist}}",
-            "genreTracks": "\"{{genre}}\" $t(entity.track, {\"count\": 2})"
+            "genreTracks": "\"{{genre}}\" $t(entity.track, {\"count\": 2})",
+            "viewImportProgress": "$t(productUx.import.pageTitle)"
         },
         "globalSearch": {
             "title": "Comandos",
@@ -679,7 +681,9 @@
             "hotkeysTab": "Teclas de atalho",
             "windowTab": "Janela",
             "advanced": "Avançado",
-            "playbackTab": "Reprodução"
+            "playbackTab": "Reprodução",
+            "scrobble": "Listening history",
+            "downloadsOffline": "Downloads & Offline"
         },
         "playlist": {
             "reorder": "Reordenar apenas disponível quando ordenado pelo ID"
@@ -760,7 +764,8 @@
         "repeat_off": "Repetição desativada",
         "shuffle": "Tocar aleatório",
         "pause": "Pausar",
-        "viewQueue": "Ver fila"
+        "viewQueue": "Ver fila",
+        "scrobbleForceSubmit": "Log to listening history now"
     },
     "entity": {
         "albumArtist_one": "Artista do álbum",
@@ -863,7 +868,8 @@
             "offlineEmpty": {
                 "title": "No offline songs",
                 "description": "Save songs for offline listening from the player menu."
-            }
+            },
+            "offlineFilter": "Downloaded only"
         },
         "queue": {
             "emptyTitle": "Nothing in the queue",
@@ -906,12 +912,15 @@
                 "playlistFallback": "Online catalog playlist",
                 "artistUnavailableTitle": "Online catalog artist",
                 "artistUnavailableBody": "Artist details are not available for the online catalog.",
+                "albumUnavailableTitle": "Online catalog album",
+                "albumUnavailableBody": "Album details are not available for the online catalog.",
                 "ratingSavedLocal": "Rating saved on this device",
                 "favoriteSavedLocal": "Favorite saved on this device",
                 "favoriteUpdatedLocal": "Favorite updated on this device",
                 "searchFailed": "Online catalog search could not finish right now.",
                 "searchUnavailable": "Online catalog is not available in this build.",
                 "sectionLoadFailed": "Could not load this section right now.",
+                "browse": "Browse",
                 "mySongs": "My songs",
                 "myPlaylists": "My playlists"
             }
@@ -976,6 +985,8 @@
             "linkReadFailed": "Could not read this link.",
             "readingLinkTitle": "Reading link",
             "readingLinkDescription": "Fetching title, artwork, and playlist details.",
+            "linkPreviewHint": "Play now, add to a playlist, or right-click for more. Save to library only if you want a copy on this device.",
+            "saveToLibrary": "Save to library",
             "spotifyMatchedOnline": "Spotify link — matched online",
             "reviewMatchRequired": "Tracks that need review require you to accept the suggested online match. Imports can fail when no close match exists — use Import settings if requests are blocked.",
             "sourceBadge": {
@@ -1009,6 +1020,10 @@
             "saved": "Download settings saved"
         },
         "video": {
+            "showArtwork": "Show artwork",
+            "checkingVideo": "Checking for video…",
+            "noVideoAvailable": "No video available for this track",
+            "showVideo": "Show video",
             "toolbarLabel": "Video options",
             "streaming": "Streaming video",
             "savedBadge": "Video saved",
@@ -1047,6 +1062,12 @@
             "songsPlayed": "Songs played",
             "topArtist": "Top artist",
             "topGenre": "Top genre"
+        },
+        "home": {
+            "localLibraryHeading": "Your library"
+        },
+        "action": {
+            "openVideo": "Open video"
         }
     }
 }

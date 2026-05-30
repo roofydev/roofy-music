@@ -269,6 +269,9 @@ const LOCAL_SERVER_USERNAME = 'admin';
 const IMPORT_JOBS_KEY = 'roofy.importJobs';
 const LOCAL_VIDEO_METADATA_KEY = 'roofy.localVideoMetadata';
 const MOBILE_IMPORT_TOKEN_KEY = 'roofy.mobileImportToken';
+const MOBILE_IMPORT_PORT_KEY = 'roofy.mobileImportPort';
+/** Stable LAN handoff/import port so re-pairing is not required after every desktop restart. */
+const DEFAULT_MOBILE_IMPORT_PORT = 60952;
 const PHONE_PAIRED_KEY = 'roofy.phoneHasPaired';
 const AUTO_ENRICH_METADATA_KEY = 'roofy.autoEnrichMetadata';
 
@@ -1362,20 +1365,21 @@ const handleMobileImportRequest = async (req: http.IncomingMessage, res: http.Se
         }
 
         markPhoneHasPaired();
-        try {
-            await ensurePhoneLinkReady();
-        } catch {
-            // respond below with whatever state we have
-        }
-        if (phoneHasPaired && !isPhoneLinkReady()) {
+        void ensurePhoneLinkReady().catch(() => {
+            // Warm library link for handoff; reachability only needs the import bridge.
+        });
+
+        const endpoint = getPublicMobileImportEndpoint();
+        if (mobileImportStatus.state !== 'connected' || !endpoint) {
             writeJsonResponse(res, 503, {
-                error: 'Desktop connection is not ready. Open Devices on your computer and try again.',
+                error: 'Save-to-desktop link is not ready. Open Devices on your computer and try again.',
                 ok: false,
             });
             return;
         }
+
         writeJsonResponse(res, 200, {
-            endpointUrl: getPublicMobileImportEndpoint(),
+            endpointUrl: endpoint,
             ok: true,
             service: 'roofy-mobile-import',
         });
@@ -1483,15 +1487,48 @@ const closeMobileImportServer = () => {
 const startMobileImportServer = () =>
     new Promise<number | undefined>((resolve) => {
         mobileImportServer?.close();
-        mobileImportServer = http.createServer(handleMobileImportRequest);
-        mobileImportServer.once('error', () => {
-            mobileImportServer = null;
-            resolve(undefined);
-        });
-        mobileImportServer.listen(0, '0.0.0.0', () => {
-            const address = mobileImportServer?.address();
-            resolve(typeof address === 'object' && address ? address.port : undefined);
-        });
+        mobileImportServer = null;
+
+        const storedPort = Number(store.get(MOBILE_IMPORT_PORT_KEY));
+        const preferredPorts: number[] = [];
+        if (Number.isFinite(storedPort) && storedPort > 0 && storedPort < 65536) {
+            preferredPorts.push(storedPort);
+        }
+        if (!preferredPorts.includes(DEFAULT_MOBILE_IMPORT_PORT)) {
+            preferredPorts.push(DEFAULT_MOBILE_IMPORT_PORT);
+        }
+        preferredPorts.push(0);
+
+        const tryListen = (index: number) => {
+            if (index >= preferredPorts.length) {
+                resolve(undefined);
+                return;
+            }
+
+            const port = preferredPorts[index];
+            const server = http.createServer(handleMobileImportRequest);
+
+            server.once('error', (error: NodeJS.ErrnoException) => {
+                server.close();
+                if (port !== 0 && (error.code === 'EADDRINUSE' || error.code === 'EACCES')) {
+                    tryListen(index + 1);
+                    return;
+                }
+                resolve(undefined);
+            });
+
+            server.listen(port, '0.0.0.0', () => {
+                mobileImportServer = server;
+                const address = server.address();
+                const actualPort = typeof address === 'object' && address ? address.port : undefined;
+                if (actualPort) {
+                    store.set(MOBILE_IMPORT_PORT_KEY, actualPort);
+                }
+                resolve(actualPort);
+            });
+        };
+
+        tryListen(0);
     });
 
 const stopMobileImport = () => {

@@ -117,8 +117,12 @@ export const useHandoffBridge = () => {
 
         const resolveHandoffTrack = async (track: HandoffTrack): Promise<null | Song> => {
             if (track.source === 'youtube' && youtubeMusic) {
+                const videoId = track.id.replace(/^ytm:/i, '').trim();
+                if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+                    return null;
+                }
                 try {
-                    return await youtubeMusic.getSongDetail(track.id);
+                    return await youtubeMusic.getSongDetail(videoId);
                 } catch {
                     return null;
                 }
@@ -166,16 +170,30 @@ export const useHandoffBridge = () => {
         };
 
         const applyState = async (_event: unknown, snapshot: HandoffSnapshot) => {
-            const tracks = [snapshot.nowPlaying, ...snapshot.queue].filter(
-                (track): track is HandoffTrack => Boolean(track),
-            );
-            const resolved = await Promise.all(tracks.map((track) => resolveHandoffTrack(track)));
-            const songs = resolved.filter((song): song is Song => Boolean(song));
-
-            if (songs.length === 0) {
+            if (!snapshot.nowPlaying) {
                 showHandoffError(t, 'handoff_unavailable');
                 return;
             }
+
+            const nowPlayingSong = await resolveHandoffTrack(snapshot.nowPlaying);
+            if (!nowPlayingSong) {
+                showHandoffError(t, 'handoff_unavailable');
+                return;
+            }
+
+            const queueSongs = (
+                await Promise.all(snapshot.queue.map((track) => resolveHandoffTrack(track)))
+            ).filter((song): song is Song => Boolean(song));
+
+            const seenIds = new Set<string>([nowPlayingSong.id]);
+            const songs = [
+                nowPlayingSong,
+                ...queueSongs.filter((song) => {
+                    if (seenIds.has(song.id)) return false;
+                    seenIds.add(song.id);
+                    return true;
+                }),
+            ];
 
             player.addToQueueByData(songs, Play.NOW);
             player.mediaSeekToTimestamp(snapshot.positionMs / 1000);

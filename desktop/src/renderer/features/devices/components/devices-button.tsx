@@ -15,7 +15,8 @@ export const DevicesButton = () => {
     const [opened, setOpened] = useState(false);
     const { status } = useDevicesStatus();
 
-    const phoneLinked = status.phoneLink.phonePaired;
+    const phoneLinked =
+        Boolean(status.phoneLink.phonePaired) && status.phoneLink.state === 'connected';
 
     if (!isElectron()) {
         return null;

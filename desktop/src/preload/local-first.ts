@@ -12,6 +12,7 @@ const stopMobileImport = () => ipcRenderer.invoke('roofy-local-stop-mobile-impor
 const startPhoneLink = (mode: 'auto' | 'lan' | 'tunnel' = 'auto') =>
     ipcRenderer.invoke('roofy-local-start-phone-link', mode);
 const stopPhoneLink = () => ipcRenderer.invoke('roofy-local-stop-phone-link');
+const disconnectPhoneLink = () => ipcRenderer.invoke('roofy-local-disconnect-phone-link');
 const selectLibrary = () => ipcRenderer.invoke('roofy-local-select-library');
 const openLibraryFolder = () => ipcRenderer.invoke('roofy-local-open-library-folder');
 const setAutoEnrichMetadata = (enabled: boolean) =>
@@ -150,6 +151,7 @@ export const localFirst = {
     createUser,
     credentials,
     deleteTracks,
+    disconnectPhoneLink,
     disconnectSpotify,
     enrichAudioFile,
     downloadVideoForSong,

@@ -23,6 +23,13 @@ const patches = {
         youtubeMusic: {
             ...en.productUx.search.youtubeMusic,
         },
+        action: {
+            openVideo: en.productUx.action.openVideo,
+        },
+    },
+    home: en.productUx.home,
+    action: {
+        openVideo: en.productUx.action.openVideo,
     },
 };
 
@@ -50,6 +57,19 @@ for (const locale of targets) {
         ...patches.search.youtubeMusic,
         ...data.productUx.search.youtubeMusic,
     };
+    data.productUx.home = { ...patches.home, ...data.productUx.home };
+    data.productUx.action = { ...patches.action, ...data.productUx.action };
+    if (patches.search.youtubeMusic.browse) {
+        data.productUx.search.youtubeMusic.browse = patches.search.youtubeMusic.browse;
+    }
+    data.page = data.page ?? {};
+    data.page.setting = {
+        ...data.page.setting,
+        downloadsOffline: en.page.setting.downloadsOffline,
+    };
+    if (data.page.trackList) {
+        data.page.trackList.viewImportProgress = en.page.trackList.viewImportProgress;
+    }
 
     fs.writeFileSync(filePath, `${JSON.stringify(data, null, 4)}\n`, 'utf8');
     console.log(`patched ${locale}.json`);

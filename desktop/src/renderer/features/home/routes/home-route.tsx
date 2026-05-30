@@ -108,7 +108,7 @@ const HomeRoute = () => {
                             maxHeight="50vh"
                             title={t('productUx.search.youtubeMusic.heading')}
                         />
-                        <TextTitle fw={700}>Local Library</TextTitle>
+                        <TextTitle fw={700}>{t('productUx.home.localLibraryHeading')}</TextTitle>
                         {homeFeature && homeFeatureStyle === HomeFeatureStyle.SINGLE && (
                             <AlbumInfiniteSingleFeatureCarousel />
                         )}

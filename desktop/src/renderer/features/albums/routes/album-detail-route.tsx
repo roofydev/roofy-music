@@ -1,5 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 
 import { useItemImageUrl } from '/@/renderer/components/item-image/item-image';
@@ -26,19 +27,23 @@ import { isYoutubeMusicEntityId } from '/@/shared/types/youtube-music-types';
 
 const ALBUM_DETAIL_BG_FALLBACK = 'var(--theme-colors-foreground-muted)';
 
-const YoutubeMusicAlbumPlaceholder = ({ id }: { id: string }) => (
-    <AnimatedPage key={`album-detail-${id}`}>
-        <Center style={{ padding: '3rem' }}>
-            <Stack align="center" gap="sm">
-                <Icon icon="album" size="xl" />
-                <Text size="lg" weight={700}>
-                    YouTube Music Album
-                </Text>
-                <Text isMuted>Album details are not available for YouTube Music.</Text>
-            </Stack>
-        </Center>
-    </AnimatedPage>
-);
+const YoutubeMusicAlbumPlaceholder = ({ id }: { id: string }) => {
+    const { t } = useTranslation();
+
+    return (
+        <AnimatedPage key={`album-detail-${id}`}>
+            <Center role="status" style={{ padding: '3rem' }}>
+                <Stack align="center" gap="sm">
+                    <Icon icon="album" size="xl" />
+                    <Text size="lg" weight={700}>
+                        {t('productUx.search.youtubeMusic.albumUnavailableTitle')}
+                    </Text>
+                    <Text isMuted>{t('productUx.search.youtubeMusic.albumUnavailableBody')}</Text>
+                </Stack>
+            </Center>
+        </AnimatedPage>
+    );
+};
 
 const AlbumDetailRouteInner = () => {
     const scrollAreaRef = useRef<HTMLDivElement>(null);

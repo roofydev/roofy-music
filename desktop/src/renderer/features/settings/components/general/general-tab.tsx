@@ -4,7 +4,6 @@ import { Fragment } from 'react/jsx-runtime';
 import { ApplicationSettings } from '/@/renderer/features/settings/components/general/application-settings';
 import { ControlSettings } from '/@/renderer/features/settings/components/general/control-settings';
 import { ExternalLinksSettings } from '/@/renderer/features/settings/components/general/external-links-settings';
-import { ScrobbleSettings } from '/@/renderer/features/settings/components/general/scrobble-settings';
 import { SidebarSettings } from '/@/renderer/features/settings/components/general/sidebar-settings';
 import { Divider } from '/@/shared/components/divider/divider';
 import { Stack } from '/@/shared/components/stack/stack';
@@ -16,7 +15,6 @@ export const GeneralTab = memo(() => {
             { component: ExternalLinksSettings, key: 'externalLinks' },
             { component: ControlSettings, key: 'control' },
             { component: SidebarSettings, key: 'sidebar' },
-            { component: ScrobbleSettings, key: 'scrobble' },
         ],
         [],
     );

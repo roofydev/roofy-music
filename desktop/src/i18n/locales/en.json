@@ -541,7 +541,7 @@
             "moveToBottom": "$t(action.moveToBottom)",
             "moveToTop": "$t(action.moveToTop)",
             "numberSelected": "{{count}} selected",
-            "openOnYoutube": "Open on YouTube Music",
+            "openOnYoutube": "$t(productUx.action.viewOriginalLink)",
             "play": "$t(player.play)",
             "playSimilarSongs": "$t(player.playSimilarSongs)",
             "removeFromFavorites": "$t(action.removeFromFavorites)",
@@ -644,7 +644,7 @@
             "discord": "Discord status",
             "personalLibrary": "Personal Library",
             "devices": "Devices",
-            "downloadsOffline": "Downloads & offline",
+            "downloadsOffline": "Downloads & Offline",
             "appearance": "Appearance",
             "logger": "Diagnostics",
             "playerFilters": "Player Filters"
@@ -675,7 +675,7 @@
             "genreTracks": "\"{{genre}}\" $t(entity.track, {\"count\": 2})",
             "offlineTitle": "Offline",
             "title": "$t(entity.track, {\"count\": 2})",
-            "viewImportProgress": "Import progress"
+            "viewImportProgress": "$t(productUx.import.pageTitle)"
         }
     },
     "player": {
@@ -1278,6 +1278,7 @@
             "saveOffline": "Save offline",
             "updateSongInfo": "Update song info",
             "watchVideo": "Watch video",
+            "openVideo": "Open video",
             "viewOriginalLink": "View original link",
             "tryAnotherVersion": "Try another version",
             "continueOnDevice": "Listen on",
@@ -1344,6 +1345,8 @@
             "linkReadFailed": "Could not read this link.",
             "readingLinkTitle": "Reading link",
             "readingLinkDescription": "Fetching title, artwork, and playlist details.",
+            "linkPreviewHint": "Play now, add to a playlist, or right-click for more. Save to library only if you want a copy on this device.",
+            "saveToLibrary": "Save to library",
             "spotifyMatchedOnline": "Spotify link — matched online",
             "reviewMatchRequired": "Tracks that need review require you to accept the suggested online match. Imports can fail when no close match exists — use Import settings if requests are blocked.",
             "sourceBadge": {
@@ -1442,6 +1445,8 @@
                 "playlistFallback": "Online catalog playlist",
                 "artistUnavailableTitle": "Online catalog artist",
                 "artistUnavailableBody": "Artist details are not available for the online catalog.",
+                "albumUnavailableTitle": "Online catalog album",
+                "albumUnavailableBody": "Album details are not available for the online catalog.",
                 "ratingSavedLocal": "Rating saved on this device",
                 "favoriteSavedLocal": "Favorite saved on this device",
                 "favoriteUpdatedLocal": "Favorite updated on this device",
@@ -1449,9 +1454,13 @@
                 "searchUnavailable": "Online catalog is not available in this build.",
                 "searchPlaceholder": "Search the online catalog or paste a link",
                 "sectionLoadFailed": "Could not load this section right now.",
+                "browse": "Browse",
                 "mySongs": "My songs",
                 "myPlaylists": "My playlists"
             }
+        },
+        "home": {
+            "localLibraryHeading": "Your library"
         },
         "library": {
             "empty": {
@@ -1473,7 +1482,8 @@
             "offlineEmpty": {
                 "title": "No offline songs",
                 "description": "Save songs for offline listening from the player menu."
-            }
+            },
+            "offlineFilter": "Downloaded only"
         },
         "queue": {
             "emptyTitle": "Nothing in the queue",
@@ -1506,6 +1516,10 @@
             "saved": "Download settings saved"
         },
         "video": {
+            "showArtwork": "Show artwork",
+            "checkingVideo": "Checking for video…",
+            "noVideoAvailable": "No video available for this track",
+            "showVideo": "Show video",
             "toolbarLabel": "Video options",
             "streaming": "Streaming video",
             "savedBadge": "Video saved",
@@ -1524,7 +1538,7 @@
             "saveWithImports": "Save video with imports",
             "badgeSaved": "Video saved",
             "badgeStreamable": "Available to stream",
-            "mobileRoadmap": "On Android, video opens in your browser for now. In-app video is planned.",
+            "mobileRoadmap": "On Android, video opens inside Roofy for now. A dedicated player view is planned.",
             "toast": {
                 "savingTitle": "Saving video",
                 "savedTitle": "Video saved",
@@ -1580,10 +1594,16 @@
         "devices": {
             "connectPanel": {
                 "title": "Connect your devices",
-                "subtitle": "Scan with the Roofy app on your phone. One code sets up listen, sync, save, and remote control.",
-                "scanHint": "On your phone: tap Listen on in Now Playing, or scan below",
+                "subtitle": "Scan this code once with the Roofy app on your phone (same Wi‑Fi).",
+                "pairedSubtitle": "Choose where music plays. To link another phone, open Device settings.",
+                "scanAgainSubtitle": "Scan below to link this phone, or use Copy link.",
+                "whereToPlay": "Where to play",
+                "pairedStaleSubtitle": "This computer still remembers an old pairing. Scan again on your phone, or forget it below.",
+                "scanHint": "On your phone: open Listen on in Now Playing, then scan this code",
                 "waitingForCode": "Setting up your connection code…",
                 "phoneConnected": "Phone connected",
+                "phoneNotReachable": "Phone not connected",
+                "forgetPhone": "Forget phone on this computer",
                 "qrAlt": "QR code to connect to this computer",
                 "tooltip": "Listen on"
             },
@@ -1595,7 +1615,10 @@
             "phoneNotLinked": "Not connected",
             "phoneReadyToScan": "Scan code to connect",
             "phoneLinked": "Connected",
+            "phonePairedStale": "Re-pair your phone",
             "phoneLinkFailed": "Could not link",
+            "forgetPhone": "Forget phone on this computer",
+            "forgetPhoneHint": "Clears pairing saved on this computer. Use this after reinstalling the app on your phone.",
             "phoneLinkState": {
                 "connected": "Connected",
                 "disabled": "Off",
@@ -1611,6 +1634,7 @@
             "tapToSwitchOnPhone": "Tap to switch on your phone",
             "switchOnPhoneTitle": "Switch on your phone",
             "listenOnPhoneHint": "Open Roofy on your phone, tap Listen on, then choose This phone.",
+            "scanQrInSettings": "Scroll up and scan the pairing QR code (or copy the link), then open Listen on on your phone.",
             "listenOnPhoneIdle": "Start playing on your computer, then switch from your phone.",
             "nowPlayingHere": "Now playing on this computer",
             "moreOptions": "More options",
@@ -1619,7 +1643,7 @@
             "settingsIntroShort": "Choose where music plays and link your phone.",
             "linkPhone": "Link your phone",
             "webControl": "Web control",
-            "webControlOn": "Control playback from a browser on your network.",
+            "webControlOn": "Browser remote is on — tap to show the link or QR.",
             "webControlOff": "Control this app from a browser on your network.",
             "openWebControl": "Open on this device",
             "enableWebControl": "Turn on web control",

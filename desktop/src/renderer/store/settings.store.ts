@@ -20,6 +20,7 @@ import {
     PLAYLIST_TABLE_COLUMNS,
     SONG_TABLE_COLUMNS,
 } from '/@/renderer/components/item-list/item-table-list/default-columns';
+import { dedupeSidebarItemsById } from '/@/renderer/features/sidebar/sidebar-nav-utils';
 import { audiomotionanalyzerPresets } from '/@/renderer/features/visualizer/components/audiomotionanalyzer/presets';
 import { AppRoute } from '/@/renderer/router/routes';
 import { getEnvSettingsOverrides } from '/@/renderer/store/env-settings-overrides';
@@ -1014,7 +1015,7 @@ export const sidebarItems: SidebarItemType[] = [
     },
     { disabled: false, id: 'Home', label: i18n.t('page.sidebar.home'), route: AppRoute.HOME },
     {
-        disabled: false,
+        disabled: true,
         id: 'Offline',
         label: i18n.t('page.sidebar.offline'),
         route: `${AppRoute.LIBRARY_SONGS}?offline=1`,
@@ -2112,7 +2113,7 @@ export const useSettingsStore = createWithEqualityFn<SettingsSlice>()(
                         },
                         setSidebarItems: (items: SidebarItemType[]) => {
                             set((state) => {
-                                state.general.sidebarItems = items;
+                                state.general.sidebarItems = dedupeSidebarItemsById(items);
                             });
                         },
                         setTable: (type: ItemListKey, data: DataTableProps) => {
@@ -2611,10 +2612,16 @@ export const useSettingsStore = createWithEqualityFn<SettingsSlice>()(
                     );
                 }
 
+                if (version <= 39) {
+                    state.general.sidebarItems = dedupeSidebarItemsById(
+                        state.general.sidebarItems ?? [],
+                    );
+                }
+
                 return persistedState;
             },
             name: 'store_settings',
-            version: 39,
+            version: 40,
         },
     ),
 );

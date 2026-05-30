@@ -16,6 +16,7 @@ import { Divider } from '/@/shared/components/divider/divider';
 import { Icon } from '/@/shared/components/icon/icon';
 import { Stack } from '/@/shared/components/stack/stack';
 import { Text } from '/@/shared/components/text/text';
+import { toast } from '/@/shared/components/toast/toast';
 import { PlayerStatus } from '/@/shared/types/types';
 
 interface DeviceRowProps {
@@ -67,8 +68,11 @@ const DeviceRow = ({
 );
 
 const phoneSubtitleKey = (state: DeviceConnectionState, phonePaired: boolean) => {
-    if (phonePaired) {
+    if (state === 'connected') {
         return 'productUx.devices.phoneLinked';
+    }
+    if (phonePaired) {
+        return 'productUx.devices.phonePairedStale';
     }
     switch (state) {
         case 'connected':
@@ -85,6 +89,7 @@ const phoneSubtitleKey = (state: DeviceConnectionState, phonePaired: boolean) =>
 interface DevicesPickerProps {
     embedded?: boolean;
     onClose?: () => void;
+    /** Scroll/focus pairing QR in parent (connect panel). */
     onRequestLinkPhone?: () => void;
 }
 
@@ -100,7 +105,9 @@ export const DevicesPicker = ({
     const { setWebControlEnabled } = useEnableWebControl();
     const [webControlExpanded, setWebControlExpanded] = useState(false);
 
-    const phoneLinked = status.phoneLink.phonePaired;
+    const phoneSessionActive =
+        Boolean(status.phoneLink.phonePaired) && status.phoneLink.state === 'connected';
+    const phoneLinked = phoneSessionActive;
     const currentSong = usePlayerStore((s) => s.getCurrentSong());
     const playerStatus = usePlayerStore((s) => s.player.status);
     const playingOnComputer = Boolean(currentSong) && playerStatus === PlayerStatus.PLAYING;
@@ -108,8 +115,14 @@ export const DevicesPicker = ({
 
     const handlePhoneClick = () => {
         if (!phoneLinked) {
-            onRequestLinkPhone?.();
-            onClose?.();
+            if (onRequestLinkPhone) {
+                onRequestLinkPhone();
+            } else {
+                toast.info({
+                    message: t('productUx.devices.scanQrInSettings'),
+                    title: t('productUx.devices.yourPhone'),
+                });
+            }
             return;
         }
 
@@ -132,7 +145,7 @@ export const DevicesPicker = ({
         ? hasQueueOnComputer
             ? t('productUx.devices.tapToSwitchOnPhone')
             : t('productUx.devices.phoneLinked')
-        : t(phoneSubtitleKey(status.phoneLink.state, phoneLinked));
+        : t(phoneSubtitleKey(status.phoneLink.state, status.phoneLink.phonePaired));
 
     return (
         <Stack className={styles.panel} gap="xs" p={embedded ? 0 : 'sm'}>

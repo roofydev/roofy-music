@@ -10,8 +10,11 @@ import { deflate, gzip } from 'zlib';
 
 import manifest from './manifest.json';
 import {
+    buildRemoteSessionCookie,
     getRemoteControlLinks,
     readRemoteAccessToken,
+    readRemoteSessionCookie,
+    resolveRemoteRequestPath,
     type RemoteControlLinkConfig,
 } from './remote-control-link';
 
@@ -132,9 +135,13 @@ const getEncoding = (encoding: string | string[]): Encoding => {
 
 const cache = new Map<string, Map<Encoding, [number, Buffer]>>();
 
+function getRequestAccessToken(req: IncomingMessage): string | undefined {
+    return readRemoteAccessToken(req.url) || readRemoteSessionCookie(req.headers.cookie);
+}
+
 function authorize(req: IncomingMessage): boolean {
     if (settings.password) {
-        const token = readRemoteAccessToken(req.url);
+        const token = getRequestAccessToken(req);
         if (token && safeEqual(token, settings.password)) {
             return true;
         }
@@ -148,6 +155,17 @@ function authorize(req: IncomingMessage): boolean {
     }
 
     return true;
+}
+
+/** After a tokenized link opens, persist auth for asset and WebSocket requests (no Basic prompt). */
+function attachRemoteSessionCookie(req: IncomingMessage, res: ServerResponse) {
+    if (!settings.password.trim()) return;
+
+    const urlToken = readRemoteAccessToken(req.url);
+    if (!urlToken || !safeEqual(urlToken, settings.password)) return;
+    if (readRemoteSessionCookie(req.headers.cookie)) return;
+
+    res.setHeader('Set-Cookie', buildRemoteSessionCookie(urlToken));
 }
 
 function safeEqual(left = '', right = ''): boolean {
@@ -312,8 +330,12 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
                     return;
                 }
 
+                attachRemoteSessionCookie(req, res);
+
                 try {
-                    switch (req.url) {
+                    const requestPath = resolveRemoteRequestPath(req.url);
+
+                    switch (requestPath) {
                         case '/': {
                             await serveFile(req, 'index', 'html', res);
                             break;
@@ -337,7 +359,7 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
                             break;
                         }
                         default: {
-                            if (req.url?.startsWith('/worker.js')) {
+                            if (requestPath.startsWith('/worker.js')) {
                                 await serveFile(req, 'worker', 'js', res);
                             } else {
                                 res.statusCode = 404;

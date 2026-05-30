@@ -6,6 +6,7 @@ import { AnalyticsSettings } from '/@/renderer/features/settings/components/adva
 import { ExportImportSettings } from '/@/renderer/features/settings/components/advanced/export-import-settings';
 import { LoggerSettings } from '/@/renderer/features/settings/components/advanced/logger-settings';
 import { QueryBuilderSettings } from '/@/renderer/features/settings/components/general/query-builder-settings';
+import { ScrobbleSettings } from '/@/renderer/features/settings/components/general/scrobble-settings';
 import { useCurrentServer } from '/@/renderer/store';
 import { hasFeature } from '/@/shared/api/utils';
 import { ServerFeature } from '/@/shared/types/features-types';
@@ -69,6 +70,8 @@ export const AdvancedTab = memo(() => {
                     {index < sections.length - 1 && <Divider />}
                 </Fragment>
             ))}
+            <ScrobbleSettings />
+            <Divider />
             <AdvancedQueryBuilder />
             <Suspense fallback={<Spinner container />}>
                 <HotkeysTab />

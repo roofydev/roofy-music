@@ -71,11 +71,11 @@ const getControllerServerById = (id?: string) => {
         return {
             credential: YOUTUBE_MUSIC_SOURCE_ID,
             id: YOUTUBE_MUSIC_SOURCE_ID,
-            name: 'YouTube Music',
+            name: i18n.t('productUx.search.youtubeMusic.heading'),
             type: ServerType.YOUTUBE_MUSIC,
             url: 'https://music.youtube.com',
             userId: YOUTUBE_MUSIC_SOURCE_ID,
-            username: 'YouTube Music',
+            username: i18n.t('productUx.search.youtubeMusic.heading'),
         };
     }
     return null;

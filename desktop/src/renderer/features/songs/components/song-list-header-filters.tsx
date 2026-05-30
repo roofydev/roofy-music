@@ -27,6 +27,26 @@ import { Icon } from '/@/shared/components/icon/icon';
 import { LibraryItem, SongListSort, SortOrder } from '/@/shared/types/domain-types';
 import { ItemListKey } from '/@/shared/types/types';
 
+const OfflineOnlyFilterToggle = () => {
+    const { t } = useTranslation();
+    const { pageKey } = useListContext();
+    const { offline, setOffline } = useSongListFilters();
+
+    if (pageKey !== ItemListKey.SONG) {
+        return null;
+    }
+
+    return (
+        <Button
+            leftSection={<Icon icon="download" />}
+            onClick={() => setOffline(offline ? null : true)}
+            variant={offline ? 'filled' : 'subtle'}
+        >
+            {t('productUx.library.offlineFilter')}
+        </Button>
+    );
+};
+
 export const SongListHeaderFilters = ({ toggleGenreTarget }: { toggleGenreTarget?: boolean }) => {
     const { t } = useTranslation();
     const target = useGenreTarget();
@@ -60,6 +80,7 @@ export const SongListHeaderFilters = ({ toggleGenreTarget }: { toggleGenreTarget
             isFilterValueSet(query[FILTER_KEYS.SONG.GENRE_ID]) ||
             isFilterValueSet(query[FILTER_KEYS.SONG.MAX_YEAR]) ||
             isFilterValueSet(query[FILTER_KEYS.SONG.MIN_YEAR]) ||
+            query[FILTER_KEYS.SONG.OFFLINE] !== undefined ||
             isFilterValueSet(query[FILTER_KEYS.SHARED.SEARCH_TERM]),
         );
     }, [songFilters.query]);
@@ -90,6 +111,7 @@ export const SongListHeaderFilters = ({ toggleGenreTarget }: { toggleGenreTarget
                     listKey={pageKey as ItemListKey}
                 />
                 <ListFiltersModal isActive={hasActiveFilters} itemType={LibraryItem.SONG} />
+                <OfflineOnlyFilterToggle />
                 <ListRefreshButton listKey={pageKey as ItemListKey} />
             </Group>
             <Group gap="sm" wrap="nowrap">
