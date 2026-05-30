@@ -56,13 +56,13 @@ export const SongContextMenu = ({ items, type }: SongContextMenuProps) => {
             <ContextMenu.Divider />
             <SetFavoriteAction ids={ids} itemType={LibraryItem.SONG} songs={items} />
             <SetRatingAction ids={ids} itemType={LibraryItem.SONG} songs={items} />
-            <DeleteLocalTrackAction items={items} />
             <ShareAction ids={ids} itemType={LibraryItem.SONG} />
             <ContextMenu.Divider />
             <GoToAction items={items} />
             <ShowInFileExplorerAction items={items} />
-            <ContextMenu.Divider />
             <GetInfoAction disabled={items.length === 0} items={items} />
+            <ContextMenu.Divider />
+            <DeleteLocalTrackAction items={items} />
         </ContextMenu.Content>
     );
 };

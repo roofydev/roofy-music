@@ -11,6 +11,7 @@ import {
 import { Button } from '/@/shared/components/button/button';
 import { ConfirmModal } from '/@/shared/components/modal/modal';
 import { toast } from '/@/shared/components/toast/toast';
+import { showGenericUserError } from '/@/shared/product-ux';
 
 const browser = window.api?.browser ?? null;
 
@@ -34,8 +35,12 @@ export const CacheSettings = memo(() => {
                     message: t('setting.clearCacheSuccess'),
                 });
             } catch (error) {
-                console.error(error);
-                toast.error({ message: (error as Error).message });
+                showGenericUserError(
+                    t,
+                    'productUx.error.storage.clearFailed',
+                    'page.setting.cache',
+                    error,
+                );
             }
 
             setIsClearing(false);

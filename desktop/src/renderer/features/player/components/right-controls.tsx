@@ -1,10 +1,9 @@
 import { t } from 'i18next';
-import { useCallback, useEffect, useState, WheelEvent } from 'react';
+import { useCallback, useEffect, WheelEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import styles from './right-controls.module.css';
 
-import { PopoverPlayQueue } from '/@/renderer/features/now-playing/components/popover-play-queue';
 import { PlayerbarVideoControls } from '/@/renderer/features/player/components/playerbar-video-controls';
 import { PlayerConfig } from '/@/renderer/features/player/components/player-config';
 import { CustomPlayerbarSlider } from '/@/renderer/features/player/components/playerbar-slider';
@@ -30,7 +29,6 @@ import {
     useSetFullScreenPlayerStore,
     useSettingsStoreActions,
     useSidebarRightExpanded,
-    useSideQueueType,
     useVolumeWheelStep,
     useVolumeWidth,
 } from '/@/renderer/store';
@@ -132,62 +130,33 @@ const QueueButton = () => {
     const { t } = useTranslation();
     const isSidebarRightExpanded = useSidebarRightExpanded();
     const { setSideBar } = useAppStoreActions();
-    const sideQueueType = useSideQueueType();
 
     const { bindings } = useHotkeySettings();
 
-    const [popoverOpened, setPopoverOpened] = useState(false);
-
     const handleToggleQueue = () => {
-        if (sideQueueType === 'sideQueue') {
-            setSideBar({ rightExpanded: !isSidebarRightExpanded });
-        } else {
-            setPopoverOpened((prev) => !prev);
-        }
-    };
-
-    const handlePopoverClose = () => {
-        setPopoverOpened(false);
+        setSideBar({ rightExpanded: !isSidebarRightExpanded });
     };
 
     useHotkeys([
         [bindings.toggleQueue.isGlobal ? '' : bindings.toggleQueue.hotkey, handleToggleQueue],
     ]);
 
-    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-        e.stopPropagation();
-
-        if (sideQueueType === 'sideQueue') {
-            return handleToggleQueue();
-        }
-    };
-
-    if (sideQueueType === 'sideQueue') {
-        return (
-            <ActionIcon
-                icon={isSidebarRightExpanded ? 'panelRightClose' : 'panelRightOpen'}
-                iconProps={{
-                    size: 'lg',
-                }}
-                onClick={handleClick}
-                size="sm"
-                tooltip={{
-                    label: t('player.viewQueue'),
-                    openDelay: 0,
-                }}
-                variant="subtle"
-            />
-        );
-    }
-
     return (
-        <PopoverPlayQueue
-            onClose={handlePopoverClose}
-            onToggle={(e) => {
+        <ActionIcon
+            icon={isSidebarRightExpanded ? 'panelRightClose' : 'panelRightOpen'}
+            iconProps={{
+                size: 'lg',
+            }}
+            onClick={(e) => {
                 e.stopPropagation();
                 handleToggleQueue();
             }}
-            opened={popoverOpened}
+            size="sm"
+            tooltip={{
+                label: t('player.viewQueue'),
+                openDelay: 0,
+            }}
+            variant="subtle"
         />
     );
 };

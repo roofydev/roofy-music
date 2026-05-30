@@ -64,6 +64,11 @@ export const useSongListFilters = (listKey?: ItemListKey) => {
         [searchParams],
     );
 
+    const offline = useMemo(
+        () => parseBooleanParam(searchParams, FILTER_KEYS.SONG.OFFLINE),
+        [searchParams],
+    );
+
     const setGenreId = useCallback(
         (value: null | string[]) => {
             runInUrlTransition(() => {
@@ -136,6 +141,18 @@ export const useSongListFilters = (listKey?: ItemListKey) => {
         [setSearchParams],
     );
 
+    const setOffline = useCallback(
+        (value: boolean | null) => {
+            runInUrlTransition(() => {
+                setSearchParams(
+                    (prev) => setSearchParam(prev, FILTER_KEYS.SONG.OFFLINE, value),
+                    { replace: true },
+                );
+            });
+        },
+        [setSearchParams],
+    );
+
     const setCustom = useCallback(
         (
             value:
@@ -184,6 +201,7 @@ export const useSongListFilters = (listKey?: ItemListKey) => {
                             [FILTER_KEYS.SONG.HAS_RATING]: null,
                             [FILTER_KEYS.SONG.MAX_YEAR]: null,
                             [FILTER_KEYS.SONG.MIN_YEAR]: null,
+                            [FILTER_KEYS.SONG.OFFLINE]: null,
                         },
                         new Set([FILTER_KEYS.SONG._CUSTOM]),
                     ),
@@ -204,6 +222,7 @@ export const useSongListFilters = (listKey?: ItemListKey) => {
             [FILTER_KEYS.SONG.HAS_RATING]: hasRating ?? undefined,
             [FILTER_KEYS.SONG.MAX_YEAR]: maxYear ?? undefined,
             [FILTER_KEYS.SONG.MIN_YEAR]: minYear ?? undefined,
+            [FILTER_KEYS.SONG.OFFLINE]: offline ?? undefined,
         }),
         [
             searchTerm,
@@ -216,11 +235,13 @@ export const useSongListFilters = (listKey?: ItemListKey) => {
             hasRating,
             maxYear,
             minYear,
+            offline,
         ],
     );
 
     return {
         clear,
+        offline,
         query,
         setArtistIds,
         setCustom,
@@ -229,6 +250,7 @@ export const useSongListFilters = (listKey?: ItemListKey) => {
         setHasRating,
         setMaxYear,
         setMinYear,
+        setOffline,
         setSearchTerm,
     };
 };

@@ -1,6 +1,6 @@
 import type { ReactNode, Ref } from 'react';
 
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { forwardRef } from 'react';
 
 import styles from './animated-page.module.css';
@@ -13,6 +13,16 @@ interface AnimatedPageProps {
 
 export const AnimatedPage = forwardRef(
     ({ children }: AnimatedPageProps, ref: Ref<HTMLDivElement>) => {
+        const reduceMotion = useReducedMotion();
+
+        if (reduceMotion) {
+            return (
+                <main className={styles.animatedPage} ref={ref}>
+                    {children}
+                </main>
+            );
+        }
+
         return (
             <motion.main
                 className={styles.animatedPage}

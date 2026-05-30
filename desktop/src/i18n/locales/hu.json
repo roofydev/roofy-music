@@ -695,7 +695,7 @@
         "discordRichPresence": "{{discord}} rich presence",
         "discordRichPresence_description": "Engedélyezze a lejátszási állapotot a {{discord}} rich presence-ben. A kép kulcsok: {{icon}}, {{playing}} és {{paused}}",
         "discordServeImage": "{{discord}} képek kiszolgálása a szerverről",
-        "discordServeImage_description": "Megosztja a {{discord}} borítóképet a szerverről (csak Jellyfin és Navidrome esetén elérhető). A {{discord}} botot használ a képek letöltéséhez, ezért a szervernek elérhetőnek kell lennie a nyilvános interneten",
+        "discordServeImage_description": "Show album art in {{discord}} from your music server when it is reachable on your network. Some servers need a public URL for art to appear.",
         "discordUpdateInterval": "{{discord}} rich presence frissítési intervallum",
         "discordUpdateInterval_description": "Az egyes frissítések közötti idő másodpercben (minimum 15 másodperc)",
         "enableAutoTranslation_description": "A dalszöveg betöltésekor automatikusan engedélyezze a fordítást",

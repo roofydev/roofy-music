@@ -14,10 +14,15 @@ import {
     TextInput,
     Title,
 } from '@mantine/core';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { openLinkPhoneWizard } from '/@/renderer/features/devices/utils/open-link-phone-wizard';
+import {
+    getImportStatusBadgeKey,
+    getImportStatusLabelKey,
+    showImportError,
+} from '/@/shared/product-ux';
 
 type LocalStatus = {
     dataPath: string;
@@ -103,35 +108,51 @@ const ServerLoginSection = ({ status }: { status: LocalStatus | null }) => {
             </Text>
             {!status?.navidrome.running && (
                 <Text c="dimmed" size="sm">
-                    Click <strong>Start</strong> above if URL or password show as loading.
+                    {t('productUx.personalLibrary.serverLoginStartHint')}
                 </Text>
             )}
             <Group align="flex-start" gap="xl">
                 <Stack gap={4}>
-                    <Text size="sm">Server URL</Text>
+                    <Text size="sm">{t('productUx.personalLibrary.serverLoginUrl')}</Text>
                     <Text ff="monospace" size="sm">
                         {status?.navidrome.url || 'http://127.0.0.1:4533'}
                     </Text>
                 </Stack>
                 <Stack gap={4}>
-                    <Text size="sm">Username</Text>
+                    <Text size="sm">{t('productUx.personalLibrary.serverLoginUsername')}</Text>
                     <Text ff="monospace" size="sm">
                         {status?.navidrome.username || 'admin'}
                     </Text>
                 </Stack>
                 <Stack gap={4}>
-                    <Text size="sm">Password</Text>
+                    <Text size="sm">{t('productUx.personalLibrary.serverLoginPassword')}</Text>
                     <Text ff="monospace" size="sm">
-                        {status?.navidrome.password || 'Loading…'}
+                        {status?.navidrome.password || '…'}
                     </Text>
                 </Stack>
             </Group>
             <Text c="dimmed" size="xs">
-                Stored in {status?.navidrome.configPath || 'the app config file'} as
-                roofy.navidromePassword.
+                {t('productUx.personalLibrary.serverLoginStorageHint')}
             </Text>
         </Stack>
     );
+};
+
+const friendlyEngineStatusMessage = (
+    rawMessage: string | undefined,
+    t: (key: string) => string,
+): string => {
+    const raw = rawMessage?.trim();
+    if (!raw) {
+        return t('productUx.personalLibrary.engineStatusChecking');
+    }
+    if (/navidrome|subsonic|spotdl|yt-dlp|ffprobe/i.test(raw)) {
+        if (/not running|stopped|offline|failed/i.test(raw)) {
+            return t('productUx.personalLibrary.engineStatusStopped');
+        }
+        return t('productUx.personalLibrary.engineStatusChecking');
+    }
+    return raw;
 };
 
 export const LocalTab = () => {
@@ -226,7 +247,8 @@ export const LocalTab = () => {
             }
             return result;
         } catch (err: any) {
-            setError(err?.message || 'Action failed');
+            showImportError(t, err);
+            setError('');
         } finally {
             setBusy(false);
         }
@@ -236,7 +258,7 @@ export const LocalTab = () => {
         const pairingUrl = status?.phoneLink?.pairingUrl;
         if (!pairingUrl) return;
         await navigator.clipboard.writeText(pairingUrl);
-        setMessage('Copied link.');
+        setMessage(t('productUx.personalLibrary.copiedSetupLink'));
     };
 
     const createUser = async () => {
@@ -252,7 +274,9 @@ export const LocalTab = () => {
 
         if (!result) return;
 
-        setMessage(`Created local user "${result.username}".`);
+        setMessage(
+            t('productUx.personalLibrary.createdLocalUser', { username: result.username }),
+        );
         setNewUserEmail('');
         setNewUserIsAdmin(false);
         setNewUserName('');
@@ -260,18 +284,23 @@ export const LocalTab = () => {
         setNewUsername('');
     };
 
+    const engineStatusMessage = useMemo(
+        () => friendlyEngineStatusMessage(status?.navidrome.message, t),
+        [status?.navidrome.message, t],
+    );
+
     return (
         <Stack gap="xl" p="md">
             <Title order={3}>{t('productUx.personalLibrary.settingsTitle')}</Title>
 
             {error && (
-                <Alert color="red" title="Local action failed">
+                <Alert color="red" title={t('productUx.error.import.failed')}>
                     {error}
                 </Alert>
             )}
 
             {message && (
-                <Alert color="green" title="Done">
+                <Alert color="green" title={t('productUx.personalLibrary.alertDone')}>
                     {message}
                 </Alert>
             )}
@@ -286,18 +315,25 @@ export const LocalTab = () => {
                 </Button>
                 <Collapse in={advancedOpen}>
                     <Group gap="xs">
-                        {toolBadge(Boolean(status?.tools.navidrome), 'Library engine')}
-                        {toolBadge(Boolean(status?.tools.spotdl), 'Spotify helper')}
-                        {toolBadge(Boolean(status?.tools.ytDlp), 'Link importer')}
-                        {toolBadge(Boolean(status?.tools.ffmpeg), 'Audio tools')}
-                        {toolBadge(Boolean(status?.tools.deno), 'Script runtime')}
+                        {toolBadge(
+                            Boolean(status?.tools.navidrome),
+                            t('productUx.personalLibrary.engineTitle'),
+                        )}
+                        {toolBadge(
+                            Boolean(status?.tools.spotdl),
+                            t('productUx.personalLibrary.toolSpotifyImport'),
+                        )}
+                        {toolBadge(
+                            Boolean(status?.tools.ffmpeg),
+                            t('productUx.personalLibrary.audioTools'),
+                        )}
                     </Group>
                 </Collapse>
 
                 <Checkbox
                     checked={Boolean(status?.metadata?.autoEnrich)}
                     disabled={busy}
-                    label="Enrich imported tags with MusicBrainz (title, artist, album, cover art)"
+                    label={t('productUx.action.updateSongInfo')}
                     onChange={(event) =>
                         run(() =>
                             window.api.localFirst.setAutoEnrichMetadata(event.currentTarget.checked),
@@ -305,14 +341,14 @@ export const LocalTab = () => {
                     }
                 />
                 <Text c="dimmed" size="sm">
-                    Uses ffprobe for existing tags, then MusicBrainz (rate-limited, optional). No
-                    AcoustID fingerprinting yet.
+                    Finds better title, artist, album, and cover art when you add music. Runs in the
+                    background after import.
                 </Text>
                 <Group align="end" gap="md">
                     <Stack gap={4}>
                         <Text fw={600}>{t('productUx.personalLibrary.engineTitle')}</Text>
                         <Text c="dimmed" size="sm">
-                            {status?.navidrome.message || 'Checking connection…'}
+                            {engineStatusMessage}
                         </Text>
                     </Stack>
                     <Button
@@ -330,8 +366,6 @@ export const LocalTab = () => {
                         Stop
                     </Button>
                 </Group>
-
-                <ServerLoginSection status={status} />
             </Stack>
 
             <Divider />
@@ -354,11 +388,14 @@ export const LocalTab = () => {
                 <Collapse in={manualConnectionOpen}>
                     <Stack gap="sm" mt="sm">
                         <Badge variant="light">
-                            {status?.phoneLink?.state || 'disabled'}
+                            {t(
+                                `productUx.devices.phoneLinkState.${status?.phoneLink?.state || 'disabled'}`,
+                                status?.phoneLink?.state || 'disabled',
+                            )}
                         </Badge>
                         {status?.phoneLink?.error && (
-                            <Text c="red" size="sm">
-                                {status.phoneLink.error}
+                            <Text c="dimmed" size="sm">
+                                {t('productUx.devices.phoneLinkFailed')}
                             </Text>
                         )}
                         <Group>
@@ -408,10 +445,12 @@ export const LocalTab = () => {
 
                 <Group gap="xs">
                     <Badge color={status?.tools.spotdl ? 'green' : 'yellow'} variant="light">
-                        Spotify: {status?.tools.spotdl ? 'spotDL ready' : 'spotDL missing'}
+                        {status?.tools.spotdl
+                            ? t('productUx.import.spotifyReady')
+                            : t('productUx.import.spotifySetupRequired')}
                     </Badge>
                     <Badge color="green" variant="light">
-                        SoundCloud: public links supported
+                        {t('productUx.import.soundcloudReady')}
                     </Badge>
                 </Group>
             </Stack>
@@ -448,6 +487,8 @@ export const LocalTab = () => {
             </Button>
             <Collapse in={advancedSetupOpen}>
             <Stack gap="md">
+                <ServerLoginSection status={status} />
+
                 <Stack gap={4}>
                     <Text fw={600}>{t('productUx.personalLibrary.createUserTitle')}</Text>
                     <Text c="dimmed" size="sm">
@@ -492,7 +533,7 @@ export const LocalTab = () => {
             <Stack gap="sm">
                 <Text fw={600}>{t('productUx.action.updateSongInfo')}</Text>
                 <Text c="dimmed" size="sm">
-                    Probe or rewrite embedded tags on a file in your library folder (uses ffmpeg).
+                    Edit song info on a file in your music folder.
                 </Text>
                 <TextInput
                     label="Audio file path"
@@ -592,11 +633,15 @@ export const LocalTab = () => {
                         <Stack gap={4} key={job.id}>
                             <Group justify="space-between">
                                 <Text size="sm">{job.input}</Text>
-                                <Badge variant="light">{job.status}</Badge>
+                                <Badge variant="light">
+                                    {t(getImportStatusBadgeKey(job.status))}
+                                </Badge>
                             </Group>
                             <Progress value={job.progress} />
-                            <Text c={job.error ? 'red' : 'dimmed'} size="xs">
-                                {job.error || job.message}
+                            <Text c={job.status === 'failed' ? 'red' : 'dimmed'} size="xs">
+                                {job.status === 'failed'
+                                    ? t(getImportStatusLabelKey(job.status))
+                                    : job.message || t(getImportStatusLabelKey(job.status))}
                             </Text>
                         </Stack>
                     ))

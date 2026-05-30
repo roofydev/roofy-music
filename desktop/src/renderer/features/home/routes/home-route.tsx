@@ -106,7 +106,7 @@ const HomeRoute = () => {
                         <YoutubeMusicHomeCarousels
                             containerQuery={containerQuery}
                             maxHeight="50vh"
-                            title="YouTube Music"
+                            title={t('productUx.search.youtubeMusic.heading')}
                         />
                         <TextTitle fw={700}>Local Library</TextTitle>
                         {homeFeature && homeFeatureStyle === HomeFeatureStyle.SINGLE && (

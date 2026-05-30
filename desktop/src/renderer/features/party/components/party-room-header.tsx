@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button, Drawer, Group, Modal, Text } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 import {
     RiAddLine,
     RiSettings3Line,
@@ -16,6 +17,7 @@ import styles from '/@/renderer/features/party/party-dashboard.module.css';
 import { usePartyRoomState } from '/@/renderer/features/party/party-store';
 
 export const PartyRoomHeader = () => {
+    const { t } = useTranslation();
     const state = usePartyRoomState();
     const { stopParty } = usePartyActions();
     const uptime = usePartyUptime(state?.sessionStartedAt);
@@ -52,7 +54,7 @@ export const PartyRoomHeader = () => {
                     </div>
                     {state.tunnelStatus.state !== 'connected' && state.settings.exposureMode === 'tunnel' && (
                         <div className={styles.partyMetaStat}>
-                            Tunnel
+                            {t('productUx.party.shareLinkStatus')}
                             <strong>{state.tunnelStatus.state}</strong>
                         </div>
                     )}

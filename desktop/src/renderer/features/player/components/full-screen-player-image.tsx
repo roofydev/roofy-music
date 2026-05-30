@@ -422,7 +422,9 @@ export const FullScreenPlayerImage = () => {
                     <Group justify="center" mt="sm">
                         {canPlayVideo && (
                             <Badge>
-                                {videoMetadata?.videoFileUrl ? 'MP4 video' : 'Streamable video'}
+                                {videoMetadata?.videoFileUrl
+                                    ? t('productUx.video.badgeSaved')
+                                    : t('productUx.video.badgeStreamable')}
                             </Badge>
                         )}
                         {playerItems.map((i) => !i.disabled && builtDataItems[i.id])}

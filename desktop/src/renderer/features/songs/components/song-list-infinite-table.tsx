@@ -10,6 +10,7 @@ import { ItemTableListColumn } from '/@/renderer/components/item-list/item-table
 import { ItemListTableComponentProps } from '/@/renderer/components/item-list/types';
 import { useListContext } from '/@/renderer/context/list-context';
 import { songsQueries } from '/@/renderer/features/songs/api/songs-api';
+import { useOfflineSongListQuery } from '/@/renderer/features/songs/hooks/use-offline-song-list-query';
 import { usePlayerSong } from '/@/renderer/store';
 import { LibraryItem, SongListQuery, SongListSort, SortOrder } from '/@/shared/types/domain-types';
 import { ItemListKey } from '/@/shared/types/types';
@@ -39,7 +40,7 @@ export const SongListInfiniteTable = ({
         serverId: serverId,
     }) as UseSuspenseQueryOptions<number, Error, number, readonly unknown[]>;
 
-    const listQueryFn = api.controller.getSongList;
+    const { adaptedListQueryFn } = useOfflineSongListQuery(query, api.controller.getSongList);
     const { pageKey } = useListContext();
 
     const { getItem, getItemIndex, itemCount, loadedItems, onRangeChanged } =
@@ -48,7 +49,7 @@ export const SongListInfiniteTable = ({
             itemsPerPage,
             itemType: LibraryItem.SONG,
             listCountQuery,
-            listQueryFn,
+            listQueryFn: adaptedListQueryFn,
             query,
             serverId,
         });

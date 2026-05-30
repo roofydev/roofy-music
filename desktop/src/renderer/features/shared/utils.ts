@@ -61,6 +61,7 @@ enum SharedFilterKeys {
 
 enum SongFilterKeys {
     _CUSTOM = '_custom',
+    OFFLINE = 'offline',
     ALBUM_ARTIST_IDS = 'albumArtistIds',
     ALBUM_ARTIST_IDS_MODE = 'albumArtistIdsMode',
     ARTIST_IDS = 'artistIds',

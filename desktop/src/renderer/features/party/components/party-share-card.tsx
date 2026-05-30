@@ -1,9 +1,11 @@
 import { Badge, Button, Group, Stack, Text } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 
-import { usePartyRoomState } from '/@/renderer/features/party/party-store';
 import { usePartyActions } from '/@/renderer/features/party/hooks/use-party-actions';
+import { usePartyRoomState } from '/@/renderer/features/party/party-store';
 
 export const PartyShareCard = () => {
+    const { t } = useTranslation();
     const state = usePartyRoomState();
     const { copyLink } = usePartyActions();
 
@@ -48,12 +50,12 @@ export const PartyShareCard = () => {
             </Button>
             {state.tunnelStatus.state === 'starting' && (
                 <Text c="dimmed" size="xs">
-                    Setting up public link…
+                    {t('productUx.party.publicLinkSettingUp')}
                 </Text>
             )}
             {state.tunnelStatus.state === 'unavailable' && (
                 <Text c="red" size="xs">
-                    {state.tunnelStatus.error || 'Tunnel unavailable — try LAN mode next time.'}
+                    {t('productUx.party.publicLinkUnavailable')}
                 </Text>
             )}
         </Stack>

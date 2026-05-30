@@ -23,6 +23,7 @@ import { Image } from '/@/shared/components/image/image';
 import { Popover } from '/@/shared/components/popover/popover';
 import { Stack } from '/@/shared/components/stack/stack';
 import { TextInput } from '/@/shared/components/text-input/text-input';
+import { ProductUxEmptyState } from '/@/shared/components/product-ux-empty-state';
 import { Text } from '/@/shared/components/text/text';
 import { showImportError, showPlaybackErrorFromUnknown } from '/@/shared/product-ux';
 import { toast } from '/@/shared/components/toast/toast';
@@ -145,10 +146,10 @@ const getImportSource = (value: string): 'unknown' | ImportSource => {
     }
 };
 
-const getSourceLabel = (source?: ImportSource) => {
-    if (source === 'spotify') return 'Spotify';
-    if (source === 'soundcloud') return 'SoundCloud';
-    return 'YouTube Music';
+const getSourceLabel = (source: ImportSource | undefined, t: (key: string) => string) => {
+    if (source === 'spotify') return t('productUx.import.sourceBadge.spotify');
+    if (source === 'soundcloud') return t('productUx.import.sourceBadge.soundcloud');
+    return t('productUx.import.sourceBadge.onlineCatalog');
 };
 
 const hasYoutubeMatchUrl = (track: ImportTrackPreview) =>
@@ -371,12 +372,12 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
         }
         if (getImportSource(v) === 'unknown') {
             setSubmittedInput('');
-            setError('Paste a Spotify, SoundCloud, YouTube, or YouTube Music link.');
+            setError(t('productUx.import.linkUnsupported'));
             return;
         }
         setError('');
         setSubmittedInput((prev) => (prev === v ? prev : v));
-    }, [debouncedInput]);
+    }, [debouncedInput, t]);
 
     useEffect(() => {
         if (!submittedInput || !submittedIsUrl) {
@@ -402,7 +403,7 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
             .catch((err) => {
                 if (!cancelled) {
                     setPreview(null);
-                    setError(err?.message || 'Could not read this link.');
+                    setError(err?.message || t('productUx.import.linkReadFailed'));
                 }
             })
             .finally(() => {
@@ -412,7 +413,7 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
         return () => {
             cancelled = true;
         };
-    }, [submittedInput, submittedIsUrl]);
+    }, [submittedInput, submittedIsUrl, t]);
 
     const songs = useMemo(() => searchQuery.data?.songs?.slice(0, 6) || [], [searchQuery.data]);
     const playlists = useMemo(
@@ -433,7 +434,7 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
         if (!value || !isUrl(value)) return;
 
         if (getImportSource(value) === 'unknown') {
-            setError('Paste a Spotify, SoundCloud, YouTube, or YouTube Music link.');
+            setError(t('productUx.import.linkUnsupported'));
             setSubmittedInput('');
             return;
         }
@@ -600,13 +601,12 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                     <Stack gap={4}>
                         <Group gap="xs">
                             <Icon icon="download" size="md" />
-                            <Text fw={700}>Import music</Text>
+                            <Text fw={700}>{t('productUx.import.quickTitle')}</Text>
                         </Group>
                         <Text isMuted size="sm">
-                            Search by song, artist, or album, or paste a Spotify, SoundCloud,
-                            YouTube, or YouTube Music link.
+                            {t('productUx.import.quickDescription')}
                             {!spotdlAvailable &&
-                                ' Spotify links require spotDL (see Local settings).'}
+                                ` ${t('productUx.import.spotifySetupRequired')}.`}
                         </Text>
                     </Stack>
                 )}
@@ -619,8 +619,8 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                             onChange={(event) => setInput(event.currentTarget.value)}
                             placeholder={
                                 isInline
-                                    ? 'Search or paste a music link'
-                                    : 'Search or paste a Spotify, SoundCloud, YouTube, or YouTube Music link'
+                                    ? t('productUx.import.linkPlaceholderInline')
+                                    : t('productUx.import.linkPlaceholder')
                             }
                             value={input}
                         />
@@ -635,7 +635,7 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                         <Stack gap="md">
                             {error && (
                                 <Text color="red" size="sm">
-                                    {error}
+                                    {t('productUx.error.import.failed')}
                                 </Text>
                             )}
 
@@ -652,11 +652,11 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
 
                             {liveSearchInput && !isConnected && (
                                 <div className={styles.emptyState}>
-                                    <Text fw={600}>Login to search YouTube Music</Text>
-                                    <Text isMuted size="sm">
-                                        Paste a direct YouTube link here, or use the YouTube Music
-                                        Login tab to search your account and recommendations.
-                                    </Text>
+                                    <ProductUxEmptyState
+                                        descriptionKey="productUx.search.youtubeMusic.loginToSearchDescription"
+                                        icon="search"
+                                        titleKey="productUx.search.youtubeMusic.loginToSearchTitle"
+                                    />
                                 </div>
                             )}
 
@@ -664,9 +664,9 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                                 <div className={styles.loadingState}>
                                     <Spinner size={22} />
                                     <Stack gap={4}>
-                                        <Text fw={600}>Reading link metadata</Text>
+                                        <Text fw={600}>{t('productUx.import.readingLinkTitle')}</Text>
                                         <Text isMuted size="sm">
-                                            Fetching title, artwork, and playlist details.
+                                            {t('productUx.import.readingLinkDescription')}
                                         </Text>
                                     </Stack>
                                 </div>
@@ -676,7 +676,7 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                                 <Stack gap="sm">
                                     <Group className={styles.spotifyInfoRow} gap="xs" wrap="nowrap">
                                         <Text className={styles.spotifyInfoLabel} isMuted size="sm">
-                                            Spotify link — matched on YouTube Music
+                                            {t('productUx.import.spotifyMatchedOnline')}
                                         </Text>
                                         <SpotifyImportInfoPopover useSpotdl={preview.useSpotdl} />
                                     </Group>
@@ -729,7 +729,7 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                                         <div className={styles.previewInfo}>
                                             <Group className={styles.previewMeta} gap="xs" wrap="wrap">
                                                 <Badge variant="light">
-                                                    {getSourceLabel(preview.source)}
+                                                    {getSourceLabel(preview.source, t)}
                                                 </Badge>
                                                 <Badge variant="light">
                                                     {preview.isPlaylist
@@ -754,7 +754,7 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                                         {preview.source === 'youtube_music' && (
                                             <Checkbox
                                                 checked={saveVideo}
-                                                label="Save MP4 video"
+                                                label={t('productUx.video.saveOnImport')}
                                                 onChange={(event) =>
                                                     setSaveVideo(event.currentTarget.checked)
                                                 }
@@ -776,10 +776,11 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                                         songs.length === 0 &&
                                         playlists.length === 0 && (
                                             <div className={styles.emptyState}>
-                                                <Text fw={600}>Searching YouTube Music</Text>
-                                                <Text isMuted size="sm">
-                                                    Results will update as you type.
-                                                </Text>
+                                                <ProductUxEmptyState
+                                                    descriptionKey="productUx.search.youtubeMusic.searchingDescription"
+                                                    icon="search"
+                                                    titleKey="productUx.search.youtubeMusic.searchingTitle"
+                                                />
                                             </div>
                                         )}
                                     {songs.length > 0 && (
@@ -804,10 +805,11 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                                         songs.length === 0 &&
                                         playlists.length === 0 && (
                                             <div className={styles.emptyState}>
-                                                <Text fw={600}>No results</Text>
-                                                <Text isMuted size="sm">
-                                                    Try a different title, artist, or link.
-                                                </Text>
+                                                <ProductUxEmptyState
+                                                    descriptionKey="productUx.search.empty.description"
+                                                    icon="search"
+                                                    titleKey="productUx.search.empty.title"
+                                                />
                                             </div>
                                         )}
                                 </Stack>
@@ -832,7 +834,10 @@ type SpotifyImportInfoPopoverProps = {
     useSpotdl?: boolean;
 };
 
-const SpotifyImportInfoPopover = ({ useSpotdl }: SpotifyImportInfoPopoverProps) => (
+const SpotifyImportInfoPopover = ({ useSpotdl }: SpotifyImportInfoPopoverProps) => {
+    const { t } = useTranslation();
+
+    return (
     <Popover position="bottom-start" width={360} withArrow>
         <Popover.Target>
             <ActionIcon
@@ -847,32 +852,25 @@ const SpotifyImportInfoPopover = ({ useSpotdl }: SpotifyImportInfoPopoverProps) 
         <Popover.Dropdown className={styles.spotifyInfoPopover}>
             <Stack gap="sm">
                 <Text fw={600} size="sm">
-                    Importing from Spotify
+                    {t('productUx.import.spotifyInfoTitle')}
                 </Text>
                 <Text isMuted size="sm">
-                    Roofy reads track and playlist details from your Spotify link. Audio is not taken
-                    from Spotify itself — each track is matched to an equivalent upload on YouTube
-                    Music before it is imported into your library.
+                    {t('productUx.import.spotifyInfoBody1')}
                 </Text>
                 <Text isMuted size="sm">
-                    Matching is best-effort using title, artist, album, and length. The imported
-                    file may be a different version, live recording, remix, or re-upload than the
-                    Spotify track you linked.
+                    {t('productUx.import.spotifyInfoBody2')}
                 </Text>
                 {useSpotdl ? (
                     <Text isMuted size="sm">
-                        When spotDL is available, some links may download through spotDL instead of
-                        a manual YouTube Music match. Results can still differ from what you hear on
-                        Spotify.
+                        {t('productUx.import.spotifyAlternatePathHint')}
                     </Text>
                 ) : (
                     <Text isMuted size="sm">
-                        Tracks that need review require you to accept the suggested YouTube Music
-                        match. Imports can fail when no close match exists or when YouTube blocks
-                        requests — use Import settings to add browser cookies if that happens.
+                        {t('productUx.import.reviewMatchRequired')}
                     </Text>
                 )}
             </Stack>
         </Popover.Dropdown>
     </Popover>
-);
+    );
+};

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import isElectron from 'is-electron';
 import { KeyboardEvent, MouseEvent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import styles from './youtube-music-account-button.module.css';
 
@@ -33,6 +34,7 @@ export const YoutubeMusicAccountButton = ({
     compact,
     labelMode = 'default',
 }: YoutubeMusicAccountButtonProps) => {
+    const { t } = useTranslation();
     const [avatarFailed, setAvatarFailed] = useState(false);
     const enabled = isElectron() && Boolean(window.api?.youtubeMusic?.status);
     const statusQuery = useQuery({
@@ -115,12 +117,13 @@ export const YoutubeMusicAccountButton = ({
                 size="compact-sm"
                 variant="subtle"
             >
-                YouTube Music Login
+                {t('productUx.search.youtubeMusic.loginButton')}
             </Button>
         );
     }
 
-    const displayName = status?.displayName || 'YouTube Music';
+    const displayName =
+        status?.displayName || t('productUx.search.youtubeMusic.heading');
 
     return (
         <Group

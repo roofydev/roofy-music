@@ -877,7 +877,7 @@
         "discordPausedStatus": "Tampilkan rich presence saat dijeda",
         "discordRichPresence": "Rich presence {{discord}}",
         "discordServeImage": "Sajikan gambar {{discord}} dari server",
-        "discordServeImage_description": "Bagikan cover art untuk rich presence {{discord}} dari server itu sendiri, hanya tersedia untuk Jellyfin dan Navidrome. {{discord}} menggunakan bot untuk mengambil gambar, jadi server anda harus dapat dijangkau dari internet publik",
+        "discordServeImage_description": "Show album art in {{discord}} from your music server when it is reachable on your network. Some servers need a public URL for art to appear.",
         "enableAutoTranslation_description": "Aktifkan terjemahan secara otomatis saat lirik dimuat",
         "enableAutoTranslation": "Aktifkan terjemahan otomatis",
         "exportImportSettings_control_description": "Ekspor dan impor pengaturan melalui JSON",

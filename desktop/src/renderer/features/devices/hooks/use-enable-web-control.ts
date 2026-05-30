@@ -1,9 +1,12 @@
 import { useCallback } from 'react';
 
+import { useTranslation } from 'react-i18next';
+
 import { useRemoteSettings, useSettingsStoreActions } from '/@/renderer/store';
 import { toast } from '/@/shared/components/toast/toast';
 
 export const useEnableWebControl = () => {
+    const { t } = useTranslation();
     const remote = useRemoteSettings();
     const { setSettings } = useSettingsStoreActions();
 
@@ -20,7 +23,10 @@ export const useEnableWebControl = () => {
                 );
 
                 if (errorMsg) {
-                    toast.error({ message: errorMsg, title: 'Web control' });
+                    toast.error({
+                        message: errorMsg,
+                        title: t('productUx.devices.webControl'),
+                    });
                     return;
                 }
 

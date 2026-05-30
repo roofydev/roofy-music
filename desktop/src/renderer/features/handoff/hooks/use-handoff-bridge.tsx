@@ -173,10 +173,7 @@ export const useHandoffBridge = () => {
             const songs = resolved.filter((song): song is Song => Boolean(song));
 
             if (songs.length === 0) {
-                toast.warn({
-                    message: t('productUx.error.devices.handoffUnavailable'),
-                    title: t('productUx.action.continueOnDevice'),
-                });
+                showHandoffError(t, 'handoff_unavailable');
                 return;
             }
 

@@ -78,6 +78,7 @@ export const Sidebar = () => {
             Settings: t('page.sidebar.settings'),
             Stats: t('page.sidebar.stats'),
             Tracks: t('page.sidebar.tracks'),
+            Offline: t('page.sidebar.offline'),
         }),
         [t],
     );
@@ -102,13 +103,27 @@ export const Sidebar = () => {
         return items;
     }, [sidebarItems, translatedSidebarItemMap]);
 
-    /* Library accordion: only items with a route (exclude Collections section) */
+    const primaryNavIds = useMemo(
+        () => new Set(['Search', 'Now Playing', 'Settings']),
+        [],
+    );
+
+    const primaryNavItems = useMemo(
+        () => sidebarItemsWithRoute.filter((item) => primaryNavIds.has(item.id)),
+        [primaryNavIds, sidebarItemsWithRoute],
+    );
+
+    /* Library accordion: library routes only (not top-level nav) */
     const libraryItemsWithRoute = useMemo(
         () =>
             sidebarItemsWithRoute.filter(
-                (item) => item.id !== 'Collections' && item.id !== 'Home' && item.route,
+                (item) =>
+                    item.id !== 'Collections' &&
+                    item.id !== 'Home' &&
+                    !primaryNavIds.has(item.id) &&
+                    item.route,
             ),
-        [sidebarItemsWithRoute],
+        [primaryNavIds, sidebarItemsWithRoute],
     );
     const homeItem = useMemo(
         () => sidebarItemsWithRoute.find((item) => item.id === 'Home' && item.route),
@@ -144,6 +159,14 @@ export const Sidebar = () => {
                         </Group>
                     </SidebarItem>
                 )}
+                {primaryNavItems.map((item) => (
+                    <SidebarItem key={`sidebar-primary-${item.id}`} to={item.route}>
+                        <Group gap="md">
+                            <SidebarIcon route={item.route} />
+                            {item.label}
+                        </Group>
+                    </SidebarItem>
+                ))}
                 <Accordion
                     classNames={{
                         content: styles.accordionContent,
@@ -186,7 +209,7 @@ export const Sidebar = () => {
                                     <Group align="center" gap="xs" wrap="nowrap">
                                         <YoutubeMusicIcon size="1rem" />
                                         <Text fw={500} variant="secondary">
-                                            YT Music
+                                            {t('page.sidebar.online')}
                                         </Text>
                                     </Group>
                                     <YoutubeMusicAccountButton compact labelMode="auth-only" />

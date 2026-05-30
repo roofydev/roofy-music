@@ -1,5 +1,5 @@
 import isElectron from 'is-electron';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -13,6 +13,7 @@ import {
     useGeneralSettings,
     useSettingsStoreActions,
 } from '/@/renderer/store';
+import { Button } from '/@/shared/components/button/button';
 import { Select } from '/@/shared/components/select/select';
 import { Switch } from '/@/shared/components/switch/switch';
 import { TextInput } from '/@/shared/components/text-input/text-input';
@@ -22,6 +23,7 @@ export const DiscordSettings = memo(() => {
     const settings = useDiscordSettings();
     const generalSettings = useGeneralSettings();
     const { setSettings } = useSettingsStoreActions();
+    const [advancedOpen, setAdvancedOpen] = useState(false);
 
     const discordOptions: SettingOption[] = [
         {
@@ -45,9 +47,7 @@ export const DiscordSettings = memo(() => {
                 playing: 'playing',
             }),
             isHidden: !isElectron(),
-            title: t('setting.discordRichPresence', {
-                discord: 'Discord',
-            }),
+            title: t('page.setting.discord'),
         },
         {
             control: (
@@ -67,7 +67,7 @@ export const DiscordSettings = memo(() => {
                 defaultId: '1507206067015254097',
                 discord: 'Discord',
             }),
-            isHidden: !isElectron(),
+            isHidden: !isElectron() || !advancedOpen,
             title: t('setting.discordApplicationId', {
                 discord: 'Discord',
             }),
@@ -163,7 +163,7 @@ export const DiscordSettings = memo(() => {
             description: t('setting.discordDisplayType', {
                 context: 'description',
             }),
-            isHidden: !isElectron(),
+            isHidden: !isElectron() || !advancedOpen,
             title: t('setting.discordDisplayType', {
                 discord: 'Discord',
                 musicbrainz: 'musicbrainz',
@@ -206,7 +206,7 @@ export const DiscordSettings = memo(() => {
                 lastfm: 'last.fm',
                 musicbrainz: 'musicbrainz',
             }),
-            isHidden: !isElectron(),
+            isHidden: !isElectron() || !advancedOpen,
             title: t('setting.discordLinkType', {
                 discord: 'Discord',
             }),
@@ -254,10 +254,30 @@ export const DiscordSettings = memo(() => {
                 context: 'description',
                 discord: 'Discord',
             }),
-            isHidden: !isElectron(),
+            isHidden: !isElectron() || !advancedOpen,
             title: t('setting.discordArtworkWebhook', {
                 discord: 'Discord',
             }),
+        },
+        {
+            control: (
+                <Button
+                    onClick={() => setAdvancedOpen((open) => !open)}
+                    size="compact-sm"
+                    variant="subtle"
+                >
+                    {advancedOpen
+                        ? t('productUx.error.recovery.hideTechnicalDetails')
+                        : t('productUx.personalLibrary.advancedSetup')}
+                </Button>
+            ),
+            description: t('setting.discordApplicationId', {
+                context: 'description',
+                defaultId: '1507206067015254097',
+                discord: 'Discord',
+            }),
+            isHidden: !isElectron(),
+            title: t('productUx.personalLibrary.advancedTools'),
         },
         {
             control: (
@@ -276,7 +296,7 @@ export const DiscordSettings = memo(() => {
                 context: 'description',
                 lastfm: 'Last.fm',
             }),
-            isHidden: !isElectron(),
+            isHidden: !isElectron() || !advancedOpen,
             title: t('setting.lastfmApiKey', {
                 lastfm: 'Last.fm',
             }),

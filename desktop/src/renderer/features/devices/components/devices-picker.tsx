@@ -1,14 +1,18 @@
 import isElectron from 'is-electron';
 import clsx from 'clsx';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import styles from '/@/renderer/features/devices/components/devices-picker.module.css';
+import { WebControlShare } from '/@/renderer/features/devices/components/web-control-share';
+import { useEnableWebControl } from '/@/renderer/features/devices/hooks/use-enable-web-control';
 import { useListenOnHandoff } from '/@/renderer/features/devices/hooks/use-listen-on-handoff';
 import {
     type DeviceConnectionState,
     useDevicesStatus,
 } from '/@/renderer/features/devices/hooks/use-devices-status';
-import { usePlayerStore } from '/@/renderer/store';
+import { usePlayerStore, useRemoteSettings } from '/@/renderer/store';
+import { Divider } from '/@/shared/components/divider/divider';
 import { Icon } from '/@/shared/components/icon/icon';
 import { Stack } from '/@/shared/components/stack/stack';
 import { Text } from '/@/shared/components/text/text';
@@ -16,7 +20,7 @@ import { PlayerStatus } from '/@/shared/types/types';
 
 interface DeviceRowProps {
     active?: boolean;
-    icon: 'arrowLeftRight' | 'disc';
+    icon: 'appWindow' | 'arrowLeftRight' | 'disc';
     interactive?: boolean;
     onClick?: () => void;
     playingHere?: boolean;
@@ -92,6 +96,9 @@ export const DevicesPicker = ({
     const { t } = useTranslation();
     const { status } = useDevicesStatus(4000);
     const { promptContinueOnPhone } = useListenOnHandoff();
+    const remote = useRemoteSettings();
+    const { setWebControlEnabled } = useEnableWebControl();
+    const [webControlExpanded, setWebControlExpanded] = useState(false);
 
     const phoneLinked = status.phoneLink.phonePaired;
     const currentSong = usePlayerStore((s) => s.getCurrentSong());
@@ -154,7 +161,36 @@ export const DevicesPicker = ({
                         title={t('productUx.devices.yourPhone')}
                     />
                 )}
+
+                {isElectron() && (
+                    <DeviceRow
+                        active={remote.enabled}
+                        icon="appWindow"
+                        interactive
+                        onClick={async () => {
+                            if (!remote.enabled) {
+                                await setWebControlEnabled(true);
+                                setWebControlExpanded(true);
+                                return;
+                            }
+                            setWebControlExpanded((open) => !open);
+                        }}
+                        subtitle={
+                            remote.enabled
+                                ? t('productUx.devices.webControlOn')
+                                : t('productUx.devices.webControlOff')
+                        }
+                        title={t('productUx.devices.webControl')}
+                    />
+                )}
             </Stack>
+
+            {isElectron() && remote.enabled && webControlExpanded && (
+                <>
+                    <Divider my="xs" />
+                    <WebControlShare compact />
+                </>
+            )}
         </Stack>
     );
 };

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useImportJobs } from '/@/renderer/store';
-import { logTechnicalError } from '/@/shared/product-ux';
+import { showImportError } from '/@/shared/product-ux';
 import { toast } from '/@/shared/components/toast/toast';
 
 const STORAGE_KEY = 'roofy.importNotifications';
@@ -182,14 +182,7 @@ export const ImportNotifications = () => {
                 activeToastRef.current.delete(job.id);
 
                 if (hadActiveToast) toast.hide(toastId);
-                logTechnicalError('import', job.error);
-                toast.error({
-                    id: toastId,
-                    loading: false,
-                    message: t('productUx.import.toast.failedMessage', { title }),
-                    title: t('productUx.import.toast.failedTitle'),
-                    withCloseButton: true,
-                });
+                showImportError(t, job.error ?? new Error('import_failed'));
             }
         });
 

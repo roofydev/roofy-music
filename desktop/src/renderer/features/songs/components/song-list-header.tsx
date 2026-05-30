@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 
 import { useIsFetchingItemListCount } from '/@/renderer/components/item-list/helpers/use-is-fetching-item-list';
 import { PageHeader } from '/@/renderer/components/page-header/page-header';
@@ -16,8 +17,10 @@ import { useCurrentServerId } from '/@/renderer/store';
 import { Flex } from '/@/shared/components/flex/flex';
 import { Group } from '/@/shared/components/group/group';
 import { Stack } from '/@/shared/components/stack/stack';
+import { AppRoute } from '/@/renderer/router/routes';
 import { LibraryItem } from '/@/shared/types/domain-types';
 import { ItemListKey } from '/@/shared/types/types';
+import { Button } from '/@/shared/components/button/button';
 
 interface SongListHeaderProps {
     genreId?: string;
@@ -35,6 +38,7 @@ export const SongListHeader = ({ title }: SongListHeaderProps) => {
                         <SongListHeaderBadge />
                     </LibraryHeaderBar>
                     <Group>
+                        <OfflineImportProgressLink />
                         <ListSearchInput />
                     </Group>
                 </Flex>
@@ -70,10 +74,27 @@ const PlayButton = () => {
     return <LibraryHeaderBar.PlayButton itemType={LibraryItem.SONG} listQuery={mergedQuery} />;
 };
 
+const OfflineImportProgressLink = () => {
+    const { t } = useTranslation();
+    const { offline } = useSongListFilters();
+
+    if (!offline) {
+        return null;
+    }
+
+    return (
+        <Button component={Link} size="compact-sm" to={AppRoute.IMPORTS} variant="subtle">
+            {t('page.trackList.viewImportProgress')}
+        </Button>
+    );
+};
+
 const PageTitle = ({ title }: { title?: string }) => {
     const { t } = useTranslation();
     const { pageKey } = useListContext();
-    const pageTitle = title || t('page.trackList.title');
+    const { offline } = useSongListFilters();
+    const pageTitle =
+        title || (offline ? t('page.trackList.offlineTitle') : t('page.trackList.title'));
 
     switch (pageKey) {
         case ItemListKey.ALBUM_ARTIST_SONG:

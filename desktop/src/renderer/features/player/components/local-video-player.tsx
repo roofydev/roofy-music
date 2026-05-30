@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import isElectron from 'is-electron';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import styles from './local-video-player.module.css';
 
@@ -10,6 +11,7 @@ import { Icon } from '/@/shared/components/icon/icon';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Text } from '/@/shared/components/text/text';
 import { toast } from '/@/shared/components/toast/toast';
+import { showImportError } from '/@/shared/product-ux';
 import { PlayerStatus } from '/@/shared/types/types';
 
 export type LocalVideoMetadata = null | {
@@ -210,21 +212,25 @@ export const SyncedLocalVideo = ({ metadata }: SyncedLocalVideoProps) => {
         (streamResolutionQuery.isLoading || streamResolutionQuery.isFetching);
     const isBufferingVideo = Boolean(videoSourceUrl) && !isVideoReady;
 
+    const { t } = useTranslation();
+
     if (!videoSourceUrl) {
         return (
-            <div className={styles.emptyVideoState}>
+            <div className={styles.emptyVideoState} role="status">
                 {isResolvingSource ? (
                     <Spinner color="var(--theme-colors-foreground)" container size={28} />
                 ) : null}
                 <Text fw={700} size="sm">
-                    {isResolvingSource ? 'Preparing video...' : 'Video unavailable'}
+                    {isResolvingSource
+                        ? t('productUx.video.preparing')
+                        : t('productUx.video.unavailable')}
                 </Text>
                 {!isResolvingSource && (
                     <Text isMuted size="xs">
                         {streamResolutionQuery.data?.error ||
                             (metadata.videoFileUrl && localVideoFailed
-                                ? 'Saved MP4 could not be played, and streaming fallback is unavailable.'
-                                : 'Roofy could not resolve a clean video stream for this track.')}
+                                ? t('productUx.video.localPlayFailed')
+                                : t('productUx.video.streamResolveFailed'))}
                     </Text>
                 )}
             </div>
@@ -283,12 +289,15 @@ export const VideoPlayerToolbar = ({
     showVideoActions = true,
     variant = 'default',
 }: VideoPlayerToolbarProps) => {
+    const { t } = useTranslation();
     const isSaved = Boolean(metadata?.videoFileUrl);
-    const statusCopy = isSaved ? 'Saved MP4' : 'Streaming video';
+    const statusCopy = isSaved
+        ? t('productUx.video.savedBadge')
+        : t('productUx.video.streaming');
 
     return (
         <div
-            aria-label="Video options"
+            aria-label={t('productUx.video.toolbarLabel')}
             className={clsx(styles.toolbar, {
                 [styles.toolbarOverlay]: variant === 'overlay',
                 [styles.toolbarPlayerbar]: variant === 'playerbar',
@@ -309,7 +318,11 @@ export const VideoPlayerToolbar = ({
                             e.stopPropagation();
                             onEnterFullscreen();
                         }}
-                        title={showVideoActions ? 'Fullscreen video' : 'Fullscreen artwork'}
+                        title={
+                            showVideoActions
+                                ? t('productUx.video.fullscreenVideo')
+                                : t('productUx.video.fullscreenArtwork')
+                        }
                         type="button"
                     >
                         <Icon icon="expand" size="md" />
@@ -322,7 +335,7 @@ export const VideoPlayerToolbar = ({
                             e.stopPropagation();
                             window.open(metadata.sourceUrl, '_blank');
                         }}
-                        title="Open video source"
+                        title={t('productUx.video.openSource')}
                         type="button"
                     >
                         <Icon icon="externalLink" size="md" />
@@ -331,7 +344,10 @@ export const VideoPlayerToolbar = ({
                 {showVideoActions &&
                     metadata &&
                     (isSaved ? (
-                        <span className={styles.savedIndicator} title="Video saved in your library">
+                        <span
+                            className={styles.savedIndicator}
+                            title={t('productUx.video.savedInLibrary')}
+                        >
                             <Icon icon="check" size="md" />
                         </span>
                     ) : (
@@ -343,7 +359,11 @@ export const VideoPlayerToolbar = ({
                                 e.stopPropagation();
                                 onDownload?.();
                             }}
-                            title={isDownloading ? 'Saving MP4…' : 'Save MP4 to library'}
+                            title={
+                                isDownloading
+                                    ? t('productUx.video.savingVideo')
+                                    : t('productUx.video.saveVideoToLibrary')
+                            }
                             type="button"
                         >
                             <Icon icon="download" size="md" />
@@ -356,7 +376,7 @@ export const VideoPlayerToolbar = ({
                             e.stopPropagation();
                             onExitFullscreen();
                         }}
-                        title="Exit fullscreen"
+                        title={t('productUx.video.exitFullscreen')}
                         type="button"
                     >
                         <Icon icon="arrowDownS" size="md" />
@@ -368,6 +388,7 @@ export const VideoPlayerToolbar = ({
 };
 
 export const useDownloadVideoForCurrentSong = () => {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
     const currentSong = usePlayerSong();
     const [isDownloading, setIsDownloading] = useState(false);
@@ -387,7 +408,7 @@ export const useDownloadVideoForCurrentSong = () => {
             id: toastId,
             loading: true,
             message: currentSong.name,
-            title: 'Saving MP4 video',
+            title: t('productUx.video.toast.savingTitle'),
             withCloseButton: false,
         });
 
@@ -401,21 +422,17 @@ export const useDownloadVideoForCurrentSong = () => {
             await refreshMetadata();
             toast.hide(toastId);
             toast.success({
-                message: 'Video attached to this library track.',
-                title: 'MP4 saved',
+                message: t('productUx.video.toast.savedMessage'),
+                title: t('productUx.video.toast.savedTitle'),
                 withCloseButton: true,
             });
         } catch (error) {
             toast.hide(toastId);
-            toast.error({
-                message: (error as Error).message,
-                title: 'Could not save MP4',
-                withCloseButton: true,
-            });
+            showImportError(t, error);
         } finally {
             setIsDownloading(false);
         }
-    }, [currentSong, refreshMetadata]);
+    }, [currentSong, refreshMetadata, t]);
 
     return { downloadVideo, isDownloading };
 };

@@ -1,4 +1,5 @@
 import { NumberInput, SegmentedControl, Switch, TextInput } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 
 import { usePartyActions } from '/@/renderer/features/party/hooks/use-party-actions';
 import styles from '/@/renderer/features/party/party-dashboard.module.css';
@@ -10,6 +11,7 @@ type PartySettingsPanelProps = {
 };
 
 export const PartySettingsPanel = ({ layout = 'stack' }: PartySettingsPanelProps) => {
+    const { t } = useTranslation();
     const state = usePartyRoomState();
     const { partySettings, persistSettings, updateLiveSettings } = usePartyActions();
 
@@ -29,15 +31,13 @@ export const PartySettingsPanel = ({ layout = 'stack' }: PartySettingsPanelProps
     const exposureControl = !isLive ? (
         <div className={styles.partySettingField}>
             <label className={styles.partySettingLabel} htmlFor="party-exposure">
-                Connection
+                {t('productUx.party.connection')}
             </label>
-            <p className={styles.partySettingHint}>
-                Tunnel shares a public link via Cloudflare. LAN is for guests on the same network.
-            </p>
+            <p className={styles.partySettingHint}>{t('productUx.party.connectionHint')}</p>
             <SegmentedControl
                 data={[
-                    { label: 'Tunnel', value: 'tunnel' },
-                    { label: 'LAN', value: 'lan' },
+                    { label: t('productUx.party.shareOverInternet'), value: 'tunnel' },
+                    { label: t('productUx.party.sameNetwork'), value: 'lan' },
                 ]}
                 fullWidth
                 id="party-exposure"

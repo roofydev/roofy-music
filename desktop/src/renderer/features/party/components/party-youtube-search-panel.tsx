@@ -1,5 +1,6 @@
 import { ActionIcon, Button, Group, Loader, Text, TextInput } from '@mantine/core';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { RiAddLine, RiPlayFill, RiSearchLine, RiSkipForwardFill } from 'react-icons/ri';
 
 import styles from '/@/renderer/features/party/party-dashboard.module.css';
@@ -33,14 +34,15 @@ const youtubeVideoIdFromInput = (input: string) => {
     return null;
 };
 
-const songArtists = (song: Song) =>
-    song.artists?.map((artist) => artist.name).filter(Boolean).join(', ') ||
-    song.artistName ||
-    song.albumArtistName ||
-    'YouTube Music';
-
 export const PartyYoutubeSearchPanel = () => {
+    const { t } = useTranslation();
     const player = usePlayer();
+
+    const songArtists = (song: Song) =>
+        song.artists?.map((artist) => artist.name).filter(Boolean).join(', ') ||
+        song.artistName ||
+        song.albumArtistName ||
+        t('productUx.import.unknownArtist');
     const [addingId, setAddingId] = useState<null | string>(null);
     const [error, setError] = useState<null | string>(null);
     const [query, setQuery] = useState('');
@@ -67,7 +69,10 @@ export const PartyYoutubeSearchPanel = () => {
                 setResults((response.songs || []).slice(0, 6));
             } catch (searchError) {
                 setResults([]);
-                setError((searchError as Error).message || 'YouTube Music search failed');
+                setError(
+                    (searchError as Error).message ||
+                        t('productUx.search.youtubeMusic.searchFailed'),
+                );
             } finally {
                 setSearching(false);
             }
@@ -88,7 +93,7 @@ export const PartyYoutubeSearchPanel = () => {
     const addSong = useCallback(
         async (playType: Play, song?: Song) => {
             if (!youtubeMusic) {
-                toast.error({ message: 'YouTube Music is not available in this build.' });
+                toast.error({ message: t('productUx.search.youtubeMusic.searchUnavailable') });
                 return;
             }
 
@@ -140,7 +145,7 @@ export const PartyYoutubeSearchPanel = () => {
                     disabled={!canSearch}
                     leftSection={<RiSearchLine />}
                     onChange={(event) => setQuery(event.currentTarget.value)}
-                    placeholder="Search YouTube Music or paste a YouTube link"
+                    placeholder={t('productUx.search.youtubeMusic.searchPlaceholder')}
                     size="sm"
                     value={query}
                 />
@@ -160,7 +165,7 @@ export const PartyYoutubeSearchPanel = () => {
                         ? 'Link ready'
                         : canSearch
                           ? 'Remote search'
-                          : 'YouTube Music unavailable'}
+                          : t('productUx.search.youtubeMusic.searchUnavailable')}
                 </Text>
                 {searching && <Loader size="xs" />}
                 {error && (

@@ -32,6 +32,7 @@ export const DevicesButton = () => {
         >
             <Popover.Target>
                 <ActionIcon
+                    aria-label={t('productUx.devices.connectPanel.tooltip')}
                     icon="arrowLeftRight"
                     iconProps={{
                         color: phoneLinked ? 'primary' : undefined,

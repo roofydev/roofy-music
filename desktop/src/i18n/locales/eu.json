@@ -488,7 +488,7 @@
         "discordListening": "Erakutsi egoera entzuten bezala",
         "discordRichPresence_description": "Gaitu erreprodukzioa egoera {{discord}}-en jarduera-egoeran. Irudi gakoak hauek dira: {{icon}}, {{playing}}, eta {{paused}}",
         "discordServeImage": "Zerbitzatu {{discord}} irudiak zerbitzaritik",
-        "discordServeImage_description": "Partekatu {{discord}} jarduera-egoerarentzako azala artea zerbitzaritik bertatik, Jellyfin eta Navidrome-rentzat bakarrik eskuragarri. {{discord}}-(e)k bot bat erabiltzen du irudiak eskuratzeko, beraz, zure zerbitzaria internet publikotik eskuragarri egon behar da",
+        "discordServeImage_description": "Show album art in {{discord}} from your music server when it is reachable on your network. Some servers need a public URL for art to appear.",
         "discordUpdateInterval": "{{discord}} jarduera-egoera eguneraketa tartea",
         "discordLinkType_none": "$t(common.none)",
         "albumBackground": "Albumaren atzeko planoaren irudia",

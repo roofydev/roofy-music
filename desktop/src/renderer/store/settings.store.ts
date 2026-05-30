@@ -964,10 +964,6 @@ export const playerItems: SortableItem<PlayerItem>[] = [
         id: PlayerItem.BPM,
     },
     {
-        disabled: false,
-        id: PlayerItem.CODEC,
-    },
-    {
         disabled: true,
         id: PlayerItem.DISC_NUMBER,
     },
@@ -999,24 +995,30 @@ export const playerItems: SortableItem<PlayerItem>[] = [
 
 export const sidebarItems: SidebarItemType[] = [
     {
-        disabled: false,
+        disabled: true,
         id: 'Party',
         label: 'Party',
         route: AppRoute.PARTY,
     },
     {
-        disabled: true,
+        disabled: false,
         id: 'Now Playing',
         label: i18n.t('page.sidebar.nowPlaying'),
         route: AppRoute.NOW_PLAYING,
     },
     {
-        disabled: true,
+        disabled: false,
         id: 'Search',
         label: i18n.t('page.sidebar.search'),
         route: generatePath(AppRoute.SEARCH, { itemType: LibraryItem.SONG }),
     },
     { disabled: false, id: 'Home', label: i18n.t('page.sidebar.home'), route: AppRoute.HOME },
+    {
+        disabled: false,
+        id: 'Offline',
+        label: i18n.t('page.sidebar.offline'),
+        route: `${AppRoute.LIBRARY_SONGS}?offline=1`,
+    },
     {
         disabled: false,
         id: 'Favorites',
@@ -1084,7 +1086,7 @@ export const sidebarItems: SidebarItemType[] = [
         route: AppRoute.RADIO,
     },
     {
-        disabled: true,
+        disabled: false,
         id: 'Settings',
         label: i18n.t('page.sidebar.settings'),
         route: AppRoute.SETTINGS,
@@ -2550,10 +2552,69 @@ export const useSettingsStore = createWithEqualityFn<SettingsSlice>()(
                     };
                 }
 
+                if (version <= 34) {
+                    state.general.sideQueueType = 'sideQueue';
+
+                    for (const item of state.general.sidebarItems) {
+                        if (
+                            item.id === 'Search' ||
+                            item.id === 'Now Playing' ||
+                            item.id === 'Settings'
+                        ) {
+                            item.disabled = false;
+                        }
+                        if (item.id === 'Party') {
+                            item.disabled = true;
+                        }
+                    }
+                }
+
+                if (version <= 35) {
+                    const hasOffline = state.general.sidebarItems.some(
+                        (item) => item.id === 'Offline' || item.id === 'Downloads',
+                    );
+                    if (!hasOffline) {
+                        const homeIndex = state.general.sidebarItems.findIndex(
+                            (item) => item.id === 'Home',
+                        );
+                        state.general.sidebarItems.splice(homeIndex + 1, 0, {
+                            disabled: false,
+                            id: 'Offline',
+                            label: i18n.t('page.sidebar.offline'),
+                            route: `${AppRoute.LIBRARY_SONGS}?offline=1`,
+                        });
+                    }
+                }
+
+                if (version <= 36) {
+                    for (const item of state.general.sidebarItems) {
+                        if (item.id === 'Downloads') {
+                            item.id = 'Offline';
+                            item.label = i18n.t('page.sidebar.offline');
+                        }
+                    }
+                }
+
+                if (version <= 37) {
+                    for (const item of state.general.sidebarItems) {
+                        if (item.id === 'Offline' || item.id === 'Downloads') {
+                            item.id = 'Offline';
+                            item.label = i18n.t('page.sidebar.offline');
+                            item.route = `${AppRoute.LIBRARY_SONGS}?offline=1`;
+                        }
+                    }
+                }
+
+                if (version <= 38) {
+                    state.general.playerItems = state.general.playerItems.filter(
+                        (item) => item.id !== PlayerItem.CODEC,
+                    );
+                }
+
                 return persistedState;
             },
             name: 'store_settings',
-            version: 34,
+            version: 39,
         },
     ),
 );

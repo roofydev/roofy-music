@@ -26,6 +26,9 @@ export const DevicesSettingsTab = () => {
                     <DevicesPicker embedded />
                     <Divider />
                     <Stack gap="xs">
+                        <Text c="dimmed" size="sm">
+                            {t('productUx.devices.webControlAdvancedHint')}
+                        </Text>
                         <Text fw={600} size="sm">
                             {t('productUx.devices.advancedSection')}
                         </Text>

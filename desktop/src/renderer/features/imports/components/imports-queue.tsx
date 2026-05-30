@@ -42,26 +42,41 @@ const getStatusBadgeColor = (status: string) => {
     }
 };
 
-const getVideoImportBadge = (job: {
-    saveVideo?: boolean;
-    source?: string;
-    status: string;
-    videoDownloadedCount?: number;
-}) => {
-    if (job.source === 'spotify') return <Badge variant="light">Metadata match</Badge>;
-    if (job.source === 'soundcloud') return <Badge variant="light">Audio import</Badge>;
-    if (!job.saveVideo) return <Badge variant="light">Audio only</Badge>;
-    if (job.videoDownloadedCount && job.videoDownloadedCount > 0) {
-        return <Badge color="green">MP4 saved</Badge>;
+const getVideoImportBadge = (
+    job: {
+        saveVideo?: boolean;
+        source?: string;
+        status: string;
+        videoDownloadedCount?: number;
+    },
+    t: (key: string) => string,
+) => {
+    if (job.source === 'spotify') {
+        return <Badge variant="light">{t('productUx.import.videoBadge.metadataMatch')}</Badge>;
     }
-    if (job.status === 'failed') return <Badge color="red">MP4 not saved</Badge>;
-    return <Badge color="blue">MP4 requested</Badge>;
+    if (job.source === 'soundcloud') {
+        return <Badge variant="light">{t('productUx.import.videoBadge.audioImport')}</Badge>;
+    }
+    if (!job.saveVideo) {
+        return <Badge variant="light">{t('productUx.import.videoBadge.audioOnly')}</Badge>;
+    }
+    if (job.videoDownloadedCount && job.videoDownloadedCount > 0) {
+        return <Badge color="green">{t('productUx.import.videoBadge.videoSaved')}</Badge>;
+    }
+    if (job.status === 'failed') {
+        return <Badge color="red">{t('productUx.import.videoBadge.videoNotSaved')}</Badge>;
+    }
+    return <Badge color="blue">{t('productUx.import.videoBadge.videoRequested')}</Badge>;
 };
 
-const getSourceBadge = (source?: string) => {
-    if (source === 'spotify') return <Badge color="green">Spotify</Badge>;
-    if (source === 'soundcloud') return <Badge color="orange">SoundCloud</Badge>;
-    return <Badge color="red">YouTube Music</Badge>;
+const getSourceBadge = (source: string | undefined, t: (key: string) => string) => {
+    if (source === 'spotify') {
+        return <Badge color="green">{t('productUx.import.sourceBadge.spotify')}</Badge>;
+    }
+    if (source === 'soundcloud') {
+        return <Badge color="orange">{t('productUx.import.sourceBadge.soundcloud')}</Badge>;
+    }
+    return <Badge color="red">{t('productUx.import.sourceBadge.onlineCatalog')}</Badge>;
 };
 
 export const ImportsQueue = () => {
@@ -176,7 +191,9 @@ export const ImportsQueue = () => {
                     type="button"
                 >
                     <Text className={styles.summaryValue}>{stats.active}</Text>
-                    <Text className={styles.summaryLabel}>Active</Text>
+                    <Text className={styles.summaryLabel}>
+                        {t('productUx.import.summary.active')}
+                    </Text>
                 </button>
                 <button
                     className={styles.summaryItem}
@@ -185,7 +202,9 @@ export const ImportsQueue = () => {
                     type="button"
                 >
                     <Text className={styles.summaryValue}>{stats.failed}</Text>
-                    <Text className={styles.summaryLabel}>Failed</Text>
+                    <Text className={styles.summaryLabel}>
+                        {t('productUx.import.summary.failed')}
+                    </Text>
                 </button>
                 <button
                     className={styles.summaryItem}
@@ -194,7 +213,9 @@ export const ImportsQueue = () => {
                     type="button"
                 >
                     <Text className={styles.summaryValue}>{stats.completed}</Text>
-                    <Text className={styles.summaryLabel}>Completed</Text>
+                    <Text className={styles.summaryLabel}>
+                        {t('productUx.import.summary.completed')}
+                    </Text>
                 </button>
                 <button
                     className={styles.summaryItem}
@@ -203,12 +224,12 @@ export const ImportsQueue = () => {
                     type="button"
                 >
                     <Text className={styles.summaryValue}>{stats.total}</Text>
-                    <Text className={styles.summaryLabel}>All jobs</Text>
+                    <Text className={styles.summaryLabel}>{t('productUx.import.summary.all')}</Text>
                 </button>
             </div>
 
             {visibleJobs.length === 0 ? (
-                <div className={styles.emptyState}>
+                <div className={styles.emptyState} role="status">
                     <Icon icon="download" size="2xl" />
                     <Stack gap={4}>
                         <Text fw={600}>
@@ -227,10 +248,10 @@ export const ImportsQueue = () => {
                 <Table className={styles.table}>
                     <Table.Thead>
                         <Table.Tr>
-                            <Table.Th>Track</Table.Th>
-                            <Table.Th>Target</Table.Th>
-                            <Table.Th>Status</Table.Th>
-                            <Table.Th>Progress</Table.Th>
+                            <Table.Th>{t('productUx.import.table.track')}</Table.Th>
+                            <Table.Th>{t('productUx.import.table.target')}</Table.Th>
+                            <Table.Th>{t('productUx.import.table.status')}</Table.Th>
+                            <Table.Th>{t('productUx.import.table.progress')}</Table.Th>
                             <Table.Th />
                         </Table.Tr>
                     </Table.Thead>
@@ -241,10 +262,10 @@ export const ImportsQueue = () => {
                             const artist =
                                 job.artist ||
                                 (job.source === 'spotify'
-                                    ? 'Spotify'
+                                    ? t('productUx.import.sourceBadge.spotify')
                                     : job.source === 'soundcloud'
-                                      ? 'SoundCloud'
-                                      : 'YouTube Music');
+                                      ? t('productUx.import.sourceBadge.soundcloud')
+                                      : t('productUx.import.unknownArtist'));
                             const target = job.targetPlaylistNames?.join(', ') || 'Library';
                             const canDismiss =
                                 job.status === 'completed' || job.status === 'failed';
@@ -272,8 +293,8 @@ export const ImportsQueue = () => {
                                                     <Text isMuted size="xs">
                                                         {artist}
                                                     </Text>
-                                                    {getSourceBadge(job.source)}
-                                                    {getVideoImportBadge(job)}
+                                                    {getSourceBadge(job.source, t)}
+                                                    {getVideoImportBadge(job, t)}
                                                 </Group>
                                                 {job.error && (
                                                     <Text

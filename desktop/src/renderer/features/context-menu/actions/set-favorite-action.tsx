@@ -43,7 +43,7 @@ export const SetFavoriteAction = ({ ids, itemType, songs = [] }: SetFavoriteActi
     const handleAddToFavorites = useCallback(() => {
         if (isYoutubeOnlySelection) {
             setYoutubeFavorite(youtubeSongs, true);
-            toast.success({ message: 'Saved YouTube Music favorite locally' });
+            toast.success({ message: t('productUx.search.youtubeMusic.favoriteSavedLocal') });
             return;
         }
 
@@ -61,7 +61,7 @@ export const SetFavoriteAction = ({ ids, itemType, songs = [] }: SetFavoriteActi
     const handleRemoveFromFavorites = useCallback(() => {
         if (isYoutubeOnlySelection) {
             setYoutubeFavorite(youtubeSongs, false);
-            toast.success({ message: 'Updated YouTube Music favorite locally' });
+            toast.success({ message: t('productUx.search.youtubeMusic.favoriteUpdatedLocal') });
             return;
         }
 

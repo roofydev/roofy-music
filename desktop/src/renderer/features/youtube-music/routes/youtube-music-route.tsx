@@ -315,7 +315,7 @@ const YoutubeMusicRoute = () => {
                                         className={styles.headerSearch}
                                         leftSection={<Icon icon="search" />}
                                         onChange={(event) => setQuery(event.currentTarget.value)}
-                                        placeholder="Search YouTube Music"
+                                        placeholder={t('productUx.search.youtubeMusic.searchPlaceholder')}
                                         value={query}
                                     />
                                 </Group>
@@ -327,7 +327,11 @@ const YoutubeMusicRoute = () => {
                                         <div className={styles.contentPanel}>
                                             <div className={styles.contentPanelBody}>
                                                 {searchQuery.isLoading || searchQuery.isFetching ? (
-                                                    <LoadingState label="Loading search results" />
+                                                    <LoadingState
+                                                        label={t(
+                                                            'productUx.search.youtubeMusic.loadingSearchResults',
+                                                        )}
+                                                    />
                                                 ) : searchQuery.error ? (
                                                     <ErrorState error={searchQuery.error} />
                                                 ) : (
@@ -340,8 +344,12 @@ const YoutubeMusicRoute = () => {
                                                         ) : (
                                                             <Text isMuted>
                                                                 {debouncedQuery
-                                                                    ? 'No tracks found.'
-                                                                    : 'Type a query to search YouTube Music.'}
+                                                                    ? t(
+                                                                          'productUx.search.youtubeMusic.noTracks',
+                                                                      )
+                                                                    : t(
+                                                                          'productUx.search.youtubeMusic.searchPrompt',
+                                                                      )}
                                                             </Text>
                                                         )}
                                                     </>
@@ -350,7 +358,9 @@ const YoutubeMusicRoute = () => {
                                         </div>
                                     ) : (
                                         <div className={styles.contentPanel}>
-                                            <Text isMuted>Login to search YouTube Music.</Text>
+                                            <Text isMuted>
+                                                {t('productUx.search.youtubeMusic.loginToSearchTitle')}
+                                            </Text>
                                         </div>
                                     )}
                                 </ListWithSidebarContainer>
@@ -366,7 +376,9 @@ const YoutubeMusicRoute = () => {
                                         itemType={LibraryItem.SONG}
                                         songs={filteredSongs}
                                     />
-                                    <LibraryHeaderBar.Title>My Songs</LibraryHeaderBar.Title>
+                                    <LibraryHeaderBar.Title>
+                                        {t('productUx.search.youtubeMusic.mySongs')}
+                                    </LibraryHeaderBar.Title>
                                     <LibraryHeaderBar.Badge>
                                         {filteredSongs.length}
                                     </LibraryHeaderBar.Badge>
@@ -400,7 +412,11 @@ const YoutubeMusicRoute = () => {
                                         <div className={styles.contentPanel}>
                                             <div className={styles.contentPanelBody}>
                                                 {accountSongsQuery.isLoading ? (
-                                                    <LoadingState label="Loading YouTube Music songs" />
+                                                    <LoadingState
+                                                        label={t(
+                                                            'productUx.search.youtubeMusic.loadingSongs',
+                                                        )}
+                                                    />
                                                 ) : accountSongsQuery.error ? (
                                                     <ErrorState error={accountSongsQuery.error} />
                                                 ) : (
@@ -410,7 +426,11 @@ const YoutubeMusicRoute = () => {
                                                                 songs={filteredSongs}
                                                             />
                                                         ) : (
-                                                            <Text isMuted>No tracks found.</Text>
+                                                            <Text isMuted>
+                                                                {t(
+                                                                    'productUx.search.youtubeMusic.noTracks',
+                                                                )}
+                                                            </Text>
                                                         )}
                                                     </>
                                                 )}
@@ -418,7 +438,9 @@ const YoutubeMusicRoute = () => {
                                         </div>
                                     ) : (
                                         <div className={styles.contentPanel}>
-                                            <Text isMuted>Login to load your YouTube Music songs.</Text>
+                                            <Text isMuted>
+                                                {t('productUx.search.youtubeMusic.loginToLoadSongs')}
+                                            </Text>
                                         </div>
                                     )}
                                 </ListWithSidebarContainer>
@@ -436,7 +458,11 @@ const YoutubeMusicRoute = () => {
                                                 <div className={styles.contentPanelBody}>
                                                     {accountPlaylistDetailQuery.isLoading ||
                                                     accountPlaylistSongsQuery.isLoading ? (
-                                                        <LoadingState label="Loading playlist" />
+                                                        <LoadingState
+                                                            label={t(
+                                                                'productUx.search.youtubeMusic.loadingPlaylist',
+                                                            )}
+                                                        />
                                                     ) : accountPlaylistDetailQuery.error ? (
                                                         <ErrorState
                                                             error={accountPlaylistDetailQuery.error}
@@ -466,7 +492,9 @@ const YoutubeMusicRoute = () => {
                                         ) : (
                                             <div className={styles.contentPanel}>
                                                 <Text isMuted>
-                                                    Login to load your YouTube Music playlists.
+                                                    {t(
+                                                        'productUx.search.youtubeMusic.loginToLoadPlaylists',
+                                                    )}
                                                 </Text>
                                             </div>
                                         )}
@@ -477,7 +505,7 @@ const YoutubeMusicRoute = () => {
                                     <PageHeader>
                                         <LibraryHeaderBar ignoreMaxWidth>
                                             <LibraryHeaderBar.Title>
-                                                My Playlists
+                                                {t('productUx.search.youtubeMusic.myPlaylists')}
                                             </LibraryHeaderBar.Title>
                                             <LibraryHeaderBar.Badge>
                                                 {filteredPlaylists.length}
@@ -500,7 +528,9 @@ const YoutubeMusicRoute = () => {
                                                 onChange={(event) =>
                                                     setPlaylistSearchTerm(event.currentTarget.value)
                                                 }
-                                                placeholder="Filter playlists"
+                                                placeholder={t(
+                                                    'productUx.search.youtubeMusic.filterPlaylists',
+                                                )}
                                                 value={playlistSearchTerm}
                                             />
                                         </Group>
@@ -512,7 +542,11 @@ const YoutubeMusicRoute = () => {
                                                 <div className={styles.contentPanel}>
                                                     <div className={styles.contentPanelBody}>
                                                         {accountPlaylistsQuery.isLoading ? (
-                                                            <LoadingState label="Loading YouTube Music playlists" />
+                                                            <LoadingState
+                                                                label={t(
+                                                                    'productUx.search.youtubeMusic.loadingPlaylists',
+                                                                )}
+                                                            />
                                                         ) : accountPlaylistsQuery.error ? (
                                                             <ErrorState
                                                                 error={accountPlaylistsQuery.error}
@@ -531,7 +565,9 @@ const YoutubeMusicRoute = () => {
                                                                     />
                                                                 ) : (
                                                                     <Text isMuted>
-                                                                        No playlists found.
+                                                                        {t(
+                                                                            'productUx.search.youtubeMusic.noPlaylistsFound',
+                                                                        )}
                                                                     </Text>
                                                                 )}
                                                             </>
@@ -541,7 +577,9 @@ const YoutubeMusicRoute = () => {
                                             ) : (
                                                 <div className={styles.contentPanel}>
                                                     <Text isMuted>
-                                                        Login to load your YouTube Music playlists.
+                                                        {t(
+                                                        'productUx.search.youtubeMusic.loginToLoadPlaylists',
+                                                    )}
                                                     </Text>
                                                 </div>
                                             )}
@@ -557,7 +595,7 @@ const YoutubeMusicRoute = () => {
                             <PageHeader>
                                 <LibraryHeaderBar ignoreMaxWidth>
                                     <LibraryHeaderBar.Title>
-                                        YouTube Music account
+                                        {t('productUx.search.youtubeMusic.accountTitle')}
                                     </LibraryHeaderBar.Title>
                                     <YoutubeMusicIcon size="2rem" />
                                 </LibraryHeaderBar>
@@ -565,8 +603,7 @@ const YoutubeMusicRoute = () => {
                             <div className={styles.remotePanel}>
                                 <Stack gap="md">
                                     <Text isMuted size="sm">
-                                        Login enables your signed-in YouTube Music library inside
-                                        Roofy.
+                                        {t('productUx.search.youtubeMusic.accountDescription')}
                                     </Text>
                                     {!isConnected ? (
                                         <Button
@@ -610,14 +647,18 @@ const LoadingState = ({ label }: { label: string }) => (
     </div>
 );
 
-const ErrorState = ({ error }: { error: Error }) => (
+const ErrorState = ({ error }: { error: Error }) => {
+    const { t } = useTranslation();
+
+    return (
     <div className={styles.errorState}>
-        <Text fw={600}>Could not load this YouTube Music section.</Text>
+        <Text fw={600}>{t('productUx.search.youtubeMusic.sectionLoadFailed')}</Text>
         <Text isMuted size="sm">
             {error.message}
         </Text>
     </div>
-);
+    );
+};
 
 const ImportVideoCheckbox = ({
     checked,
@@ -625,12 +666,15 @@ const ImportVideoCheckbox = ({
 }: {
     checked: boolean;
     onChange: (checked: boolean) => void;
-}) => (
-    <Checkbox
-        checked={checked}
-        label="Save MP4 with imports"
-        onChange={(event) => onChange(event.currentTarget.checked)}
-    />
-);
+}) => {
+    const { t } = useTranslation();
+    return (
+        <Checkbox
+            checked={checked}
+            label={t('productUx.video.saveWithImports')}
+            onChange={(event) => onChange(event.currentTarget.checked)}
+        />
+    );
+};
 
 export default YoutubeMusicRoute;

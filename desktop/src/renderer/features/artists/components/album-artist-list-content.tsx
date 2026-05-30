@@ -2,8 +2,11 @@ import { lazy, Suspense, useMemo } from 'react';
 
 import { useAlbumArtistListFilters } from '/@/renderer/features/artists/hooks/use-album-artist-list-filters';
 import { ItemListSettings, useCurrentServer, useListSettings } from '/@/renderer/store';
+import { LibraryListEmptyHint } from '/@/renderer/features/shared/components/library-list-empty-hint';
 import { Spinner } from '/@/shared/components/spinner/spinner';
-import { AlbumArtistListQuery } from '/@/shared/types/domain-types';
+import { Stack } from '/@/shared/components/stack/stack';
+import { FILTER_KEYS } from '/@/renderer/features/shared/utils';
+import { AlbumArtistListQuery, LibraryItem } from '/@/shared/types/domain-types';
 import { ItemListKey, ListDisplayType, ListPaginationType } from '/@/shared/types/types';
 
 const AlbumArtistListInfiniteGrid = lazy(() =>
@@ -83,6 +86,11 @@ export const AlbumArtistListView = ({
         };
     }, [query, overrideQuery]);
 
+    const searchTerm =
+        mergedQuery.searchTerm ??
+        (mergedQuery as Record<string, string | undefined>)[FILTER_KEYS.SHARED.SEARCH_TERM];
+
+    const listBody = (() => {
     switch (display) {
         case ListDisplayType.GRID: {
             switch (pagination) {
@@ -157,4 +165,12 @@ export const AlbumArtistListView = ({
     }
 
     return null;
+    })();
+
+    return (
+        <Stack gap={0}>
+            <LibraryListEmptyHint itemType={LibraryItem.ALBUM_ARTIST} searchTerm={searchTerm} />
+            {listBody}
+        </Stack>
+    );
 };

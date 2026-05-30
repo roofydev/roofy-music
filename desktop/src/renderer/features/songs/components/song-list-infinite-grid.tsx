@@ -8,6 +8,7 @@ import { ItemGridList } from '/@/renderer/components/item-list/item-grid-list/it
 import { ItemListGridComponentProps } from '/@/renderer/components/item-list/types';
 import { useListContext } from '/@/renderer/context/list-context';
 import { songsQueries } from '/@/renderer/features/songs/api/songs-api';
+import { useOfflineSongListQuery } from '/@/renderer/features/songs/hooks/use-offline-song-list-query';
 import { useGeneralSettings } from '/@/renderer/store';
 import { LibraryItem, SongListQuery, SongListSort, SortOrder } from '/@/shared/types/domain-types';
 import { ItemListKey } from '/@/shared/types/types';
@@ -31,7 +32,7 @@ export const SongListInfiniteGrid = ({
         serverId: serverId,
     }) as UseSuspenseQueryOptions<number, Error, number, readonly unknown[]>;
 
-    const listQueryFn = api.controller.getSongList;
+    const { adaptedListQueryFn } = useOfflineSongListQuery(query, api.controller.getSongList);
     const { pageKey } = useListContext();
 
     const { dataVersion, getItem, getItemIndex, itemCount, loadedItems, onRangeChanged } =
@@ -40,7 +41,7 @@ export const SongListInfiniteGrid = ({
             itemsPerPage,
             itemType: LibraryItem.SONG,
             listCountQuery,
-            listQueryFn,
+            listQueryFn: adaptedListQueryFn,
             query,
             serverId,
         });
