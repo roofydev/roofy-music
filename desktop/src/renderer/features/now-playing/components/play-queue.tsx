@@ -377,7 +377,7 @@ const EmptyQueueDropZone = () => {
             ref={ref}
             w="100%"
         >
-            <div className={styles.emptyState}>
+            <div className={styles.emptyState} role="status">
                 <div className={styles.emptyIcon}>
                     <Icon icon="track" size="xl" />
                 </div>

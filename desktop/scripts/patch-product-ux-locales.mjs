@@ -17,6 +17,7 @@ const patches = {
         playlistsEmpty: en.productUx.library.playlistsEmpty,
     },
     queue: en.productUx.queue,
+    stats: en.productUx.stats,
     search: {
         empty: en.productUx.search.empty,
         youtubeMusic: {
@@ -42,6 +43,7 @@ for (const locale of targets) {
     };
     data.productUx.library = { ...patches.library, ...data.productUx.library };
     data.productUx.queue = { ...patches.queue, ...data.productUx.queue };
+    data.productUx.stats = { ...patches.stats, ...data.productUx.stats };
     data.productUx.search = data.productUx.search ?? {};
     data.productUx.search.empty = { ...patches.search.empty, ...data.productUx.search.empty };
     data.productUx.search.youtubeMusic = {

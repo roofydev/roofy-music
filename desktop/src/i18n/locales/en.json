@@ -730,7 +730,7 @@
         "sleepTimer_timeRemaining": "{{time}} remaining",
         "sleepTimer_setCustom": "Set timer",
         "sleepTimer_cancel": "Cancel timer",
-        "scrobbleForceSubmit": "Submit play now"
+        "scrobbleForceSubmit": "Log to listening history now"
     },
     "queryBuilder": {
         "standardTags": "Standard tags",
@@ -1478,6 +1478,19 @@
         "queue": {
             "emptyTitle": "Nothing in the queue",
             "emptySubtitle": "Play a song or add tracks from your library."
+        },
+        "stats": {
+            "title": "Stats",
+            "subtitle": "Listening totals from this device.",
+            "emptyTitle": "No listening stats yet",
+            "emptyDescription": "Stats appear after you listen long enough for a track to count.",
+            "rangeAllTime": "All time",
+            "summaryLabel": "Listening summary",
+            "plays": "Plays",
+            "listenTime": "Listen time",
+            "songsPlayed": "Songs played",
+            "topArtist": "Top artist",
+            "topGenre": "Top genre"
         },
         "downloads": {
             "folderTitle": "Download folder",

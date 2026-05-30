@@ -143,6 +143,7 @@ const QueueButton = () => {
 
     return (
         <ActionIcon
+            aria-label={t('player.viewQueue')}
             icon={isSidebarRightExpanded ? 'panelRightClose' : 'panelRightOpen'}
             iconProps={{
                 size: 'lg',
@@ -172,8 +173,11 @@ const LyricsButton = () => {
         setFullScreenPlayerStore({ expanded: !isFullScreenPlayerExpanded });
     };
 
+    const { t } = useTranslation();
+
     return (
         <ActionIcon
+            aria-label={t('player.lyrics')}
             icon="microphone"
             iconProps={{
                 color: activeTab === 'lyrics' && isFullScreenPlayerExpanded ? 'primary' : undefined,
@@ -196,6 +200,7 @@ const LyricsButton = () => {
 };
 
 const FavoriteButton = () => {
+    const { t } = useTranslation();
     const currentSong = usePlayerSong();
     const { bindings } = useHotkeySettings();
 
@@ -257,8 +262,13 @@ const FavoriteButton = () => {
         ],
     ]);
 
+    const favoriteLabel = currentSong?.userFavorite
+        ? t('player.unfavorite')
+        : t('player.favorite');
+
     return (
         <ActionIcon
+            aria-label={favoriteLabel}
             icon="favorite"
             iconProps={{
                 fill: currentSong?.userFavorite ? 'primary' : undefined,
@@ -270,7 +280,7 @@ const FavoriteButton = () => {
             }}
             size="sm"
             tooltip={{
-                label: currentSong?.userFavorite ? t('player.unfavorite') : t('player.favorite'),
+                label: favoriteLabel,
                 openDelay: 0,
             }}
             variant="subtle"

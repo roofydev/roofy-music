@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import styles from './stats-content.module.css';
 
@@ -56,15 +57,16 @@ const useStats = (range: StatsRange) => {
 };
 
 export const StatsContent = () => {
+    const { t } = useTranslation();
     const [range, setRange] = useState<StatsRange>('allTime');
     const snapshot = useStats(range);
     const years = snapshot.availableYears.length ? snapshot.availableYears : [currentYear];
     const rangeOptions = useMemo(
         () => [
-            { label: 'All time', value: 'allTime' },
+            { label: t('productUx.stats.rangeAllTime'), value: 'allTime' },
             ...years.map((year) => ({ label: String(year), value: String(year) })),
         ],
-        [years],
+        [t, years],
     );
     const topArtist = snapshot.topArtists[0]?.name ?? '-';
     const topGenre = snapshot.topGenres[0]?.name ?? '-';
@@ -78,10 +80,10 @@ export const StatsContent = () => {
             <header className={styles.header}>
                 <div className={styles.titleBlock}>
                     <Text component="h1" fw={700} size="2rem">
-                        Stats
+                        {t('productUx.stats.title')}
                     </Text>
                     <Text c="dimmed" size="sm">
-                        Local listening totals from this device.
+                        {t('productUx.stats.subtitle')}
                     </Text>
                 </div>
                 <SegmentedControl
@@ -92,30 +94,36 @@ export const StatsContent = () => {
             </header>
 
             {snapshot.totalPlays === 0 && snapshot.totalListenMs === 0 ? (
-                <div className={styles.empty}>
+                <div className={styles.empty} role="status">
                     <div>
                         <Text fw={600} size="lg">
-                            No stats yet
+                            {t('productUx.stats.emptyTitle')}
                         </Text>
                         <Text c="dimmed" size="sm">
-                            Stats will appear after you listen long enough for a track to count.
+                            {t('productUx.stats.emptyDescription')}
                         </Text>
                     </div>
                 </div>
             ) : (
                 <>
-                    <section className={styles.summary} aria-label="Listening summary">
-                        <SummaryMetric label="Plays" value={snapshot.totalPlays.toLocaleString()} />
+                    <section
+                        aria-label={t('productUx.stats.summaryLabel')}
+                        className={styles.summary}
+                    >
                         <SummaryMetric
-                            label="Listen time"
+                            label={t('productUx.stats.plays')}
+                            value={snapshot.totalPlays.toLocaleString()}
+                        />
+                        <SummaryMetric
+                            label={t('productUx.stats.listenTime')}
                             value={formatListenTime(snapshot.totalListenMs)}
                         />
                         <SummaryMetric
-                            label="Songs played"
+                            label={t('productUx.stats.songsPlayed')}
                             value={snapshot.songsPlayed.toLocaleString()}
                         />
-                        <SummaryMetric label="Top artist" value={topArtist} />
-                        <SummaryMetric label="Top genre" value={topGenre} />
+                        <SummaryMetric label={t('productUx.stats.topArtist')} value={topArtist} />
+                        <SummaryMetric label={t('productUx.stats.topGenre')} value={topGenre} />
                     </section>
 
                     <div className={styles.layout}>

@@ -1529,6 +1529,19 @@
                 "savedMessage": "Video is attached to this library track.",
                 "failedTitle": "Could not save video"
             }
+        },
+        "stats": {
+            "title": "Stats",
+            "subtitle": "Listening totals from this device.",
+            "emptyTitle": "No listening stats yet",
+            "emptyDescription": "Stats appear after you listen long enough for a track to count.",
+            "rangeAllTime": "All time",
+            "summaryLabel": "Listening summary",
+            "plays": "Plays",
+            "listenTime": "Listen time",
+            "songsPlayed": "Songs played",
+            "topArtist": "Top artist",
+            "topGenre": "Top genre"
         }
     }
 }
