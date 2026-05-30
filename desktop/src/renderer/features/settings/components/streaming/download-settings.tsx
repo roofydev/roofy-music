@@ -1,5 +1,6 @@
 import isElectron from 'is-electron';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import {
     SettingOption,
@@ -12,6 +13,7 @@ import { Text } from '/@/shared/components/text/text';
 import { toast } from '/@/shared/components/toast/toast';
 
 export const DownloadSettings = () => {
+    const { t } = useTranslation();
     const [format, setFormat] = useState('bestaudio');
     const [quality, setQuality] = useState('best');
     const [busy, setBusy] = useState(false);
@@ -122,5 +124,5 @@ export const DownloadSettings = () => {
         },
     ];
 
-    return <SettingsSection options={options} title="Downloads" />;
+    return <SettingsSection options={options} title={t('page.setting.downloadsOffline')} />;
 };

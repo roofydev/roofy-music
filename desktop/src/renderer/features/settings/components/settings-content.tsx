@@ -18,16 +18,34 @@ const PlaybackTab = lazy(() =>
     })),
 );
 
-const HotkeysTab = lazy(() =>
-    import('/@/renderer/features/settings/components/hotkeys/hotkeys-tab').then((module) => ({
-        default: module.HotkeysTab,
+const AppearanceTab = lazy(() =>
+    import('/@/renderer/features/settings/components/appearance/appearance-tab').then(
+        (module) => ({
+            default: module.AppearanceTab,
+        }),
+    ),
+);
+
+const DiscordTab = lazy(() =>
+    import('/@/renderer/features/settings/components/discord/discord-tab').then((module) => ({
+        default: module.DiscordTab,
     })),
 );
 
-const WindowTab = lazy(() =>
-    import('/@/renderer/features/settings/components/window/window-tab').then((module) => ({
-        default: module.WindowTab,
-    })),
+const DevicesSettingsTab = lazy(() =>
+    import('/@/renderer/features/settings/components/devices/devices-settings-tab').then(
+        (module) => ({
+            default: module.DevicesSettingsTab,
+        }),
+    ),
+);
+
+const DownloadsSettingsTab = lazy(() =>
+    import('/@/renderer/features/settings/components/downloads/downloads-settings-tab').then(
+        (module) => ({
+            default: module.DownloadsSettingsTab,
+        }),
+    ),
 );
 
 const AdvancedTab = lazy(() =>
@@ -36,22 +54,18 @@ const AdvancedTab = lazy(() =>
     })),
 );
 
-const LocalTab = lazy(() =>
-    import('/@/renderer/features/settings/components/local/local-tab').then((module) => ({
-        default: module.LocalTab,
-    })),
-);
-
-const StreamingTab = lazy(() =>
-    import('/@/renderer/features/settings/components/streaming/streaming-tab').then((module) => ({
-        default: module.StreamingTab,
-    })),
-);
+const resolveSettingsTab = (tab: string) => {
+    if (tab === 'window' || tab === 'appearance') return 'appearance';
+    if (tab === 'streaming') return 'downloads';
+    if (tab === 'hotkeys' || tab === 'local') return 'advanced';
+    return tab;
+};
 
 export const SettingsContent = () => {
     const { t } = useTranslation();
     const currentTab = useSettingsStore((state) => state.tab);
     const { setSettings } = useSettingsStoreActions();
+    const activeTab = resolveSettingsTab(currentTab);
 
     return (
         <div
@@ -61,19 +75,27 @@ export const SettingsContent = () => {
                 keepMounted={false}
                 onChange={(e) => e && setSettings({ tab: e })}
                 orientation="horizontal"
-                value={currentTab}
+                value={activeTab}
                 variant="default"
             >
                 <Tabs.List>
                     <Tabs.Tab value="general">{t('page.setting.generalTab')}</Tabs.Tab>
                     <Tabs.Tab value="playback">{t('page.setting.playbackTab')}</Tabs.Tab>
-                    <Tabs.Tab value="hotkeys">{t('page.setting.hotkeysTab')}</Tabs.Tab>
                     {isElectron() && (
-                        <Tabs.Tab value="window">{t('page.setting.windowTab')}</Tabs.Tab>
+                        <Tabs.Tab value="downloads">
+                            {t('page.setting.downloadsOffline')}
+                        </Tabs.Tab>
+                    )}
+                    {isElectron() && (
+                        <Tabs.Tab value="appearance">{t('page.setting.appearance')}</Tabs.Tab>
+                    )}
+                    {isElectron() && (
+                        <Tabs.Tab value="discord">{t('page.setting.discord')}</Tabs.Tab>
+                    )}
+                    {isElectron() && (
+                        <Tabs.Tab value="devices">{t('page.setting.devices')}</Tabs.Tab>
                     )}
                     <Tabs.Tab value="advanced">{t('page.setting.advanced')}</Tabs.Tab>
-                    {isElectron() && <Tabs.Tab value="local">Local</Tabs.Tab>}
-                    {isElectron() && <Tabs.Tab value="streaming">Streaming</Tabs.Tab>}
                 </Tabs.List>
                 <Tabs.Panel value="general">
                     <Suspense fallback={<Spinner container />}>
@@ -85,15 +107,31 @@ export const SettingsContent = () => {
                         <PlaybackTab />
                     </Suspense>
                 </Tabs.Panel>
-                <Tabs.Panel value="hotkeys">
-                    <Suspense fallback={<Spinner container />}>
-                        <HotkeysTab />
-                    </Suspense>
-                </Tabs.Panel>
                 {isElectron() && (
-                    <Tabs.Panel value="window">
+                    <Tabs.Panel value="downloads">
                         <Suspense fallback={<Spinner container />}>
-                            <WindowTab />
+                            <DownloadsSettingsTab />
+                        </Suspense>
+                    </Tabs.Panel>
+                )}
+                {isElectron() && (
+                    <Tabs.Panel value="appearance">
+                        <Suspense fallback={<Spinner container />}>
+                            <AppearanceTab />
+                        </Suspense>
+                    </Tabs.Panel>
+                )}
+                {isElectron() && (
+                    <Tabs.Panel value="discord">
+                        <Suspense fallback={<Spinner container />}>
+                            <DiscordTab />
+                        </Suspense>
+                    </Tabs.Panel>
+                )}
+                {isElectron() && (
+                    <Tabs.Panel value="devices">
+                        <Suspense fallback={<Spinner container />}>
+                            <DevicesSettingsTab />
                         </Suspense>
                     </Tabs.Panel>
                 )}
@@ -102,20 +140,6 @@ export const SettingsContent = () => {
                         <AdvancedTab />
                     </Suspense>
                 </Tabs.Panel>
-                {isElectron() && (
-                    <Tabs.Panel value="local">
-                        <Suspense fallback={<Spinner container />}>
-                            <LocalTab />
-                        </Suspense>
-                    </Tabs.Panel>
-                )}
-                {isElectron() && (
-                    <Tabs.Panel value="streaming">
-                        <Suspense fallback={<Spinner container />}>
-                            <StreamingTab />
-                        </Suspense>
-                    </Tabs.Panel>
-                )}
             </Tabs>
         </div>
     );

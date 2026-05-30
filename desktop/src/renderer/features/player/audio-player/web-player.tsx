@@ -24,6 +24,7 @@ import {
     usePlayerStoreBase,
     usePlayerVolume,
 } from '/@/renderer/store';
+import { showPlaybackErrorFromUnknown } from '/@/shared/product-ux';
 import { toast } from '/@/shared/components/toast/toast';
 import { QueueSong, ServerType } from '/@/shared/types/domain-types';
 import { CrossfadeStyle, PlayerStatus, PlayerStyle } from '/@/shared/types/types';
@@ -480,9 +481,7 @@ export function WebPlayer() {
 
     const handleOnErrorPause = useCallback(() => {
         mediaPause();
-        toast.error({
-            message: t('error.playbackPausedDueToError'),
-        });
+        showPlaybackErrorFromUnknown(t, new Error('playback_paused'));
     }, [mediaPause, t]);
 
     return (

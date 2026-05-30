@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useImportJobs } from '/@/renderer/store';
+import { logTechnicalError } from '/@/shared/product-ux';
 import { toast } from '/@/shared/components/toast/toast';
 
 const STORAGE_KEY = 'roofy.importNotifications';
@@ -34,7 +36,7 @@ const getTargetCopy = (names?: string[]) => {
 };
 
 const getDownloadedCopy = (count?: number) => {
-    if (!count || count <= 1) return 'Track';
+    if (!count || count <= 1) return '1 track';
     return `${count} tracks`;
 };
 
@@ -44,10 +46,10 @@ const getVideoCopy = (job: {
     videoDownloadedCount?: number;
     warning?: string;
 }) => {
-    if (job.source === 'spotify') return ' Spotify metadata applied.';
+    if (job.source === 'spotify') return '';
     if (!job.saveVideo) return '';
-    if (job.videoDownloadedCount && job.videoDownloadedCount > 0) return ' MP4 video saved.';
-    return ' Audio imported; MP4 video was not saved.';
+    if (job.videoDownloadedCount && job.videoDownloadedCount > 0) return ' Video included.';
+    return ' Video was not saved.';
 };
 
 const jobStartedBeforeSession = (job: { createdAt?: string }) => {
@@ -57,6 +59,7 @@ const jobStartedBeforeSession = (job: { createdAt?: string }) => {
 };
 
 export const ImportNotifications = () => {
+    const { t } = useTranslation();
     const jobs = useImportJobs();
     const notifiedRef = useRef<Set<string>>(loadNotifiedKeys());
     const activeToastRef = useRef<Set<string>>(new Set());
@@ -99,18 +102,21 @@ export const ImportNotifications = () => {
                 toast.show({
                     id: toastId,
                     loading: true,
-                    message: `${title} queued for ${target}.`,
-                    title: 'Import queued',
+                    message: t('productUx.import.toast.queuedMessage', { target, title }),
+                    title: t('productUx.import.toast.queuedTitle'),
                     withCloseButton: false,
                 });
             } else if (job.status === 'running') {
-                const message = `${title} downloading (${job.progress}%).`;
+                const message = t('productUx.import.toast.savingMessage', {
+                    progress: job.progress,
+                    title,
+                });
                 if (activeToastRef.current.has(job.id)) {
                     toast.update({
                         id: toastId,
                         loading: true,
                         message,
-                        title: 'Import in progress',
+                        title: t('productUx.import.toast.savingTitle'),
                         withCloseButton: false,
                     });
                 } else {
@@ -119,7 +125,7 @@ export const ImportNotifications = () => {
                         id: toastId,
                         loading: true,
                         message,
-                        title: 'Import in progress',
+                        title: t('productUx.import.toast.savingTitle'),
                         withCloseButton: false,
                     });
                 }
@@ -139,9 +145,11 @@ export const ImportNotifications = () => {
                         ? `${job.skippedCount} skipped.`
                         : clampText(job.warning || '', 70);
                 const videoCopy = getVideoCopy(job);
-                const message = skippedCopy
-                    ? `${getDownloadedCopy(job.downloadedCount)} imported to ${target}.${videoCopy} ${skippedCopy}`
-                    : `${getDownloadedCopy(job.downloadedCount)} imported to ${target}.${videoCopy}`;
+                const summary = getDownloadedCopy(job.downloadedCount);
+                const message = t('productUx.import.toast.savedMessage', {
+                    summary: `${summary}${videoCopy}${skippedCopy ? ` ${skippedCopy}` : ''}`,
+                    target,
+                });
 
                 if (skippedCopy) {
                     if (hadActiveToast) toast.hide(toastId);
@@ -149,7 +157,7 @@ export const ImportNotifications = () => {
                         id: toastId,
                         loading: false,
                         message,
-                        title: 'Import finished with skips',
+                        title: t('productUx.import.toast.savedWithSkipsTitle'),
                         withCloseButton: true,
                     });
                 } else {
@@ -158,7 +166,7 @@ export const ImportNotifications = () => {
                         id: toastId,
                         loading: false,
                         message,
-                        title: 'Import complete',
+                        title: t('productUx.import.toast.savedTitle'),
                         withCloseButton: true,
                     });
                 }
@@ -174,11 +182,12 @@ export const ImportNotifications = () => {
                 activeToastRef.current.delete(job.id);
 
                 if (hadActiveToast) toast.hide(toastId);
+                logTechnicalError('import', job.error);
                 toast.error({
                     id: toastId,
                     loading: false,
-                    message: `${title} import failed. ${clampText(job.error || 'Unknown error', 90)}`,
-                    title: 'Import failed',
+                    message: t('productUx.import.toast.failedMessage', { title }),
+                    title: t('productUx.import.toast.failedTitle'),
                     withCloseButton: true,
                 });
             }
@@ -186,7 +195,7 @@ export const ImportNotifications = () => {
 
         notifiedRef.current = keysToKeep;
         saveNotifiedKeys(keysToKeep);
-    }, [jobs]);
+    }, [jobs, t]);
 
     return null;
 };

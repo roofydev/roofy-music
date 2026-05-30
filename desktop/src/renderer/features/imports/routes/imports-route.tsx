@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 import { PageHeader } from '/@/renderer/components/page-header/page-header';
 import { ImportsQueue } from '/@/renderer/features/imports/components/imports-queue';
 import { AnimatedPage } from '/@/renderer/features/shared/components/animated-page';
@@ -8,13 +10,17 @@ import { ListWithSidebarContainer } from '/@/renderer/features/shared/components
 import { Stack } from '/@/shared/components/stack/stack';
 
 const ImportsRoute = () => {
+    const { t } = useTranslation();
+
     return (
         <AnimatedPage>
             <LibraryContainer>
                 <Stack gap={0} style={{ height: '100%', minHeight: 0 }}>
                     <PageHeader>
                         <LibraryHeaderBar ignoreMaxWidth>
-                            <LibraryHeaderBar.Title>Imports / Downloads</LibraryHeaderBar.Title>
+                            <LibraryHeaderBar.Title>
+                                {t('productUx.import.pageTitle')}
+                            </LibraryHeaderBar.Title>
                         </LibraryHeaderBar>
                     </PageHeader>
                     <FilterBar />

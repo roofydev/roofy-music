@@ -10,6 +10,7 @@ import { PlayerConfig } from '/@/renderer/features/player/components/player-conf
 import { CustomPlayerbarSlider } from '/@/renderer/features/player/components/playerbar-slider';
 import { SleepTimerButton } from '/@/renderer/features/player/components/sleep-timer-button';
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
+import { DevicesButton } from '/@/renderer/features/devices/components/devices-button';
 import { PartyPanel } from '/@/renderer/features/party/components/party-panel';
 import { useSetRating } from '/@/renderer/features/shared/hooks/use-set-rating';
 import { useCreateFavorite } from '/@/renderer/features/shared/mutations/create-favorite-mutation';
@@ -79,6 +80,7 @@ export const RightControls = () => {
             </Group>
             <Group align="center" gap="xs" wrap="nowrap">
                 <SleepTimerButton />
+                <DevicesButton />
                 <PartyPanel />
                 <PlayerConfig />
                 <LyricsButton />

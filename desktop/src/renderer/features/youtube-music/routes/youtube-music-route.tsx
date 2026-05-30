@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import isElectron from 'is-electron';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
 import styles from './youtube-music-route.module.css';
@@ -29,6 +30,7 @@ import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Stack } from '/@/shared/components/stack/stack';
 import { TextInput } from '/@/shared/components/text-input/text-input';
 import { Text } from '/@/shared/components/text/text';
+import { showImportError, showPlaybackErrorFromUnknown } from '/@/shared/product-ux';
 import { toast } from '/@/shared/components/toast/toast';
 import { useDebouncedValue } from '/@/shared/hooks/use-debounced-value';
 import { LibraryItem, Playlist, Song } from '/@/shared/types/domain-types';
@@ -40,6 +42,7 @@ type YtmView = 'browse' | 'login' | 'playlists' | 'search' | 'songs';
 const VALID_VIEWS = new Set<YtmView>(['browse', 'login', 'playlists', 'search', 'songs']);
 
 const YoutubeMusicRoute = () => {
+    const { t } = useTranslation();
     const [status, setStatus] = useState<null | YoutubeMusicAuthStatus>(null);
     const [query, setQuery] = useState('');
     const [debouncedQuery] = useDebouncedValue(query.trim(), 300);
@@ -62,8 +65,8 @@ const YoutubeMusicRoute = () => {
                 setStatus(nextStatus);
                 queryClient.setQueryData(youtubeMusicAuthStatusQueryKey, nextStatus);
             })
-            .catch((error) => toast.error({ message: (error as Error).message }));
-    }, []);
+            .catch((error) => showPlaybackErrorFromUnknown(t, error));
+    }, [t]);
 
     useEffect(() => {
         if (activeView === 'search' && queryParam) {
@@ -146,7 +149,7 @@ const YoutubeMusicRoute = () => {
                 setJob(job);
                 toast.success({ message: `Import queued: ${song.name}` });
             } catch (error) {
-                toast.error({ message: (error as Error).message });
+                showImportError(t, error);
             }
         },
         [saveVideoImports, setJob],
@@ -173,7 +176,7 @@ const YoutubeMusicRoute = () => {
                 setJob(job);
                 toast.success({ message: `Import queued: ${playlist.name}` });
             } catch (error) {
-                toast.error({ message: (error as Error).message });
+                showImportError(t, error);
             }
         },
         [saveVideoImports, setJob],
@@ -187,7 +190,7 @@ const YoutubeMusicRoute = () => {
                     await handleImportSong(song);
                 }
             } catch (error) {
-                toast.error({ message: (error as Error).message });
+                showImportError(t, error);
             }
         },
         [handleImportSong],
@@ -205,7 +208,7 @@ const YoutubeMusicRoute = () => {
 
             addToQueueByData(playType, songs);
         } catch (error) {
-            toast.error({ message: (error as Error).message });
+            showImportError(t, error);
         }
     }, []);
 
@@ -233,7 +236,7 @@ const YoutubeMusicRoute = () => {
                     setSearchParams({ view: 'browse' }, { replace: true });
                 }
             })
-            .catch((error) => toast.error({ message: (error as Error).message }));
+            .catch((error) => showImportError(t, error));
     };
 
     const handleDisconnect = () => {
@@ -244,7 +247,7 @@ const YoutubeMusicRoute = () => {
                 queryClient.setQueryData(youtubeMusicAuthStatusQueryKey, nextStatus);
                 queryClient.invalidateQueries({ queryKey: ['youtube-music'] });
             })
-            .catch((error) => toast.error({ message: (error as Error).message }));
+            .catch((error) => showImportError(t, error));
     };
 
     return (

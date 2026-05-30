@@ -4,6 +4,7 @@ import {
     Button,
     Checkbox,
     Code,
+    Collapse,
     Divider,
     Group,
     PasswordInput,
@@ -14,6 +15,7 @@ import {
     Title,
 } from '@mantine/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type LocalStatus = {
     dataPath: string;
@@ -84,6 +86,9 @@ const toolBadge = (available: boolean, label: string) => (
 );
 
 export const LocalTab = () => {
+    const { t } = useTranslation();
+    const [advancedOpen, setAdvancedOpen] = useState(false);
+    const [advancedSetupOpen, setAdvancedSetupOpen] = useState(false);
     const [status, setStatus] = useState<LocalStatus | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
@@ -288,7 +293,7 @@ export const LocalTab = () => {
 
     return (
         <Stack gap="xl" p="md">
-            <Title order={3}>Roofy Local</Title>
+            <Title order={3}>{t('productUx.personalLibrary.settingsTitle')}</Title>
 
             {error && (
                 <Alert color="red" title="Local action failed">
@@ -303,13 +308,22 @@ export const LocalTab = () => {
             )}
 
             <Stack gap="md">
-                <Group gap="xs">
-                    {toolBadge(Boolean(status?.tools.navidrome), 'Navidrome')}
-                    {toolBadge(Boolean(status?.tools.spotdl), 'spotDL')}
-                    {toolBadge(Boolean(status?.tools.ytDlp), 'yt-dlp')}
-                    {toolBadge(Boolean(status?.tools.ffmpeg), 'ffmpeg')}
-                    {toolBadge(Boolean(status?.tools.deno), 'Deno')}
-                </Group>
+                <Button
+                    onClick={() => setAdvancedOpen((open) => !open)}
+                    size="compact-sm"
+                    variant="subtle"
+                >
+                    {t('productUx.personalLibrary.advancedTools')}
+                </Button>
+                <Collapse in={advancedOpen}>
+                    <Group gap="xs">
+                        {toolBadge(Boolean(status?.tools.navidrome), 'Library engine')}
+                        {toolBadge(Boolean(status?.tools.spotdl), 'Spotify helper')}
+                        {toolBadge(Boolean(status?.tools.ytDlp), 'Link importer')}
+                        {toolBadge(Boolean(status?.tools.ffmpeg), 'Audio tools')}
+                        {toolBadge(Boolean(status?.tools.deno), 'Script runtime')}
+                    </Group>
+                </Collapse>
 
                 <Checkbox
                     checked={Boolean(status?.metadata?.autoEnrich)}
@@ -327,13 +341,9 @@ export const LocalTab = () => {
                 </Text>
                 <Group align="end" gap="md">
                     <Stack gap={4}>
-                        <Text fw={600}>Local engine</Text>
+                        <Text fw={600}>{t('productUx.personalLibrary.engineTitle')}</Text>
                         <Text c="dimmed" size="sm">
-                            {status?.navidrome.url || 'http://127.0.0.1:4533'} -{' '}
-                            {status?.navidrome.message || 'Checking'}
-                        </Text>
-                        <Text c="dimmed" size="sm">
-                            Login: {status?.navidrome.username || 'admin'}
+                            {status?.navidrome.message || 'Checking connection…'}
                         </Text>
                     </Stack>
                     <Button
@@ -357,12 +367,9 @@ export const LocalTab = () => {
 
             <Stack gap="md">
                 <Stack gap={4}>
-                    <Text fw={600}>Add from phone to desktop</Text>
+                    <Text fw={600}>{t('productUx.personalLibrary.connectPhoneTitle')}</Text>
                     <Text c="dimmed" size="sm">
-                        Let your phone send YouTube Music tracks into this desktop import queue and
-                        use Continue on phone for playback handoff. Start a private endpoint, pair the
-                        phone, then use Add to my library in
-                        mobile song menu.
+                        {t('productUx.personalLibrary.connectPhoneDescription')}
                     </Text>
                 </Stack>
 
@@ -387,8 +394,8 @@ export const LocalTab = () => {
                         </Group>
 
                         <Text c="dimmed" size="sm">
-                            Tunnel mode can receive imports outside your network. LAN mode keeps the
-                            import endpoint on the current Wi-Fi network.
+                            {t('productUx.personalLibrary.secureConnection')} works away from home.{' '}
+                            {t('productUx.personalLibrary.sameNetwork')} keeps setup on your Wi‑Fi.
                         </Text>
 
                         {status?.mobileImport.url && (
@@ -466,7 +473,7 @@ export const LocalTab = () => {
                             size="compact-sm"
                             variant="default"
                         >
-                            Copy import pairing link
+                            {t('productUx.personalLibrary.copySetupLink')}
                         </Button>
                     </Stack>
                 </Group>
@@ -476,10 +483,9 @@ export const LocalTab = () => {
 
             <Stack gap="md">
                 <Stack gap={4}>
-                    <Text fw={600}>Pair phone with Personal Library</Text>
+                    <Text fw={600}>{t('productUx.personalLibrary.pairLibraryTitle')}</Text>
                     <Text c="dimmed" size="sm">
-                        Start a private connection to the bundled Navidrome engine, then scan the QR
-                        code from the mobile Personal Library setup.
+                        {t('productUx.personalLibrary.pairLibraryDescription')}
                     </Text>
                 </Stack>
 
@@ -504,9 +510,9 @@ export const LocalTab = () => {
                         </Group>
 
                         <Text c="dimmed" size="sm">
-                            Tunnel mode works away from home through the bundled cloudflared binary.
-                            LAN mode keeps traffic on the current Wi-Fi network (phone and PC must be on
-                            the same network; guest Wi-Fi with client isolation will fail).
+                            {t('productUx.personalLibrary.secureConnection')} works away from home.{' '}
+                            {t('productUx.personalLibrary.sameNetwork')} requires phone and computer on
+                            the same Wi‑Fi.
                         </Text>
 
                         {status?.pairing.mode === 'lan' && status.pairing.state === 'connected' && (
@@ -597,7 +603,7 @@ export const LocalTab = () => {
                             size="compact-sm"
                             variant="default"
                         >
-                            Copy pairing link
+                            {t('productUx.personalLibrary.copySetupLink')}
                         </Button>
                     </Stack>
                 </Group>
@@ -607,10 +613,9 @@ export const LocalTab = () => {
 
             <Stack gap="md">
                 <Stack gap={4}>
-                    <Text fw={600}>Import sources</Text>
+                    <Text fw={600}>{t('productUx.personalLibrary.importSourcesTitle')}</Text>
                     <Text c="dimmed" size="sm">
-                        Spotify track, playlist, album, and artist links import through spotDL when
-                        it is installed. Public SoundCloud links import through yt-dlp.
+                        {t('productUx.personalLibrary.importSourcesDescription')}
                     </Text>
                 </Stack>
 
@@ -625,10 +630,40 @@ export const LocalTab = () => {
             </Stack>
 
             <Stack gap="sm">
-                <Text fw={600}>Default local login</Text>
+                <Text fw={600}>{t('productUx.personalLibrary.libraryFolderTitle')}</Text>
                 <Text c="dimmed" size="sm">
-                    These credentials are generated for this local install and are used for the
-                    bundled Navidrome engine.
+                    {status?.libraryPath || 'Loading'}
+                </Text>
+                <Group>
+                    <Button
+                        disabled={busy}
+                        onClick={() => run(() => window.api.localFirst.selectLibrary())}
+                        variant="light"
+                    >
+                        {t('productUx.personalLibrary.chooseFolder')}
+                    </Button>
+                    <Button
+                        disabled={busy}
+                        onClick={() => run(() => window.api.localFirst.openLibraryFolder())}
+                        variant="subtle"
+                    >
+                        {t('productUx.personalLibrary.openFolder')}
+                    </Button>
+                </Group>
+            </Stack>
+
+            <Button
+                onClick={() => setAdvancedSetupOpen((open) => !open)}
+                size="compact-sm"
+                variant="subtle"
+            >
+                {t('productUx.personalLibrary.advancedSetup')}
+            </Button>
+            <Collapse in={advancedSetupOpen}>
+            <Stack gap="sm">
+                <Text fw={600}>{t('productUx.personalLibrary.serverLoginTitle')}</Text>
+                <Text c="dimmed" size="sm">
+                    {t('productUx.personalLibrary.serverLoginDescription')}
                 </Text>
                 <Group align="flex-start" gap="xl">
                     <Stack gap={4}>
@@ -658,9 +693,9 @@ export const LocalTab = () => {
 
             <Stack gap="md">
                 <Stack gap={4}>
-                    <Text fw={600}>Create local user</Text>
+                    <Text fw={600}>{t('productUx.personalLibrary.createUserTitle')}</Text>
                     <Text c="dimmed" size="sm">
-                        This creates a Navidrome account on the bundled local engine.
+                        {t('productUx.personalLibrary.createUserDescription')}
                     </Text>
                 </Stack>
                 <Group align="end">
@@ -699,30 +734,7 @@ export const LocalTab = () => {
             </Stack>
 
             <Stack gap="sm">
-                <Text fw={600}>Library folder</Text>
-                <Text c="dimmed" size="sm">
-                    {status?.libraryPath || 'Loading'}
-                </Text>
-                <Group>
-                    <Button
-                        disabled={busy}
-                        onClick={() => run(() => window.api.localFirst.selectLibrary())}
-                        variant="light"
-                    >
-                        Choose folder
-                    </Button>
-                    <Button
-                        disabled={busy}
-                        onClick={() => run(() => window.api.localFirst.openLibraryFolder())}
-                        variant="subtle"
-                    >
-                        Open folder
-                    </Button>
-                </Group>
-            </Stack>
-
-            <Stack gap="sm">
-                <Text fw={600}>Edit file tags</Text>
+                <Text fw={600}>{t('productUx.action.updateSongInfo')}</Text>
                 <Text c="dimmed" size="sm">
                     Probe or rewrite embedded tags on a file in your library folder (uses ffmpeg).
                 </Text>
@@ -790,7 +802,7 @@ export const LocalTab = () => {
                                     filePath: tagEditorPath,
                                     title: tagTitle,
                                 });
-                                setMessage('Tags written to file. Run a Navidrome scan to refresh the library.');
+                                setMessage(t('productUx.personalLibrary.tagsSaved'));
                             })
                         }
                     >
@@ -815,9 +827,10 @@ export const LocalTab = () => {
                     </Button>
                 </Group>
             </Stack>
+            </Collapse>
 
             <Stack gap="sm">
-                <Text fw={600}>Import queue</Text>
+                <Text fw={600}>{t('productUx.import.pageTitle')}</Text>
                 {status?.imports.length ? (
                     status.imports.map((job) => (
                         <Stack gap={4} key={job.id}>
@@ -833,7 +846,7 @@ export const LocalTab = () => {
                     ))
                 ) : (
                     <Text c="dimmed" size="sm">
-                        No imports queued.
+                        {t('productUx.import.empty.title')}
                     </Text>
                 )}
             </Stack>

@@ -1,7 +1,7 @@
 import isElectron from 'is-electron';
-import { memo } from 'react';
-import { Fragment } from 'react/jsx-runtime';
+import { Fragment, memo } from 'react';
 
+import { ThemeSettings } from '/@/renderer/features/settings/components/general/theme-settings';
 import { PasswordSettings } from '/@/renderer/features/settings/components/window/password-settings';
 import { WindowSettings } from '/@/renderer/features/settings/components/window/window-settings';
 import { Divider } from '/@/shared/components/divider/divider';
@@ -9,13 +9,17 @@ import { Stack } from '/@/shared/components/stack/stack';
 
 const utils = window.api?.utils ?? null;
 
-/** @deprecated Use AppearanceTab — kept for deep links that still mount WindowTab */
 const sections = [
+    { component: ThemeSettings, key: 'theme' },
     { component: WindowSettings, key: 'window' },
     { component: PasswordSettings, hidden: !utils?.isLinux(), key: 'password' },
 ];
 
-export const WindowTab = memo(() => {
+export const AppearanceTab = memo(() => {
+    if (!isElectron()) {
+        return null;
+    }
+
     return (
         <Stack gap="md">
             {sections.map(({ component: Section, hidden, key }, index) => (

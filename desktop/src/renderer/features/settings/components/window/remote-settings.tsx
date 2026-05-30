@@ -146,5 +146,7 @@ export const RemoteSettings = memo(() => {
         },
     ];
 
-    return <SettingsSection options={controlOptions} title={t('page.setting.remote')} />;
+    return (
+        <SettingsSection options={controlOptions} title={t('productUx.devices.webRemote')} />
+    );
 });

@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import styles from './imports-queue.module.css';
 
 import { useImportJobActions, useImportJobs } from '/@/renderer/store';
+import { getImportStatusBadgeKey, getImportStatusLabelKey } from '/@/shared/product-ux';
 import { ActionIcon } from '/@/shared/components/action-icon/action-icon';
 import { Badge } from '/@/shared/components/badge/badge';
 import { Button } from '/@/shared/components/button/button';
@@ -27,26 +29,16 @@ const headerButtonClassNames = {
     label: styles.headerButtonLabel,
 };
 
-const getStatusCopy = (status: string, progress: number) => {
-    if (status === 'queued') return 'Waiting';
-    if (status === 'running') return progress > 0 ? `Downloading ${progress}%` : 'Downloading';
-    if (status === 'completed') return 'Imported';
-    if (status === 'failed') return 'Needs attention';
-    return status;
-};
-
-const getStatusBadge = (status: string) => {
+const getStatusBadgeColor = (status: string) => {
     switch (status) {
         case 'completed':
-            return <Badge color="green">Completed</Badge>;
+            return 'green';
         case 'failed':
-            return <Badge color="red">Failed</Badge>;
-        case 'queued':
-            return <Badge variant="light">Queued</Badge>;
+            return 'red';
         case 'running':
-            return <Badge color="blue">Running</Badge>;
+            return 'blue';
         default:
-            return <Badge>{status}</Badge>;
+            return undefined;
     }
 };
 
@@ -73,9 +65,27 @@ const getSourceBadge = (source?: string) => {
 };
 
 export const ImportsQueue = () => {
+    const { t } = useTranslation();
     const jobs = useImportJobs();
     const { clearCompleted, clearFailed, removeJob } = useImportJobActions();
     const [filter, setFilter] = useState<ImportFilter>('all');
+
+    const getStatusCopy = (status: string, progress: number) => {
+        const label = t(getImportStatusLabelKey(status));
+        if (status === 'running' && progress > 0) {
+            return `${label} (${progress}%)`;
+        }
+        return label;
+    };
+
+    const getStatusBadge = (status: string) => {
+        const color = getStatusBadgeColor(status);
+        return (
+            <Badge color={color} variant={color ? undefined : 'light'}>
+                {t(getImportStatusBadgeKey(status))}
+            </Badge>
+        );
+    };
 
     const handleClearCompleted = () => {
         window.api?.localFirst?.clearImports?.('completed');
@@ -132,7 +142,7 @@ export const ImportsQueue = () => {
         <Stack className={styles.container} gap="md">
             <Group justify="space-between" wrap="nowrap">
                 <Text isMuted size="sm">
-                    Imported songs, imported playlists, and matched download jobs.
+                    {t('productUx.import.pageDescription')}
                 </Text>
                 <Group className={styles.headerActions} gap="xs" wrap="nowrap">
                     <Button
@@ -143,7 +153,7 @@ export const ImportsQueue = () => {
                         size="compact-sm"
                         variant="subtle"
                     >
-                        Clear completed
+                        {t('productUx.import.clearCompleted')}
                     </Button>
                     <Button
                         className={styles.headerButton}
@@ -153,7 +163,7 @@ export const ImportsQueue = () => {
                         size="compact-sm"
                         variant="subtle"
                     >
-                        Clear failed
+                        {t('productUx.import.clearFailed')}
                     </Button>
                 </Group>
             </Group>
@@ -202,12 +212,14 @@ export const ImportsQueue = () => {
                     <Icon icon="download" size="2xl" />
                     <Stack gap={4}>
                         <Text fw={600}>
-                            {stats.total === 0 ? 'No imports yet' : 'No jobs here'}
+                            {stats.total === 0
+                                ? t('productUx.import.empty.title')
+                                : t('productUx.import.filterEmpty')}
                         </Text>
                         <Text isMuted size="sm">
                             {stats.total === 0
-                                ? 'Imported tracks will appear here while they download and after they finish.'
-                                : 'Switch filters to see other import states.'}
+                                ? t('productUx.import.empty.description')
+                                : t('productUx.import.filterEmptyHint')}
                         </Text>
                     </Stack>
                 </div>

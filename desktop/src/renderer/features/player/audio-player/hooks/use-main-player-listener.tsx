@@ -1,16 +1,17 @@
-import { t } from 'i18next';
 import isElectron from 'is-electron';
 import { useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useIsRadioActive } from '/@/renderer/features/radio/hooks/use-radio-player';
 import { usePlayerActions, useVolumeWheelStep } from '/@/renderer/store';
-import { toast } from '/@/shared/components/toast/toast';
+import { showPlaybackErrorFromUnknown } from '/@/shared/product-ux';
 
 const mpvPlayer = window.api?.mpvPlayer ?? null;
 const mpvPlayerListener = window.api?.mpvPlayerListener ?? null;
 const ipc = window.api?.ipc ?? null;
 
 export const useMainPlayerListener = () => {
+    const { t } = useTranslation();
     const isRadioActive = useIsRadioActive();
     const volumeWheelStep = useVolumeWheelStep();
     const {
@@ -32,15 +33,11 @@ export const useMainPlayerListener = () => {
 
     const handleMpvError = useCallback(
         (message: string) => {
-            toast.error({
-                id: 'mpv-error',
-                message,
-                title: t('error.playbackError') as string,
-            });
+            showPlaybackErrorFromUnknown(t, message);
             mediaPause();
             mpvPlayer!.pause();
         },
-        [mediaPause],
+        [mediaPause, t],
     );
 
     useEffect(() => {

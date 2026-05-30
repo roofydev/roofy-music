@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import isElectron from 'is-electron';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import styles from './quick-import.module.css';
@@ -23,6 +24,7 @@ import { Popover } from '/@/shared/components/popover/popover';
 import { Stack } from '/@/shared/components/stack/stack';
 import { TextInput } from '/@/shared/components/text-input/text-input';
 import { Text } from '/@/shared/components/text/text';
+import { showImportError, showPlaybackErrorFromUnknown } from '/@/shared/product-ux';
 import { toast } from '/@/shared/components/toast/toast';
 import { useDebouncedValue } from '/@/shared/hooks/use-debounced-value';
 import {
@@ -298,6 +300,7 @@ const previewToSongs = (preview: ImportPreview): Song[] => {
 };
 
 export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) => {
+    const { t } = useTranslation();
     const [input, setInput] = useState('');
     const [submittedInput, setSubmittedInput] = useState('');
     const [preview, setPreview] = useState<ImportPreview | null>(null);
@@ -459,9 +462,9 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
 
             addToQueueByData(playType, songs);
         } catch (error) {
-            toast.error({ message: (error as Error).message });
+            showPlaybackErrorFromUnknown(t, error);
         }
-    }, []);
+    }, [t]);
 
     const handleImportPreview = useCallback(async () => {
         if (!preview || !importInput) return;
@@ -527,7 +530,7 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                     return;
                 }
 
-                toast.error({ message: 'No matched Spotify tracks are ready to import.' });
+                toast.warn({ message: t('productUx.import.noMatchesReady') });
                 return;
             }
 
@@ -547,10 +550,10 @@ export const QuickImport = ({ className, variant = 'panel' }: QuickImportProps) 
                 videoId: getVideoId(submittedInput),
             });
             setJob(job);
-        } catch (err: any) {
-            toast.error({ message: err?.message || 'Import failed' });
+        } catch (err: unknown) {
+            showImportError(t, err);
         }
-    }, [acceptedReviewMatches, importInput, preview, saveVideo, setJob, submittedInput]);
+    }, [acceptedReviewMatches, importInput, preview, saveVideo, setJob, submittedInput, t]);
 
     const getImportableSpotifyTrackCount = useCallback(
         (tracks: ImportTrackPreview[] = []) =>

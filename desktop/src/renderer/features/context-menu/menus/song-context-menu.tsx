@@ -36,12 +36,12 @@ export const SongContextMenu = ({ items, type }: SongContextMenuProps) => {
             <ContextMenu.Divider />
             <AddToPlaylistAction items={ids} itemType={LibraryItem.SONG} songs={items} />
             <ContextMenu.Divider />
+            <DownloadAction ids={ids} songs={items} />
+            <OpenYoutubeSourceAction songs={items} />
+            <ContextMenu.Divider />
             <SetFavoriteAction ids={ids} itemType={LibraryItem.SONG} songs={items} />
             <SetRatingAction ids={ids} itemType={LibraryItem.SONG} songs={items} />
-            <ContextMenu.Divider />
-            <DownloadAction ids={ids} songs={items} />
             <DeleteLocalTrackAction items={items} />
-            <OpenYoutubeSourceAction songs={items} />
             <ShareAction ids={ids} itemType={LibraryItem.SONG} />
             <ContextMenu.Divider />
             <GoToAction items={items} />

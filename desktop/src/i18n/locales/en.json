@@ -533,8 +533,9 @@
             "createPlaylist": "$t(action.createPlaylist)",
             "deletePlaylist": "$t(action.deletePlaylist)",
             "deselectAll": "$t(action.deselectAll)",
-            "download": "Download",
-            "downloadToLibrary": "Import to Library",
+            "download": "$t(productUx.action.saveOffline)",
+            "downloadToLibrary": "$t(productUx.action.addToLibrary)",
+            "watchVideo": "$t(productUx.action.watchVideo)",
             "moveItems": "$t(action.moveItems)",
             "moveToNext": "$t(action.moveToNext)",
             "moveToBottom": "$t(action.moveToBottom)",
@@ -640,7 +641,11 @@
             "lyrics": "Lyrics",
             "lyricsDisplay": "Lyrics Display",
             "transcoding": "Transcoding",
-            "discord": "Discord",
+            "discord": "Discord status",
+            "personalLibrary": "Personal Library",
+            "devices": "Devices",
+            "downloadsOffline": "Downloads & offline",
+            "appearance": "Appearance",
             "logger": "Logger",
             "playerFilters": "Player Filters"
         },
@@ -828,7 +833,7 @@
         "discordDisplayType_songname": "Song name",
         "discordDisplayType": "{{discord}} presence display type",
         "discordIdleStatus_description": "When enabled, update status while player is idle",
-        "discordIdleStatus": "Show rich presence idle status",
+        "discordIdleStatus": "Show {{discord}} status when idle",
         "discordLinkType_description": "Adds external links to {{lastfm}} or {{musicbrainz}} to the song and artist fields in {{discord}} rich presence. {{musicbrainz}} is the most accurate but requires tags and doesn't provide artist links while {{lastfm}} should always provide a link. Makes no extra network requests",
         "discordLinkType_mbz_lastfm": "{{musicbrainz}} with {{lastfm}} fallback",
         "discordLinkType_none": "$t(common.none)",
@@ -836,9 +841,9 @@
         "discordListening_description": "Show status as listening instead of playing",
         "discordListening": "Show status as listening",
         "discordPausedStatus_description": "When enabled, status will show when player is paused",
-        "discordPausedStatus": "Show rich presence when paused",
-        "discordRichPresence": "{{discord}} rich presence",
-        "discordRichPresence_description": "Enable playback status in {{discord}} rich presence. Image keys are: {{icon}}, {{playing}}, and {{paused}}",
+        "discordPausedStatus": "Show {{discord}} status when paused",
+        "discordRichPresence": "Show what I am listening to on {{discord}}",
+        "discordRichPresence_description": "Share your current song in {{discord}}. Image keys are: {{icon}}, {{playing}}, and {{paused}}",
         "discordArtworkWebhook": "{{discord}} artwork webhook URL",
         "discordArtworkWebhook_description": "Optional. Upload local-only cover art to a private {{discord}} webhook, then use the resulting CDN URL for rich presence thumbnails.",
         "discordArtworkWebhook_placeholder": "https://discord.com/api/webhooks/...",
@@ -850,8 +855,8 @@
         "discordUpdateInterval_description": "The time in seconds between each update (minimum 15 seconds)",
         "enableAutoTranslation_description": "Enable translation automatically when lyrics are loaded",
         "enableAutoTranslation": "Enable auto translation",
-        "enableRemote_description": "Enables the remote control server to allow other devices to control the application",
-        "enableRemote": "Enable remote control server",
+        "enableRemote_description": "Let another device on your network control playback from a browser",
+        "enableRemote": "Web remote",
         "exitToTray_description": "Exit the application to the system tray",
         "exitToTray": "Exit to tray",
         "exportImportSettings_control_description": "Export and import settings via JSON",
@@ -1258,6 +1263,138 @@
                 "grid": "Grid",
                 "list": "List",
                 "table": "Table"
+            }
+        }
+    },
+    "productUx": {
+        "action": {
+            "addToLibrary": "Add to my library",
+            "addToLibraryAudioOnly": "Audio only",
+            "addToLibraryWithVideo": "Audio + video",
+            "saveOffline": "Save offline",
+            "updateSongInfo": "Update song info",
+            "watchVideo": "Watch video",
+            "viewOriginalLink": "View original link",
+            "tryAnotherVersion": "Try another version",
+            "continueOnDevice": "Continue on this device",
+            "connectPhone": "Connect phone",
+            "connectPersonalLibrary": "Connect your personal library"
+        },
+        "import": {
+            "pageTitle": "Downloads",
+            "pageDescription": "Songs you are saving and items already in your library.",
+            "status": {
+                "matching": "Finding a match…",
+                "saving": "Saving to your library…",
+                "saved": "Saved to your library",
+                "failed": "Could not save right now"
+            },
+            "badge": {
+                "queued": "Waiting",
+                "saving": "Saving",
+                "saved": "Saved",
+                "needsReview": "Needs review"
+            },
+            "empty": {
+                "title": "Nothing saving yet",
+                "description": "When you add music to your library, progress appears here."
+            },
+            "filterEmpty": "No items in this view",
+            "filterEmptyHint": "Switch filters to see other save states.",
+            "clearCompleted": "Clear saved",
+            "clearFailed": "Clear needs review",
+            "noMatchesReady": "No tracks are ready to save yet. Review matches or try another link.",
+            "toast": {
+                "queuedTitle": "Waiting to save",
+                "queuedMessage": "{{title}} will be saved to {{target}}.",
+                "savingTitle": "Saving to your library",
+                "savingMessage": "{{title}} ({{progress}}%)",
+                "savedTitle": "Saved to your library",
+                "savedMessage": "{{summary}} saved to {{target}}.",
+                "savedWithSkipsTitle": "Saved with issues",
+                "failedTitle": "Could not save",
+                "failedMessage": "{{title}} could not be saved."
+            }
+        },
+        "personalLibrary": {
+            "settingsTab": "Personal Library",
+            "settingsTitle": "Personal Library & devices",
+            "engineTitle": "Library engine",
+            "engineDescription": "Runs your personal library on this computer.",
+            "connectPhoneTitle": "Connect phone",
+            "connectPhoneDescription": "Scan the code so your phone can send songs to this computer and continue listening between devices.",
+            "pairLibraryTitle": "Connect phone to Personal Library",
+            "pairLibraryDescription": "Start a secure connection, then scan the code from Personal Library setup on your phone.",
+            "secureConnection": "Secure connection",
+            "sameNetwork": "Same Wi‑Fi only",
+            "copySetupLink": "Copy setup link",
+            "advancedTools": "Advanced tools",
+            "importSourcesTitle": "Add music from links",
+            "importSourcesDescription": "Paste a Spotify or public SoundCloud link to save it to your library.",
+            "advancedSetup": "Advanced setup",
+            "libraryFolderTitle": "Music folder",
+            "chooseFolder": "Choose folder",
+            "openFolder": "Open folder",
+            "serverLoginTitle": "Server login (advanced)",
+            "serverLoginDescription": "Auto-generated credentials for this computer. Only needed for manual setup or troubleshooting.",
+            "createUserTitle": "Create another user",
+            "createUserDescription": "Optional account for another person using this library on the same computer.",
+            "tagsSaved": "Song info updated. Your library will refresh shortly."
+        },
+        "error": {
+            "search": {
+                "failed": "Search could not finish right now. Try again in a moment."
+            },
+            "playback": {
+                "generic": "This song cannot be played right now.",
+                "sourceBlocked": "This version cannot be played from this source right now.",
+                "streamExpired": "Playback expired. Try playing again.",
+                "signInRequired": "Sign in is required to play this song.",
+                "unavailable": "This song is not available right now.",
+                "fileMissing": "The offline file is missing."
+            },
+            "library": {
+                "unreachable": "Your personal library cannot be reached right now. Check that your desktop app is open or try again."
+            },
+            "import": {
+                "failed": "This song could not be saved right now. Try another version or try again later."
+            },
+            "devices": {
+                "nothingPlaying": "Nothing is playing on this computer yet.",
+                "handoffUnavailable": "Continue on another device is not available right now."
+            },
+            "recovery": {
+                "tryAgain": "Try again",
+                "tryAnotherVersion": "Try another version",
+                "openSettings": "Open settings"
+            }
+        },
+        "devices": {
+            "thisComputer": "This computer",
+            "thisComputerHint": "Playback and your library run here.",
+            "phone": "Phone (Personal Library)",
+            "phoneHint": "Listen to your library on your phone.",
+            "phoneImports": "Phone → desktop saves",
+            "phoneImportsHint": "Add to my library from your phone queues saves here.",
+            "webRemote": "Web remote",
+            "webRemoteOff": "Control this app from a browser on your network.",
+            "openWebRemote": "Open web remote",
+            "enableWebRemote": "Set up web remote",
+            "handoffHint": "On your phone, use Continue on this device while something is playing.",
+            "manageDevices": "Device settings",
+            "settingsIntro": "Connect phones, open the web remote, and continue listening between devices.",
+            "desktopOnly": "Device connection is configured in the desktop app.",
+            "personalLibraryHint": "Library engine, pairing QR codes, and advanced tools.",
+            "openPersonalLibrarySetup": "Open Personal Library setup",
+            "castTitle": "Speakers & TV",
+            "castHint": "Cast to Chromecast and other devices.",
+            "comingSoon": "Coming soon",
+            "status": {
+                "active": "Active",
+                "connected": "Connected",
+                "connecting": "Connecting…",
+                "notConnected": "Not connected",
+                "unavailable": "Unavailable"
             }
         }
     },

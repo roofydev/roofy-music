@@ -23,7 +23,7 @@ export const OpenYoutubeSourceAction = ({ songs }: OpenYoutubeSourceActionProps)
 
     return (
         <ContextMenu.Item leftIcon="externalLink" onSelect={onSelect}>
-            {t('page.contextMenu.openOnYoutube') || 'Open on YouTube Music'}
+            {t('page.contextMenu.watchVideo')}
         </ContextMenu.Item>
     );
 };

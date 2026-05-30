@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { getItemImageUrl } from '/@/renderer/components/item-image/item-image';
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
@@ -7,6 +8,7 @@ import { getSongById } from '/@/renderer/features/player/utils';
 import { useAuthStore, usePlayerStore } from '/@/renderer/store';
 import { useTimestampStoreBase } from '/@/renderer/store/timestamp.store';
 import { toast } from '/@/shared/components/toast/toast';
+import { showHandoffError } from '/@/shared/product-ux';
 import {
     HandoffSnapshot,
     HandoffTrack,
@@ -106,6 +108,7 @@ const findQueueSongForHandoffTrack = (track: HandoffTrack): QueueSong | undefine
 };
 
 export const useHandoffBridge = () => {
+    const { t } = useTranslation();
     const player = usePlayer();
     const queryClient = useQueryClient();
 
@@ -146,7 +149,10 @@ export const useHandoffBridge = () => {
             try {
                 const snapshot = makeSnapshot();
                 if (!snapshot.nowPlaying) {
-                    ipc.send('handoff:state-error', 'Nothing is playing on desktop.');
+                    ipc.send(
+                        'handoff:state-error',
+                        t('productUx.error.devices.nothingPlaying'),
+                    );
                     return;
                 }
 
@@ -168,8 +174,8 @@ export const useHandoffBridge = () => {
 
             if (songs.length === 0) {
                 toast.warn({
-                    message: 'Could not resolve the incoming tracks on desktop.',
-                    title: 'Playback handoff unavailable',
+                    message: t('productUx.error.devices.handoffUnavailable'),
+                    title: t('productUx.action.continueOnDevice'),
                 });
                 return;
             }
@@ -183,7 +189,10 @@ export const useHandoffBridge = () => {
                 player.mediaPlay();
             }
 
-            toast.success({ message: 'Playback transferred to desktop', title: 'Roofy Connect' });
+            toast.success({
+                message: t('productUx.action.continueOnDevice'),
+                title: t('page.setting.devices'),
+            });
         };
 
         ipc.on('handoff:collect-state', collectState);
@@ -193,7 +202,7 @@ export const useHandoffBridge = () => {
             ipc.removeListener('handoff:collect-state', collectState);
             ipc.removeListener('handoff:apply-state', applyState);
         };
-    }, [player, queryClient]);
+    }, [player, queryClient, t]);
 };
 
 export const HandoffBridgeHook = () => {
