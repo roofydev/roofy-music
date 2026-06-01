@@ -2,13 +2,22 @@ import isElectron from 'is-electron';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useRemoteSettings } from '/@/renderer/store';
+import type { DeviceActiveOutput } from '/@/shared/types/device-session-types';
 
 export type DeviceConnectionState = 'connected' | 'disabled' | 'starting' | 'unavailable';
 
 export type DevicesStatus = {
     phoneLink: {
+        activeDeviceName?: string;
+        activeOutput: DeviceActiveOutput;
+        bridgeReady?: boolean;
         error?: string;
+        libraryReady?: boolean;
+        phoneControllingDesktop: boolean;
+        phoneName?: string;
         phonePaired: boolean;
+        phoneReachable: boolean;
+        remoteReady?: boolean;
         state: DeviceConnectionState;
     };
     webRemote: {
@@ -18,7 +27,13 @@ export type DevicesStatus = {
 };
 
 const defaultStatus: DevicesStatus = {
-    phoneLink: { phonePaired: false, state: 'disabled' },
+    phoneLink: {
+        activeOutput: 'none',
+        phoneControllingDesktop: false,
+        phonePaired: false,
+        phoneReachable: false,
+        state: 'disabled',
+    },
     webRemote: { enabled: false, url: 'http://localhost:4534' },
 };
 
@@ -44,8 +59,16 @@ export const useDevicesStatus = (pollMs = 8000) => {
             const local = await window.api.localFirst.status();
             setStatus({
                 phoneLink: {
+                    activeDeviceName: local.phoneLink?.activeDeviceName,
+                    activeOutput: local.phoneLink?.activeOutput || 'none',
+                    bridgeReady: local.phoneLink?.bridgeReady,
                     error: local.phoneLink?.error,
+                    libraryReady: local.phoneLink?.libraryReady,
+                    phoneControllingDesktop: Boolean(local.phoneLink?.phoneControllingDesktop),
+                    phoneName: local.phoneLink?.phoneName,
                     phonePaired: Boolean(local.phoneLink?.phonePaired),
+                    phoneReachable: Boolean(local.phoneLink?.phoneReachable),
+                    remoteReady: local.phoneLink?.remoteReady,
                     state: local.phoneLink?.state || 'disabled',
                 },
                 webRemote: {

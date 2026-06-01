@@ -88,6 +88,24 @@ interface UseItemImageUrlProps {
     useRemoteUrl?: boolean;
 }
 
+const isHttpImageUrl = (value: string) => {
+    try {
+        const { protocol } = new URL(value);
+        return protocol === 'http:' || protocol === 'https:';
+    } catch {
+        return false;
+    }
+};
+
+/** Remote clients (phone) can only load http(s) or data URLs — not local file paths. */
+const shouldUseRawImageUrl = (value: string, useRemoteUrl?: boolean) => {
+    if (!useRemoteUrl) {
+        return true;
+    }
+
+    return isHttpImageUrl(value) || value.startsWith('data:');
+};
+
 export const useItemImageUrl = (args: UseItemImageUrlProps) => {
     const { id, imageUrl, itemType, size, type, useRemoteUrl } = args;
     const serverId = useCurrentServerId();
@@ -96,7 +114,7 @@ export const useItemImageUrl = (args: UseItemImageUrlProps) => {
     const sizeByType: number | undefined = type ? imageRes[type] : undefined;
 
     return useMemo(() => {
-        if (imageUrl) {
+        if (imageUrl && shouldUseRawImageUrl(imageUrl, useRemoteUrl)) {
             return imageUrl;
         }
 
@@ -204,7 +222,7 @@ export function getItemImageUrl(args: UseItemImageUrlProps) {
     const imageRes = useSettingsStore.getState().general.imageRes;
     const sizeByType: number | undefined = type ? imageRes[type] : undefined;
 
-    if (imageUrl) {
+    if (imageUrl && shouldUseRawImageUrl(imageUrl, useRemoteUrl)) {
         return imageUrl;
     }
 

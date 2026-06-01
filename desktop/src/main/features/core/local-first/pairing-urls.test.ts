@@ -10,6 +10,7 @@ describe('pairing URLs', () => {
     it('builds a Subsonic deep link with encoded credentials', () => {
         const url = buildSubsonicPairingUrl({
             serverUrl: 'http://192.168.1.10:4533',
+            computerName: 'Studio PC',
             username: 'roofy',
             password: 'secret&token',
         });
@@ -46,6 +47,7 @@ describe('pairing URLs', () => {
 
         const parsed = new URL(url);
         expect(parsed.pathname).toBe('/device');
+        expect(parsed.searchParams.get('v')).toBe('2');
         expect(parsed.searchParams.get('serverUrl')).toBe('https://abc.trycloudflare.com');
         expect(parsed.searchParams.get('endpointUrl')).toBe('https://xyz.trycloudflare.com');
         expect(parsed.searchParams.get('token')).toBe('import-token');
@@ -53,15 +55,27 @@ describe('pairing URLs', () => {
 
     it('includes optional web control URL in unified device link', () => {
         const url = buildDevicePairingUrl({
+            computerName: 'Studio PC',
             serverUrl: 'http://192.168.1.10:4533',
             username: 'roofy',
             password: 'secret',
             endpointUrl: 'http://192.168.1.10:8765',
+            lanEndpointUrl: 'http://192.168.1.10:8765',
+            mode: 'lan',
+            remoteControlToken: 'remote-token',
+            remoteControlUrl: 'http://192.168.1.10:4333/?token=remote-token',
             token: 'import-token',
             webControlUrl: 'http://192.168.1.10:4333/?token=remote-token',
         });
 
         const parsed = new URL(url);
+        expect(parsed.searchParams.get('mode')).toBe('lan');
+        expect(parsed.searchParams.get('computerName')).toBe('Studio PC');
+        expect(parsed.searchParams.get('lanEndpointUrl')).toBe('http://192.168.1.10:8765');
+        expect(parsed.searchParams.get('remoteControlUrl')).toBe(
+            'http://192.168.1.10:4333/?token=remote-token',
+        );
+        expect(parsed.searchParams.get('remoteControlToken')).toBe('remote-token');
         expect(parsed.searchParams.get('webControlUrl')).toBe(
             'http://192.168.1.10:4333/?token=remote-token',
         );

@@ -15,8 +15,11 @@ export const DevicesButton = () => {
     const [opened, setOpened] = useState(false);
     const { status } = useDevicesStatus();
 
-    const phoneLinked =
-        Boolean(status.phoneLink.phonePaired) && status.phoneLink.state === 'connected';
+    const phoneAvailable =
+        Boolean(status.phoneLink.phonePaired) &&
+        Boolean(status.phoneLink.phoneReachable) &&
+        status.phoneLink.state === 'connected';
+    const phoneControllingDesktop = Boolean(status.phoneLink.phoneControllingDesktop);
 
     if (!isElectron()) {
         return null;
@@ -33,10 +36,10 @@ export const DevicesButton = () => {
         >
             <Popover.Target>
                 <ActionIcon
-                    aria-label={t('productUx.devices.connectPanel.tooltip')}
+                    aria-label={t('productUx.devices.listenOn')}
                     icon="arrowLeftRight"
                     iconProps={{
-                        color: phoneLinked ? 'primary' : undefined,
+                        color: phoneAvailable || phoneControllingDesktop ? 'primary' : undefined,
                         size: 'lg',
                     }}
                     onClick={(e) => {
@@ -45,7 +48,7 @@ export const DevicesButton = () => {
                     }}
                     size="sm"
                     tooltip={{
-                        label: t('productUx.devices.connectPanel.tooltip'),
+                        label: t('productUx.devices.listenOn'),
                         openDelay: 0,
                     }}
                     variant="subtle"

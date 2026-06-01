@@ -1,19 +1,32 @@
 import isElectron from 'is-electron';
 import { useCallback, useEffect, useState } from 'react';
 
+import type { DeviceActiveOutput } from '/@/shared/types/device-session-types';
+
 export type PhoneLinkState = 'connected' | 'disabled' | 'starting' | 'unavailable';
 
 export type PhoneLinkStatus = {
+    activeDeviceName?: string;
+    activeOutput?: DeviceActiveOutput;
+    bridgeReady?: boolean;
     error?: string;
+    libraryReady?: boolean;
     mode: 'auto' | 'lan' | 'tunnel';
+    phoneControllingDesktop?: boolean;
+    phoneName?: string;
     phonePaired?: boolean;
+    phoneReachable?: boolean;
     pairingUrl?: string;
+    remoteReady?: boolean;
     state: PhoneLinkState;
 };
 
 const defaultPhoneLink: PhoneLinkStatus = {
+    activeOutput: 'none',
     mode: 'tunnel',
+    phoneControllingDesktop: false,
     phonePaired: false,
+    phoneReachable: false,
     state: 'disabled',
 };
 
@@ -39,7 +52,10 @@ export const usePhoneLink = (pollMs = 2000) => {
             }
             setPhoneLink({
                 ...local.phoneLink,
+                activeOutput: local.phoneLink.activeOutput || 'none',
+                phoneControllingDesktop: Boolean(local.phoneLink.phoneControllingDesktop),
                 phonePaired: Boolean(local.phoneLink.phonePaired),
+                phoneReachable: Boolean(local.phoneLink.phoneReachable),
             });
         } catch {
             setPhoneLink({

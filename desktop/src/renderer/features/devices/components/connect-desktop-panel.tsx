@@ -1,16 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import styles from '/@/renderer/features/devices/components/connect-desktop-panel.module.css';
 import { DevicesPicker } from '/@/renderer/features/devices/components/devices-picker';
-import { PhonePairingSection } from '/@/renderer/features/devices/components/phone-pairing-section';
 import { useEnableWebControl } from '/@/renderer/features/devices/hooks/use-enable-web-control';
 import { usePhoneLink } from '/@/renderer/features/devices/hooks/use-phone-link';
+import { openLinkPhoneModal } from '/@/renderer/features/devices/utils/open-link-phone-modal';
 import { AppRoute } from '/@/renderer/router/routes';
 import { useSettingsStoreActions } from '/@/renderer/store';
 import { ActionIcon } from '/@/shared/components/action-icon/action-icon';
-import { Divider } from '/@/shared/components/divider/divider';
 import { Text } from '/@/shared/components/text/text';
 
 interface ConnectDesktopPanelProps {
@@ -23,8 +22,7 @@ export const ConnectDesktopPanel = ({ onClose, opened }: ConnectDesktopPanelProp
     const navigate = useNavigate();
     const { setSettings } = useSettingsStoreActions();
     const { setWebControlEnabled } = useEnableWebControl();
-    const { start } = usePhoneLink(1000);
-    const [qrFocusNonce, setQrFocusNonce] = useState(0);
+    const { start } = usePhoneLink(0);
 
     const openDevicesSettings = () => {
         setSettings({ tab: 'devices' });
@@ -39,7 +37,7 @@ export const ConnectDesktopPanel = ({ onClose, opened }: ConnectDesktopPanelProp
             await setWebControlEnabled(true);
             await start('auto');
         })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- prepare link when popover opens
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- warm bridge silently when sheet opens
     }, [opened]);
 
     return (
@@ -47,7 +45,7 @@ export const ConnectDesktopPanel = ({ onClose, opened }: ConnectDesktopPanelProp
             <header className={styles.header}>
                 <span className={styles.headerSide} aria-hidden />
                 <Text className={styles.headerTitle} fw={700} size="sm">
-                    {t('productUx.devices.connectPanel.title')}
+                    {t('productUx.devices.listenOn')}
                 </Text>
                 <span className={styles.headerSide}>
                     <ActionIcon
@@ -60,22 +58,13 @@ export const ConnectDesktopPanel = ({ onClose, opened }: ConnectDesktopPanelProp
                 </span>
             </header>
 
-            <PhonePairingSection
-                focusNonce={qrFocusNonce}
-                pollMs={1000}
-                startWhenMounted={false}
-            />
-
-            <Divider my="xs" />
-
-            <Text className={styles.subtitle} fw={600} size="sm">
-                {t('productUx.devices.connectPanel.whereToPlay')}
-            </Text>
-
             <DevicesPicker
                 embedded
                 onClose={onClose}
-                onRequestLinkPhone={() => setQrFocusNonce((n) => n + 1)}
+                onLinkPhone={() => {
+                    openLinkPhoneModal(onClose);
+                }}
+                onOpenDeviceSettings={openDevicesSettings}
             />
         </div>
     );

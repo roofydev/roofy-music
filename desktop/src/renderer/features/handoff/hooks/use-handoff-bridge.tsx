@@ -161,6 +161,7 @@ export const useHandoffBridge = () => {
                 }
 
                 ipc.send('handoff:state-response', snapshot);
+                player.mediaPause();
             } catch (error) {
                 ipc.send(
                     'handoff:state-error',

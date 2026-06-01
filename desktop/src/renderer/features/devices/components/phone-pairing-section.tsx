@@ -31,9 +31,10 @@ export const PhonePairingSection = ({
     const startingSinceRef = useRef<null | number>(null);
     const qrWrapRef = useRef<HTMLDivElement>(null);
 
-    const phoneSessionActive =
-        Boolean(phoneLink.phonePaired) && phoneLink.state === 'connected';
-    const phoneStalePaired = Boolean(phoneLink.phonePaired) && !phoneSessionActive;
+    const phoneReachable = Boolean(phoneLink.phoneReachable);
+    const phoneAvailable =
+        Boolean(phoneLink.phonePaired) && phoneReachable && phoneLink.state === 'connected';
+    const phoneStalePaired = Boolean(phoneLink.phonePaired) && !phoneReachable;
     const qrReady = Boolean(phoneLink.pairingUrl);
     const showError =
         phoneLink.state === 'unavailable' ||
@@ -149,7 +150,7 @@ export const PhonePairingSection = ({
 
     return (
         <>
-            {phoneSessionActive ? (
+            {phoneAvailable ? (
                 <p className={styles.pairedBadge}>
                     {t('productUx.devices.connectPanel.phoneConnected')}
                 </p>
@@ -162,8 +163,8 @@ export const PhonePairingSection = ({
             <p className={styles.subtitle}>
                 {phoneStalePaired
                     ? t('productUx.devices.connectPanel.pairedStaleSubtitle')
-                    : phoneSessionActive
-                      ? t('productUx.devices.connectPanel.scanAgainSubtitle')
+                    : phoneAvailable
+                      ? t('productUx.devices.connectPanel.importAgainSubtitle')
                       : t('productUx.devices.connectPanel.subtitle')}
             </p>
 
@@ -195,8 +196,8 @@ export const PhonePairingSection = ({
 
             <p className={styles.hint}>
                 {qrReady
-                    ? t('productUx.devices.connectPanel.scanHint')
-                    : t('productUx.devices.connectPanel.waitingForCode')}
+                    ? t('productUx.devices.linkWizard.importScanHint')
+                    : t('productUx.devices.linkWizard.preparing')}
             </p>
 
             <div className={styles.actions}>

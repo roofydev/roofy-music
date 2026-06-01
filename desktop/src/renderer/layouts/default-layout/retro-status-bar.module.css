@@ -3,6 +3,7 @@
     align-items: center;
     justify-content: space-between;
     height: 28px;
+    min-height: 28px;
     padding: 0 16px;
     background: var(--rm-bg, #050505);
     border-top: 1px solid var(--rm-border-soft, rgb(255 255 255 / 8%));
@@ -15,5 +16,6 @@
     font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.04em;
+    line-height: 1.2;
     text-transform: uppercase;
 }

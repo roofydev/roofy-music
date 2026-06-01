@@ -11,7 +11,7 @@ import {
     writeFileSync,
 } from 'fs';
 import http from 'http';
-import { networkInterfaces } from 'os';
+import { hostname, networkInterfaces } from 'os';
 import path from 'path';
 import { pathToFileURL } from 'url';
 
@@ -30,12 +30,17 @@ import {
 import { enrichAudioFileMetadata, probeAudioTags } from './metadata-enrichment';
 import { parseCloudflaredTunnelUrl } from './cloudflared-tunnel-url';
 import {
+    createDeviceBridgeCoordinator,
+    type PhoneLinkRequestMode,
+} from './device-bridge-coordinator';
+import {
     buildDevicePairingUrl,
     buildImportPairingUrl,
     buildSubsonicPairingUrl,
 } from './pairing-urls';
 
 import { applyHandoffState, requestHandoffState } from '/@/main/features/core/handoff';
+import type { PhoneLinkStatus } from '/@/shared/types/device-session-types';
 import { getMainWindow } from '/@/main/index';
 import { HandoffSnapshot } from '/@/shared/types/handoff-types';
 import { extractYoutubeVideoId, isYoutubeVideoId } from '/@/shared/utils/youtube-video-id';
@@ -182,17 +187,6 @@ type LocalMobileImportStatus = {
 
 type LocalPairingMode = 'lan' | 'tunnel';
 
-type PhoneLinkRequestMode = 'auto' | LocalPairingMode;
-
-type PhoneLinkStatus = {
-    error?: string;
-    mode: LocalPairingMode | 'auto';
-    /** True after a phone has successfully used the link (not merely when tunnels are up). */
-    phonePaired: boolean;
-    pairingUrl?: string;
-    state: 'connected' | 'disabled' | 'starting' | 'unavailable';
-};
-
 type LocalPairingStatus = {
     error?: string;
     /** Other IPv4 addresses on this PC (LAN mode troubleshooting). */
@@ -272,7 +266,6 @@ const MOBILE_IMPORT_TOKEN_KEY = 'roofy.mobileImportToken';
 const MOBILE_IMPORT_PORT_KEY = 'roofy.mobileImportPort';
 /** Stable LAN handoff/import port so re-pairing is not required after every desktop restart. */
 const DEFAULT_MOBILE_IMPORT_PORT = 60952;
-const PHONE_PAIRED_KEY = 'roofy.phoneHasPaired';
 const AUTO_ENRICH_METADATA_KEY = 'roofy.autoEnrichMetadata';
 
 const isAutoEnrichMetadataEnabled = () => Boolean(store.get(AUTO_ENRICH_METADATA_KEY));
@@ -984,106 +977,18 @@ const withPairingUrl = (status: LocalPairingStatus): LocalPairingStatus =>
         pairingUrl: status.url ? getPairingUrl(status.url) : undefined,
     });
 
-const resolvePhoneLinkMode = (mode: PhoneLinkRequestMode): LocalPairingMode =>
-    mode === 'lan' ? 'lan' : 'tunnel';
-
-let desktopConnectWebControlUrl: string | undefined;
-let phoneHasPaired = Boolean(store.get(PHONE_PAIRED_KEY, false));
-let phoneLinkBootstrapInFlight: null | Promise<LocalFirstStatus> = null;
-
-const markPhoneHasPaired = () => {
-    phoneHasPaired = true;
-    store.set(PHONE_PAIRED_KEY, true);
-};
-
-const isPhoneLinkReady = () =>
-    mobileImportStatus.state === 'connected' &&
-    localPairingStatus.state === 'connected' &&
-    Boolean(mobileImportStatus.url) &&
-    Boolean(localPairingStatus.url);
-
-/** Restart tunnels when a paired phone calls in but the bridge is down (e.g. after desktop restart). */
-const ensurePhoneLinkReady = async () => {
-    if (!phoneHasPaired || isPhoneLinkReady()) {
-        return;
-    }
-
-    if (phoneLinkBootstrapInFlight) {
-        await phoneLinkBootstrapInFlight;
-        return;
-    }
-
-    phoneLinkBootstrapInFlight = startPhoneLink('auto');
-    try {
-        await phoneLinkBootstrapInFlight;
-    } finally {
-        phoneLinkBootstrapInFlight = null;
-    }
-};
-
-const getPublicMobileImportEndpoint = () =>
-    mobileImportStatus.state === 'connected' && mobileImportStatus.url
-        ? mobileImportStatus.url
-        : undefined;
-
-const refreshDesktopConnectWebControlUrl = async () => {
-    try {
-        const { ensureRemoteForPairing } = await import('/@/main/features/core/remote');
-        desktopConnectWebControlUrl = await ensureRemoteForPairing();
-    } catch {
-        desktopConnectWebControlUrl = undefined;
-    }
-};
-
-const getDevicePairingUrl = (subsonicUrl: string, importEndpoint: string) =>
-    buildDevicePairingUrl({
-        endpointUrl: importEndpoint,
-        password: getPassword(),
-        serverUrl: subsonicUrl,
-        token: getMobileImportToken(),
-        username: LOCAL_SERVER_USERNAME,
-        webControlUrl: desktopConnectWebControlUrl,
-    });
-
-const getPhoneLinkStatus = (): PhoneLinkStatus => {
-    const pairing = withPairingUrl(localPairingStatus);
-    const mobileImport = withMobileImportPairingUrl(mobileImportStatus);
-    const mode: LocalPairingMode =
-        pairing.mode === 'lan' || mobileImport.mode === 'lan' ? 'lan' : pairing.mode || 'tunnel';
-
-    if (pairing.state === 'disabled' && mobileImport.state === 'disabled') {
-        return { mode, phonePaired: phoneHasPaired, state: 'disabled' };
-    }
-
-    if (pairing.state === 'starting' || mobileImport.state === 'starting') {
-        return { mode, phonePaired: phoneHasPaired, state: 'starting' };
-    }
-
-    if (pairing.state === 'connected' && mobileImport.state === 'connected' && pairing.url && mobileImport.url) {
-        return {
-            mode,
-            phonePaired: phoneHasPaired,
-            pairingUrl: getDevicePairingUrl(pairing.url, mobileImport.url),
-            state: 'connected',
-        };
-    }
-
-    const error =
-        pairing.state === 'unavailable'
-            ? pairing.error
-            : mobileImport.state === 'unavailable'
-              ? mobileImport.error
-              : pairing.state !== 'connected'
-                ? pairing.error || 'Personal library link is not ready.'
-                : mobileImport.error || 'Save-to-desktop link is not ready.';
-
-    return {
-        error,
-        mode,
-        phonePaired: phoneHasPaired,
-        state: 'unavailable',
-    };
-};
+let markPhoneHasPaired: (req?: http.IncomingMessage) => void;
+let setActiveOutput: (
+    output: import('/@/shared/types/device-session-types').DeviceActiveOutput,
+    req?: http.IncomingMessage,
+) => void;
+let ensurePhoneLinkReady: () => Promise<void>;
+let isPhoneLinkReady: () => boolean;
+let getPhoneLinkStatus: () => PhoneLinkStatus;
+let startPhoneLink: (mode?: PhoneLinkRequestMode) => Promise<LocalFirstStatus>;
+let stopPhoneLink: () => LocalFirstStatus;
+let disconnectPhoneLink: () => LocalFirstStatus;
+let getPublicMobileImportEndpoint: () => string | undefined;
 
 const settleStuckPhoneLinkStarting = () => {
     if (localPairingStatus.state === 'starting') {
@@ -1100,50 +1005,6 @@ const settleStuckPhoneLinkStarting = () => {
             state: 'unavailable',
         };
     }
-};
-
-/** Start import endpoint first, then library link. LAN is tried before tunnel for `auto`. */
-const startPhoneLink = async (mode: PhoneLinkRequestMode = 'auto'): Promise<LocalFirstStatus> => {
-    const finalizeLink = async (status: LocalFirstStatus) => {
-        if (status.phoneLink.state === 'connected') {
-            await refreshDesktopConnectWebControlUrl();
-        }
-        return getLocalFirstStatus();
-    };
-
-    const tryLink = async (linkMode: LocalPairingMode) => {
-        stopPhoneLink();
-        await startMobileImport(linkMode);
-        await startLocalPairing(linkMode);
-        const status = getLocalFirstStatus();
-        if (status.phoneLink.state === 'starting') {
-            settleStuckPhoneLinkStarting();
-        }
-        return finalizeLink(getLocalFirstStatus());
-    };
-
-    if (mode === 'auto') {
-        const lanStatus = await tryLink('lan');
-        if (lanStatus.phoneLink.state === 'connected') {
-            return lanStatus;
-        }
-        return tryLink('tunnel');
-    }
-
-    return tryLink(resolvePhoneLinkMode(mode));
-};
-
-const stopPhoneLink = () => {
-    desktopConnectWebControlUrl = undefined;
-    stopLocalPairing();
-    stopMobileImport();
-    return getLocalFirstStatus();
-};
-
-const disconnectPhoneLink = () => {
-    phoneHasPaired = false;
-    store.delete(PHONE_PAIRED_KEY);
-    return stopPhoneLink();
 };
 
 const stopLocalPairing = () => {
@@ -1364,7 +1225,7 @@ const handleMobileImportRequest = async (req: http.IncomingMessage, res: http.Se
             return;
         }
 
-        markPhoneHasPaired();
+        markPhoneHasPaired(req);
         void ensurePhoneLinkReady().catch(() => {
             // Warm library link for handoff; reachability only needs the import bridge.
         });
@@ -1392,7 +1253,7 @@ const handleMobileImportRequest = async (req: http.IncomingMessage, res: http.Se
             return;
         }
 
-        markPhoneHasPaired();
+        markPhoneHasPaired(req);
         try {
             await ensurePhoneLinkReady();
             if (!isPhoneLinkReady()) {
@@ -1402,6 +1263,7 @@ const handleMobileImportRequest = async (req: http.IncomingMessage, res: http.Se
                 return;
             }
             const snapshot = await requestHandoffState();
+            setActiveOutput('phone', req);
             writeJsonResponse(res, 200, snapshot);
         } catch (error: any) {
             writeJsonResponse(res, 503, {
@@ -1417,7 +1279,7 @@ const handleMobileImportRequest = async (req: http.IncomingMessage, res: http.Se
             return;
         }
 
-        markPhoneHasPaired();
+        markPhoneHasPaired(req);
         try {
             await ensurePhoneLinkReady();
             if (!isPhoneLinkReady()) {
@@ -1428,6 +1290,7 @@ const handleMobileImportRequest = async (req: http.IncomingMessage, res: http.Se
             }
             const body = await readJsonRequest(req);
             applyHandoffState(body as HandoffSnapshot);
+            setActiveOutput('computer', req);
             writeJsonResponse(res, 200, { ok: true });
         } catch (error: any) {
             writeJsonResponse(res, 400, { error: error?.message || 'Invalid handoff payload.' });
@@ -1445,7 +1308,7 @@ const handleMobileImportRequest = async (req: http.IncomingMessage, res: http.Se
         return;
     }
 
-    markPhoneHasPaired();
+    markPhoneHasPaired(req);
     try {
         const body = await readJsonRequest(req);
         const input = String(body.url || body.input || body.sourceUrl || '').trim();
@@ -4048,6 +3911,44 @@ const getLocalFirstStatus = (message = ''): LocalFirstStatus => {
         },
     };
 };
+
+const deviceBridge = createDeviceBridgeCoordinator({
+    getLocalFirstStatus,
+    getLocalPairingStatus: () => localPairingStatus,
+    getMobileImportStatus: () => mobileImportStatus,
+    getMobileImportToken,
+    getPassword,
+    getRemoteClientCount: () => {
+        try {
+            // Lazy import avoids circular init issues during module load.
+            const { getRemoteClientCount } = require('/@/main/features/core/remote') as {
+                getRemoteClientCount: () => number;
+            };
+            return getRemoteClientCount();
+        } catch {
+            return 0;
+        }
+    },
+    getUsername: () => LOCAL_SERVER_USERNAME,
+    settleStuckPhoneLinkStarting,
+    startLocalPairing,
+    startMobileImport,
+    stopLocalPairing,
+    stopMobileImport,
+    store,
+    withMobileImportPairingUrl,
+    withPairingUrl,
+});
+
+markPhoneHasPaired = (req) => deviceBridge.markPhoneHasPaired(req);
+setActiveOutput = (output, req) => deviceBridge.setActiveOutput(output, req);
+ensurePhoneLinkReady = () => deviceBridge.ensurePhoneLinkReady();
+isPhoneLinkReady = () => deviceBridge.isPhoneLinkReady();
+getPhoneLinkStatus = () => deviceBridge.getPhoneLinkStatus();
+startPhoneLink = (mode) => deviceBridge.startPhoneLink(mode) as Promise<LocalFirstStatus>;
+stopPhoneLink = () => deviceBridge.stopPhoneLink() as LocalFirstStatus;
+disconnectPhoneLink = () => deviceBridge.disconnectPhoneLink() as LocalFirstStatus;
+getPublicMobileImportEndpoint = () => deviceBridge.getPublicMobileImportEndpoint();
 
 ipcMain.handle('roofy-local-probe-audio-tags', (_event, filePath: string) => {
     const normalizedPath = String(filePath || '').trim();

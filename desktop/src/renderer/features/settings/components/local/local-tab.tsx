@@ -17,7 +17,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { openLinkPhoneWizard } from '/@/renderer/features/devices/utils/open-link-phone-wizard';
 import {
     getImportStatusBadgeKey,
     getImportStatusLabelKey,
@@ -159,7 +158,6 @@ export const LocalTab = () => {
     const { t } = useTranslation();
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const [advancedSetupOpen, setAdvancedSetupOpen] = useState(false);
-    const [manualConnectionOpen, setManualConnectionOpen] = useState(false);
     const [status, setStatus] = useState<LocalStatus | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
@@ -252,13 +250,6 @@ export const LocalTab = () => {
         } finally {
             setBusy(false);
         }
-    };
-
-    const copyPhoneLink = async () => {
-        const pairingUrl = status?.phoneLink?.pairingUrl;
-        if (!pairingUrl) return;
-        await navigator.clipboard.writeText(pairingUrl);
-        setMessage(t('productUx.personalLibrary.copiedSetupLink'));
     };
 
     const createUser = async () => {
@@ -373,64 +364,8 @@ export const LocalTab = () => {
             <Stack gap="sm">
                 <Text fw={600}>{t('productUx.devices.linkPhone')}</Text>
                 <Text c="dimmed" size="sm">
-                    {t('productUx.personalLibrary.connectPhoneDescription')}
+                    {t('productUx.devices.personalLibraryPhoneHint')}
                 </Text>
-                <Button onClick={() => openLinkPhoneWizard()} variant="filled">
-                    {t('productUx.devices.linkPhone')}
-                </Button>
-                <Button
-                    onClick={() => setManualConnectionOpen((open) => !open)}
-                    size="compact-sm"
-                    variant="subtle"
-                >
-                    {t('productUx.devices.linkWizard.manualConnection')}
-                </Button>
-                <Collapse in={manualConnectionOpen}>
-                    <Stack gap="sm" mt="sm">
-                        <Badge variant="light">
-                            {t(
-                                `productUx.devices.phoneLinkState.${status?.phoneLink?.state || 'disabled'}`,
-                                status?.phoneLink?.state || 'disabled',
-                            )}
-                        </Badge>
-                        {status?.phoneLink?.error && (
-                            <Text c="dimmed" size="sm">
-                                {t('productUx.devices.phoneLinkFailed')}
-                            </Text>
-                        )}
-                        <Group>
-                            <Button
-                                disabled={busy || status?.phoneLink?.state === 'starting'}
-                                onClick={() => run(() => window.api.localFirst.startPhoneLink('auto'))}
-                                variant="light"
-                            >
-                                {t('productUx.error.recovery.tryAgain')}
-                            </Button>
-                            <Button
-                                disabled={busy || status?.phoneLink?.state === 'starting'}
-                                onClick={() => run(() => window.api.localFirst.startPhoneLink('lan'))}
-                                variant="subtle"
-                            >
-                                {t('productUx.devices.linkWizard.sameWifiOnly')}
-                            </Button>
-                            <Button
-                                disabled={busy || status?.phoneLink?.state === 'disabled'}
-                                onClick={() => run(() => window.api.localFirst.stopPhoneLink())}
-                                variant="subtle"
-                            >
-                                Stop
-                            </Button>
-                        </Group>
-                        <Button
-                            disabled={!status?.phoneLink?.pairingUrl}
-                            onClick={copyPhoneLink}
-                            size="compact-sm"
-                            variant="default"
-                        >
-                            {t('productUx.personalLibrary.copySetupLink')}
-                        </Button>
-                    </Stack>
-                </Collapse>
             </Stack>
 
             <Divider />
