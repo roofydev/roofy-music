@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import isElectron from 'is-electron';
+import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { CollapsibleCommandGroup } from '/@/renderer/features/search/components/collapsible-command-group';
 import { CommandItemSelectable } from '/@/renderer/features/search/components/command-item-selectable';
@@ -9,6 +11,7 @@ import { Badge } from '/@/shared/components/badge/badge';
 import { Box } from '/@/shared/components/box/box';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import { toast } from '/@/shared/components/toast/toast';
+import { showImportError, showSearchError } from '/@/shared/product-ux';
 import { LibraryItem, Song } from '/@/shared/types/domain-types';
 
 interface SearchYoutubeMusicSectionProps {
@@ -28,6 +31,7 @@ export function SearchYoutubeMusicSection({
     onToggle,
     query,
 }: SearchYoutubeMusicSectionProps) {
+    const { t } = useTranslation();
     const enabled =
         isHome &&
         debouncedQuery !== '' &&
@@ -49,6 +53,12 @@ export function SearchYoutubeMusicSection({
         staleTime: 30_000,
     });
 
+    useEffect(() => {
+        if (searchQuery.isError) {
+            showSearchError(t, searchQuery.error);
+        }
+    }, [searchQuery.isError, searchQuery.error, t]);
+
     const handleImport = async (song: Song) => {
         const videoId = song.youtubeMusic?.videoId;
         if (!videoId || !window.api?.youtubeMusic?.downloadTrack) return;
@@ -63,10 +73,16 @@ export function SearchYoutubeMusicSection({
                 videoId,
             });
             useImportJobsStore.getState().actions.setJob(job);
-            toast.success({ message: `Import queued: ${song.name}` });
+            toast.success({
+                message: t('productUx.import.toast.queuedMessage', {
+                    title: song.name,
+                    target: t('productUx.personalLibrary.settingsTab'),
+                }),
+                title: t('productUx.import.toast.queuedTitle'),
+            });
             onSelectResult();
         } catch (error) {
-            toast.error({ message: (error as Error).message });
+            showImportError(t, error);
         }
     };
 
@@ -78,9 +94,13 @@ export function SearchYoutubeMusicSection({
     return (
         <CollapsibleCommandGroup
             expanded={expanded}
-            heading="YouTube Music"
+            heading={t('productUx.search.youtubeMusic.heading')}
             onToggle={onToggle}
-            subtitle={searchQuery.isFetched ? <Badge>Remote</Badge> : undefined}
+            subtitle={
+                searchQuery.isFetched ? (
+                    <Badge>{t('productUx.search.youtubeMusic.badgeOnline')}</Badge>
+                ) : undefined
+            }
         >
             {searchQuery.isLoading ? (
                 <Box p="md">

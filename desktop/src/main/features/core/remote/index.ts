@@ -1,14 +1,25 @@
-import { timingSafeEqual } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import { app, ipcMain } from 'electron';
 import axios from 'axios';
+import { existsSync } from 'fs';
 import { promises, Stats } from 'fs';
 import { readFile } from 'fs/promises';
 import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
 import { join } from 'path';
+import { fileURLToPath } from 'url';
 import { WebSocket, WebSocketServer, Server as WsServer } from 'ws';
 import { deflate, gzip } from 'zlib';
 
 import manifest from './manifest.json';
+import {
+    buildRemoteSessionCookie,
+    getLanHost,
+    getRemoteControlLinks,
+    readRemoteAccessToken,
+    readRemoteSessionCookie,
+    resolveRemoteRequestPath,
+    type RemoteControlLinkConfig,
+} from './remote-control-link';
 
 import { getMainWindow } from '/@/main/index';
 import { isLinux } from '/@/main/utils';
@@ -89,6 +100,21 @@ export const shutdownServer = () => {
     }
 };
 
+export const getRemoteClientCount = (): number => {
+    if (!wsServer) {
+        return 0;
+    }
+
+    let count = 0;
+    for (const client of wsServer.clients) {
+        const statefulClient = client as StatefulWebSocket;
+        if (statefulClient.auth) {
+            count += 1;
+        }
+    }
+    return count;
+};
+
 const MIME_TYPES: MimeType = {
     css: 'text/css',
     html: 'text/html; charset=UTF-8',
@@ -96,7 +122,7 @@ const MIME_TYPES: MimeType = {
     js: 'application/javascript',
 };
 
-const PING_TIMEOUT_MS = 10000;
+const PING_TIMEOUT_MS = 30000;
 const UP_TIMEOUT_MS = 5000;
 
 enum Encoding {
@@ -109,6 +135,9 @@ const GZIP_REGEX = /\bgzip\b/;
 const ZLIB_REGEX = /bdeflate\b/;
 
 const currentState: SongState = {};
+let currentArtworkSource: null | string = null;
+let currentArtworkVersion = '';
+const artworkSources = new Map<string, string>();
 
 const getEncoding = (encoding: string | string[]): Encoding => {
     const encodingArray = Array.isArray(encoding) ? encoding : [encoding];
@@ -127,10 +156,19 @@ const getEncoding = (encoding: string | string[]): Encoding => {
 
 const cache = new Map<string, Map<Encoding, [number, Buffer]>>();
 
-function authorize(req: IncomingMessage): boolean {
-    if (settings.username || settings.password) {
-        // https://stackoverflow.com/questions/23616371/basic-http-authentication-with-node-and-express-4
+function getRequestAccessToken(req: IncomingMessage): string | undefined {
+    return readRemoteAccessToken(req.url) || readRemoteSessionCookie(req.headers.cookie);
+}
 
+function authorize(req: IncomingMessage): boolean {
+    if (settings.password) {
+        const token = getRequestAccessToken(req);
+        if (token && safeEqual(token, settings.password)) {
+            return true;
+        }
+    }
+
+    if (settings.username || settings.password) {
         const authorization = req.headers.authorization?.split(' ')[1] || '';
         const [login, password] = Buffer.from(authorization, 'base64').toString().split(':');
 
@@ -138,6 +176,17 @@ function authorize(req: IncomingMessage): boolean {
     }
 
     return true;
+}
+
+/** After a tokenized link opens, persist auth for asset and WebSocket requests (no Basic prompt). */
+function attachRemoteSessionCookie(req: IncomingMessage, res: ServerResponse) {
+    if (!settings.password.trim()) return;
+
+    const urlToken = readRemoteAccessToken(req.url);
+    if (!urlToken || !safeEqual(urlToken, settings.password)) return;
+    if (readRemoteSessionCookie(req.headers.cookie)) return;
+
+    res.setHeader('Set-Cookie', buildRemoteSessionCookie(urlToken));
 }
 
 function safeEqual(left = '', right = ''): boolean {
@@ -154,6 +203,85 @@ function isSafeProxyUrl(value: string): boolean {
     } catch {
         return false;
     }
+}
+
+async function fetchArtworkBytes(rawUrl: string): Promise<Buffer | null> {
+    const url = rawUrl.replaceAll(/&(size|width|height)=\d+/g, '');
+
+    if (url.startsWith('data:')) {
+        const match = url.match(/^data:image\/[^;]+;base64,(.+)$/i);
+        return match ? Buffer.from(match[1], 'base64') : null;
+    }
+
+    if (isSafeProxyUrl(url)) {
+        const resp = await axios.get(url, { responseType: 'arraybuffer' });
+        return Buffer.from(resp.data, 'binary');
+    }
+
+    let filePath = url;
+    if (url.startsWith('file://')) {
+        filePath = fileURLToPath(url);
+    }
+
+    if (existsSync(filePath)) {
+        return readFile(filePath);
+    }
+
+    return null;
+}
+
+function currentArtworkUrl(): null | string {
+    if (!currentArtworkSource) {
+        return null;
+    }
+
+    const host = getLanHost() || '127.0.0.1';
+    const url = new URL(`http://${host}:${settings.port}/artwork/current`);
+    if (settings.password) {
+        url.searchParams.set('token', settings.password);
+    }
+    if (currentArtworkVersion) {
+        url.searchParams.set('v', currentArtworkVersion);
+    }
+    return url.toString();
+}
+
+function imageContentType(bytes: Buffer): string {
+    if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'image/jpeg';
+    if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+        return 'image/png';
+    }
+    if (bytes.subarray(0, 4).toString('ascii') === 'RIFF' && bytes.subarray(8, 12).toString('ascii') === 'WEBP') {
+        return 'image/webp';
+    }
+    if (bytes.subarray(0, 3).toString('ascii') === 'GIF') return 'image/gif';
+    return 'image/jpeg';
+}
+
+async function serveCurrentArtwork(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const requestedVersion = new URL(req.url || '/', 'http://localhost').searchParams.get('v');
+    const source =
+        (requestedVersion ? artworkSources.get(requestedVersion) : undefined) ||
+        currentArtworkSource;
+    if (!source) {
+        res.statusCode = 404;
+        res.setHeader('Content-Type', 'text/plain');
+        res.end('No artwork available');
+        return;
+    }
+
+    const bytes = await fetchArtworkBytes(source);
+    if (!bytes) {
+        res.statusCode = 404;
+        res.setHeader('Content-Type', 'text/plain');
+        res.end('Artwork unavailable');
+        return;
+    }
+
+    res.statusCode = 200;
+    res.setHeader('Content-Type', imageContentType(bytes));
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.end(bytes);
 }
 
 async function serveFile(
@@ -302,8 +430,12 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
                     return;
                 }
 
+                attachRemoteSessionCookie(req, res);
+
                 try {
-                    switch (req.url) {
+                    const requestPath = resolveRemoteRequestPath(req.url);
+
+                    switch (requestPath) {
                         case '/': {
                             await serveFile(req, 'index', 'html', res);
                             break;
@@ -318,6 +450,10 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
                             res.end(JSON.stringify(manifest));
                             break;
                         }
+                        case '/artwork/current': {
+                            await serveCurrentArtwork(req, res);
+                            break;
+                        }
                         case '/remote.css': {
                             await serveFile(req, 'remote', 'css', res);
                             break;
@@ -327,7 +463,7 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
                             break;
                         }
                         default: {
-                            if (req.url?.startsWith('/worker.js')) {
+                            if (requestPath.startsWith('/worker.js')) {
                                 await serveFile(req, 'worker', 'js', res);
                             } else {
                                 res.statusCode = 404;
@@ -343,7 +479,7 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
                 }
             });
 
-            server.listen(config.port, '127.0.0.1', resolve);
+            server.listen(config.port, '0.0.0.0', resolve);
             wsServer = new WebSocketServer<typeof StatefulWebSocket>({ server });
 
             wsServer!.on('connection', (ws: StatefulWebSocket, req: IncomingMessage) => {
@@ -391,33 +527,20 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
                                 break;
                             }
                             case 'proxy': {
-                                const toFetch = currentState.song?.imageUrl?.replaceAll(
-                                    /&(size|width|height)=\d+/g,
-                                    '',
-                                );
-
+                                const toFetch = currentArtworkSource;
                                 if (!toFetch) return;
-                                if (!isSafeProxyUrl(toFetch)) {
-                                    send({
-                                        client: ws,
-                                        data: 'Blocked unsupported image URL protocol',
-                                        event: 'error',
-                                    });
-                                    return;
-                                }
 
-                                axios
-                                    .get(toFetch, { responseType: 'arraybuffer' })
-                                    .then((resp) => {
-                                        if (ws.readyState === WebSocket.OPEN) {
-                                            send({
-                                                client: ws,
-                                                data: Buffer.from(resp.data, 'binary').toString(
-                                                    'base64',
-                                                ),
-                                                event: 'proxy',
-                                            });
+                                fetchArtworkBytes(toFetch)
+                                    .then((bytes) => {
+                                        if (!bytes || ws.readyState !== WebSocket.OPEN) {
+                                            return null;
                                         }
+
+                                        send({
+                                            client: ws,
+                                            data: bytes.toString('base64'),
+                                            event: 'proxy',
+                                        });
                                         return null;
                                     })
                                     .catch((error) => {
@@ -520,6 +643,39 @@ const enableServer = (config: RemoteConfig): Promise<void> => {
     });
 };
 
+const toLinkConfig = (): RemoteControlLinkConfig => ({
+    password: settings.password,
+    port: settings.port,
+});
+
+/** LAN URL for unified desktop QR when web control is already running. */
+export const getRemotePairingUrlIfEnabled = (): string | undefined => {
+    if (!settings.enabled || !settings.password.trim()) {
+        return undefined;
+    }
+
+    return getRemoteControlLinks(toLinkConfig()).primary;
+};
+
+/** Turn on web control and return the URL to embed in a device pairing QR. */
+export const ensureRemoteForPairing = async (): Promise<string | undefined> => {
+    if (!settings.password.trim()) {
+        settings.password = randomBytes(18).toString('base64url');
+    }
+
+    settings.enabled = true;
+
+    try {
+        await enableServer(settings);
+    } catch {
+        return undefined;
+    }
+
+    return getRemoteControlLinks(toLinkConfig()).primary;
+};
+
+ipcMain.handle('remote-control-links', () => getRemoteControlLinks(toLinkConfig()));
+
 ipcMain.handle('remote-enable', async (_event, enabled: boolean) => {
     settings.enabled = enabled;
 
@@ -617,12 +773,27 @@ ipcMain.on('update-playback', (_event, status: PlayerStatus) => {
 
 ipcMain.on('update-song', (_event, song: QueueSong | undefined, imageUrl?: null | string) => {
     const songChanged = song?.id !== currentState.song?.id;
+    const previousArtworkSource = currentArtworkSource;
     if (song) {
-        song.imageUrl = imageUrl || null;
+        currentArtworkSource = imageUrl || song.imageUrl || null;
+        currentArtworkVersion = `${song.id || 'current'}-${Date.now()}`;
+        if (currentArtworkSource) {
+            artworkSources.set(currentArtworkVersion, currentArtworkSource);
+            while (artworkSources.size > 20) {
+                const oldestVersion = artworkSources.keys().next().value;
+                if (!oldestVersion) break;
+                artworkSources.delete(oldestVersion);
+            }
+        }
+        song.imageUrl = currentArtworkUrl();
+    } else {
+        currentArtworkSource = null;
+        currentArtworkVersion = '';
+        artworkSources.clear();
     }
     currentState.song = song;
 
-    if (songChanged) {
+    if (songChanged || previousArtworkSource !== currentArtworkSource) {
         broadcast({ data: song || null, event: 'song' });
     }
 });

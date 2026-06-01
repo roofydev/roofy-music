@@ -44,14 +44,6 @@ import { ServerType, toServerType } from '/@/shared/types/types';
 
 const localSettings = window.api?.localSettings ?? null;
 
-type LoginServerType = Exclude<ServerType, ServerType.YOUTUBE_MUSIC>;
-
-const SERVER_NAMES: Record<LoginServerType, string> = {
-    [ServerType.JELLYFIN]: 'Jellyfin',
-    [ServerType.NAVIDROME]: 'Navidrome',
-    [ServerType.SUBSONIC]: 'OpenSubsonic',
-};
-
 const normalizeUrl = (url: string) => url.replace(/\/$/, '');
 
 const LoginRoute = () => {
@@ -261,7 +253,12 @@ const LoginRoute = () => {
         id: serverLock && serverType === ServerType.NAVIDROME ? ROOFY_LOCAL_SERVER_ID : undefined,
         type: serverType as ServerType,
     });
-    const serverDisplayName = SERVER_NAMES[serverType as ServerType];
+    const serverDisplayName =
+        serverType === ServerType.JELLYFIN
+            ? t('productUx.serverType.jellyfin')
+            : serverType === ServerType.NAVIDROME
+              ? t('productUx.serverType.personalLibrary')
+              : t('productUx.serverType.compatibleMusicServer');
 
     return (
         <AnimatedPage>
@@ -282,7 +279,7 @@ const LoginRoute = () => {
                                 </Text>
                                 {serverName && (
                                     <Text c="dimmed" size="sm">
-                                        Built-in local music library
+                                        {t('productUx.personalLibrary.engineDescription')}
                                     </Text>
                                 )}
                                 {localLoginMessage && (

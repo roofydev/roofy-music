@@ -39,7 +39,7 @@ export const RetroTopBar = memo(function RetroTopBar() {
             </Group>
             <Group align="center" gap="sm">
                 <Link
-                    aria-label="Open imports"
+                    aria-label={t('productUx.import.pageTitle')}
                     className={styles.importsButton}
                     to={AppRoute.IMPORTS}
                 >

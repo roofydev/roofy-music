@@ -43,9 +43,15 @@ interface SidebarIconProps {
 
 export const SidebarIcon = ({ active, route, size }: SidebarIconProps) => {
     const location = useLocation();
-    const isActive = active !== undefined ? active : location.pathname === route;
+    const routePath = route.split('?')[0];
+    const wantsOfflineFilter = route.includes('offline=1');
+    const isActive =
+        active !== undefined
+            ? active
+            : location.pathname === routePath &&
+              (!wantsOfflineFilter || location.search.includes('offline=1'));
     const renderIcon = () => {
-        switch (route) {
+        switch (routePath) {
             case AppRoute.HOME:
                 if (isActive) return <RiHome6Fill size={size} />;
                 return <RiHome6Line size={size} />;
@@ -65,6 +71,10 @@ export const SidebarIcon = ({ active, route, size }: SidebarIconProps) => {
                 if (isActive) return <RiFlag2Fill size={size} />;
                 return <RiFlag2Line size={size} />;
             case AppRoute.LIBRARY_SONGS:
+                if (wantsOfflineFilter) {
+                    if (isActive) return <RiDownloadCloud2Fill size={size} />;
+                    return <RiDownloadCloud2Line size={size} />;
+                }
                 if (isActive) return <RiMusic2Fill size={size} />;
                 return <RiMusic2Line size={size} />;
             case AppRoute.LOCAL_FIRST:
@@ -76,6 +86,9 @@ export const SidebarIcon = ({ active, route, size }: SidebarIconProps) => {
             case AppRoute.NOW_PLAYING:
                 if (isActive) return <RiPlayFill size={size} />;
                 return <RiPlayLine size={size} />;
+            case AppRoute.PARTY:
+                if (isActive) return <RiRadioFill size={size} />;
+                return <RiRadioLine size={size} />;
             case AppRoute.PLAYLISTS:
                 if (isActive) return <RiPlayListFill size={size} />;
                 return <RiPlayListLine size={size} />;

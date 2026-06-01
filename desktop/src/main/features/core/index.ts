@@ -1,6 +1,8 @@
 import './autodiscover';
 import './lyrics';
+import './handoff';
 import './local-first';
+import './party';
 import './player';
 import './remote';
 import './settings';

@@ -54,7 +54,7 @@ export const SetRatingAction = ({ ids, itemType, songs = [] }: SetRatingActionPr
     const onRating = (rating: number) => {
         if (isYoutubeOnlySelection) {
             setYoutubeRating(youtubeSongs, rating);
-            toast.success({ message: 'Saved YouTube Music rating locally' });
+            toast.success({ message: t('productUx.search.youtubeMusic.ratingSavedLocal') });
             return;
         }
 

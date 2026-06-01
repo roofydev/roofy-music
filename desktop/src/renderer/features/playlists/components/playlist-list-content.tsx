@@ -2,8 +2,11 @@ import { lazy, Suspense, useMemo } from 'react';
 
 import { usePlaylistListFilters } from '/@/renderer/features/playlists/hooks/use-playlist-list-filters';
 import { ItemListSettings, useCurrentServer, useListSettings } from '/@/renderer/store';
+import { LibraryListEmptyHint } from '/@/renderer/features/shared/components/library-list-empty-hint';
+import { FILTER_KEYS } from '/@/renderer/features/shared/utils';
 import { Spinner } from '/@/shared/components/spinner/spinner';
-import { PlaylistListQuery } from '/@/shared/types/domain-types';
+import { Stack } from '/@/shared/components/stack/stack';
+import { LibraryItem, PlaylistListQuery } from '/@/shared/types/domain-types';
 import { ItemListKey, ListDisplayType, ListPaginationType } from '/@/shared/types/types';
 
 const PlaylistListInfiniteGrid = lazy(() =>
@@ -81,6 +84,11 @@ export const PlaylistListView = ({
         };
     }, [query, overrideQuery]);
 
+    const searchTerm =
+        mergedQuery.searchTerm ??
+        (mergedQuery as Record<string, string | undefined>)[FILTER_KEYS.SHARED.SEARCH_TERM];
+
+    const listBody = (() => {
     switch (display) {
         case ListDisplayType.GRID: {
             switch (pagination) {
@@ -155,4 +163,12 @@ export const PlaylistListView = ({
     }
 
     return null;
+    })();
+
+    return (
+        <Stack gap={0}>
+            <LibraryListEmptyHint itemType={LibraryItem.PLAYLIST} searchTerm={searchTerm} />
+            {listBody}
+        </Stack>
+    );
 };

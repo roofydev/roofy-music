@@ -377,13 +377,13 @@ const EmptyQueueDropZone = () => {
             ref={ref}
             w="100%"
         >
-            <div className={styles.emptyState}>
+            <div className={styles.emptyState} role="status">
                 <div className={styles.emptyIcon}>
                     <Icon icon="track" size="xl" />
                 </div>
-                <Text className={styles.emptyTitle}>{t('page.queue.emptyTitle', 'Queue is empty')}</Text>
+                <Text className={styles.emptyTitle}>{t('productUx.queue.emptyTitle')}</Text>
                 <Text className={styles.emptySubtitle}>
-                    {t('page.queue.emptySubtitle', 'Add some tracks to get started.')}
+                    {t('productUx.queue.emptySubtitle')}
                 </Text>
             </div>
         </Flex>

@@ -559,7 +559,7 @@
         "discordListening_description": "Prikaži status poslušanja namesto predvajanja",
         "discordRichPresence_description": "Omogoči prikaz statusa predvajanja v {{discord}} bogati prezenci. Oznake slike so: {{icon}}, {{playing}} in {{paused}}",
         "discordServeImage": "Pošiljaj {{discord}} u slike iz strežnika",
-        "discordServeImage_description": "Deli naslovne slike za {{discord}} bogato prisotnost iz samega strežnika, na voljo samo za Jellyfin in Navidrome",
+        "discordServeImage_description": "Show album art in {{discord}} from your music server when it is reachable on your network. Some servers need a public URL for art to appear.",
         "discordUpdateInterval": "Interval posodabljanja {{discord}} bogate prezence",
         "discordUpdateInterval_description": "Čas v sekundah med posameznimi posodobitvami (najmanj 15 sekund)",
         "enableRemote": "Omogoči oddaljeno upravljanje strežnika",

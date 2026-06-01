@@ -4,12 +4,13 @@ import { useTranslation } from 'react-i18next';
 
 import styles from './right-controls.module.css';
 
-import { PopoverPlayQueue } from '/@/renderer/features/now-playing/components/popover-play-queue';
 import { PlayerbarVideoControls } from '/@/renderer/features/player/components/playerbar-video-controls';
 import { PlayerConfig } from '/@/renderer/features/player/components/player-config';
 import { CustomPlayerbarSlider } from '/@/renderer/features/player/components/playerbar-slider';
 import { SleepTimerButton } from '/@/renderer/features/player/components/sleep-timer-button';
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
+import { DevicesButton } from '/@/renderer/features/devices/components/devices-button';
+import { PartyPanel } from '/@/renderer/features/party/components/party-panel';
 import { useSetRating } from '/@/renderer/features/shared/hooks/use-set-rating';
 import { useCreateFavorite } from '/@/renderer/features/shared/mutations/create-favorite-mutation';
 import { useDeleteFavorite } from '/@/renderer/features/shared/mutations/delete-favorite-mutation';
@@ -28,7 +29,6 @@ import {
     useSetFullScreenPlayerStore,
     useSettingsStoreActions,
     useSidebarRightExpanded,
-    useSideQueueType,
     useVolumeWheelStep,
     useVolumeWidth,
 } from '/@/renderer/store';
@@ -78,6 +78,8 @@ export const RightControls = () => {
             </Group>
             <Group align="center" gap="xs" wrap="nowrap">
                 <SleepTimerButton />
+                <DevicesButton />
+                <PartyPanel />
                 <PlayerConfig />
                 <LyricsButton />
                 <FavoriteButton />
@@ -128,62 +130,34 @@ const QueueButton = () => {
     const { t } = useTranslation();
     const isSidebarRightExpanded = useSidebarRightExpanded();
     const { setSideBar } = useAppStoreActions();
-    const sideQueueType = useSideQueueType();
 
     const { bindings } = useHotkeySettings();
 
-    const [popoverOpened, setPopoverOpened] = useState(false);
-
     const handleToggleQueue = () => {
-        if (sideQueueType === 'sideQueue') {
-            setSideBar({ rightExpanded: !isSidebarRightExpanded });
-        } else {
-            setPopoverOpened((prev) => !prev);
-        }
-    };
-
-    const handlePopoverClose = () => {
-        setPopoverOpened(false);
+        setSideBar({ rightExpanded: !isSidebarRightExpanded });
     };
 
     useHotkeys([
         [bindings.toggleQueue.isGlobal ? '' : bindings.toggleQueue.hotkey, handleToggleQueue],
     ]);
 
-    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-        e.stopPropagation();
-
-        if (sideQueueType === 'sideQueue') {
-            return handleToggleQueue();
-        }
-    };
-
-    if (sideQueueType === 'sideQueue') {
-        return (
-            <ActionIcon
-                icon={isSidebarRightExpanded ? 'panelRightClose' : 'panelRightOpen'}
-                iconProps={{
-                    size: 'lg',
-                }}
-                onClick={handleClick}
-                size="sm"
-                tooltip={{
-                    label: t('player.viewQueue'),
-                    openDelay: 0,
-                }}
-                variant="subtle"
-            />
-        );
-    }
-
     return (
-        <PopoverPlayQueue
-            onClose={handlePopoverClose}
-            onToggle={(e) => {
+        <ActionIcon
+            aria-label={t('player.viewQueue')}
+            icon={isSidebarRightExpanded ? 'panelRightClose' : 'panelRightOpen'}
+            iconProps={{
+                size: 'lg',
+            }}
+            onClick={(e) => {
                 e.stopPropagation();
                 handleToggleQueue();
             }}
-            opened={popoverOpened}
+            size="sm"
+            tooltip={{
+                label: t('player.viewQueue'),
+                openDelay: 0,
+            }}
+            variant="subtle"
         />
     );
 };
@@ -199,8 +173,11 @@ const LyricsButton = () => {
         setFullScreenPlayerStore({ expanded: !isFullScreenPlayerExpanded });
     };
 
+    const { t } = useTranslation();
+
     return (
         <ActionIcon
+            aria-label={t('player.lyrics')}
             icon="microphone"
             iconProps={{
                 color: activeTab === 'lyrics' && isFullScreenPlayerExpanded ? 'primary' : undefined,
@@ -223,6 +200,7 @@ const LyricsButton = () => {
 };
 
 const FavoriteButton = () => {
+    const { t } = useTranslation();
     const currentSong = usePlayerSong();
     const { bindings } = useHotkeySettings();
 
@@ -284,8 +262,13 @@ const FavoriteButton = () => {
         ],
     ]);
 
+    const favoriteLabel = currentSong?.userFavorite
+        ? t('player.unfavorite')
+        : t('player.favorite');
+
     return (
         <ActionIcon
+            aria-label={favoriteLabel}
             icon="favorite"
             iconProps={{
                 fill: currentSong?.userFavorite ? 'primary' : undefined,
@@ -297,7 +280,7 @@ const FavoriteButton = () => {
             }}
             size="sm"
             tooltip={{
-                label: currentSong?.userFavorite ? t('player.unfavorite') : t('player.favorite'),
+                label: favoriteLabel,
                 openDelay: 0,
             }}
             variant="subtle"

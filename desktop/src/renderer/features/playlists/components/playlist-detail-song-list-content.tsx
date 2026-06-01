@@ -1,5 +1,6 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 
 import { useItemListPagination } from '/@/renderer/components/item-list/item-list-pagination/use-item-list-pagination';
@@ -302,6 +303,7 @@ const PlaylistDetailTrackView = ({ data }: { data: PlaylistSongListResponse }) =
 };
 
 const PlaylistDetailTrackViewContent = ({ data }: { data: PlaylistSongListResponse }) => {
+    const { t } = useTranslation();
     const { playlistId } = useParams() as { playlistId: string };
     const server = useCurrentServer();
     const queryClient = useQueryClient();
@@ -315,7 +317,7 @@ const PlaylistDetailTrackViewContent = ({ data }: { data: PlaylistSongListRespon
                     job.targetPlaylistIds?.includes(playlistId),
             )
             .map((job) => {
-                const artistName = job.artist || 'YouTube Music';
+                const artistName = job.artist || t('productUx.import.unknownArtist');
                 return {
                     _itemType: LibraryItem.SONG,
                     _serverId: server.id,

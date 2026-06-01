@@ -1,5 +1,6 @@
 import isElectron from 'is-electron';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import {
     SettingOption,
@@ -14,6 +15,7 @@ import { toast } from '/@/shared/components/toast/toast';
 import { YoutubeMusicAuthStatus } from '/@/shared/types/youtube-music-types';
 
 export const YoutubeMusicSettings = () => {
+    const { t } = useTranslation();
     const [status, setStatus] = useState<null | YoutubeMusicAuthStatus>(null);
     const [busy, setBusy] = useState(false);
 
@@ -69,13 +71,11 @@ export const YoutubeMusicSettings = () => {
             description: (
                 <Stack gap="xs">
                     <Text isMuted size="sm">
-                        Uses your local Google session to enable native YouTube Music search,
-                        recommendations, and streaming inside Roofy Music.
+                        {t('productUx.search.youtubeMusic.connectDescription')}
                     </Text>
                     {status?.dependencyAvailable === false && (
                         <Text color="error" size="sm">
-                            youtubei.js is not available. Reinstall desktop dependencies before
-                            connecting.
+                            {t('productUx.search.youtubeMusic.dependencyUnavailable')}
                         </Text>
                     )}
                     {status?.connectedAt && (
@@ -89,5 +89,10 @@ export const YoutubeMusicSettings = () => {
         },
     ];
 
-    return <SettingsSection options={options} title="YouTube Music" />;
+    return (
+        <SettingsSection
+            options={options}
+            title={t('productUx.search.youtubeMusic.accountTitle')}
+        />
+    );
 };

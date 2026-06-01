@@ -4,6 +4,11 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '/@/renderer/api';
 import { useCurrentServer, useImportJobActions } from '/@/renderer/store';
+import {
+    getDownloadActionLabelKey,
+    isTrackActionVisible,
+    showImportError,
+} from '/@/shared/product-ux';
 import { ContextMenu } from '/@/shared/components/context-menu/context-menu';
 import { toast } from '/@/shared/components/toast/toast';
 import { ServerType, Song } from '/@/shared/types/domain-types';
@@ -27,9 +32,7 @@ export const DownloadAction = ({ ids, songs = [] }: DownloadActionProps) => {
     const queueYoutubeImports = useCallback(
         async (saveVideo: boolean) => {
             if (!isElectron() || !window.api?.youtubeMusic?.downloadTrack) {
-                toast.error({
-                    message: 'Import to Roofy Music is only available in the desktop app.',
-                });
+                showImportError(t, new Error('desktop_only'));
                 return;
             }
 
@@ -69,33 +72,40 @@ export const DownloadAction = ({ ids, songs = [] }: DownloadActionProps) => {
                 }
             }
         } catch (error) {
-            console.error('Failed to download items:', error);
-            toast.error({ message: (error as Error).message });
+            showImportError(t, error);
         }
-    }, [ids, isYoutubeOnlySelection, queueYoutubeImports, server.id]);
+    }, [ids, isYoutubeOnlySelection, queueYoutubeImports, server.id, t]);
 
     const onSelectWithVideo = useCallback(async () => {
         try {
             await queueYoutubeImports(true);
         } catch (error) {
-            console.error('Failed to download items:', error);
-            toast.error({ message: (error as Error).message });
+            showImportError(t, error);
         }
-    }, [queueYoutubeImports]);
+    }, [queueYoutubeImports, t]);
+
+    const primaryLabelKey = getDownloadActionLabelKey(songs);
+    const showSaveOrLibrary =
+        isTrackActionVisible(songs, 'saveOffline') ||
+        isTrackActionVisible(songs, 'addToLibrary');
+
+    if (!showSaveOrLibrary && !isYoutubeOnlySelection) {
+        return null;
+    }
 
     return isYoutubeOnlySelection ? (
         <ContextMenu.Submenu>
             <ContextMenu.SubmenuTarget>
                 <ContextMenu.Item leftIcon="download" onSelect={onSelect} rightIcon="arrowRightS">
-                    Import to Roofy Music
+                    {t(primaryLabelKey)}
                 </ContextMenu.Item>
             </ContextMenu.SubmenuTarget>
             <ContextMenu.SubmenuContent>
                 <ContextMenu.Item leftIcon="download" onSelect={onSelect}>
-                    Audio only
+                    {t('productUx.action.addToLibraryAudioOnly')}
                 </ContextMenu.Item>
                 <ContextMenu.Item leftIcon="mediaPlay" onSelect={onSelectWithVideo}>
-                    Audio + MP4 video
+                    {t('productUx.action.addToLibraryWithVideo')}
                 </ContextMenu.Item>
             </ContextMenu.SubmenuContent>
         </ContextMenu.Submenu>
@@ -105,7 +115,7 @@ export const DownloadAction = ({ ids, songs = [] }: DownloadActionProps) => {
             leftIcon="download"
             onSelect={onSelect}
         >
-            {t('page.contextMenu.download')}
+            {t(primaryLabelKey)}
         </ContextMenu.Item>
     );
 };

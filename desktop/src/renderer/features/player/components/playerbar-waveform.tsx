@@ -9,7 +9,14 @@ import styles from './playerbar-waveform.module.css';
 import { useSongUrl } from '/@/renderer/features/player/audio-player/hooks/use-stream-url';
 import { PlayerbarSeekSlider } from '/@/renderer/features/player/components/playerbar-seek-slider';
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
-import { BarAlign, usePlayerbarSlider, usePlayerSong, usePlayerTimestamp } from '/@/renderer/store';
+import {
+    BarAlign,
+    usePlaybackDurationSec,
+    usePlaybackSeekable,
+    usePlayerbarSlider,
+    usePlayerSong,
+    usePlayerTimestamp,
+} from '/@/renderer/store';
 import { useAppThemeColors, useColorScheme } from '/@/renderer/themes/use-app-theme';
 import { Text } from '/@/shared/components/text/text';
 
@@ -28,7 +35,8 @@ export const PlayerbarWaveform = () => {
     const lastSeekValueRef = useRef<null | number>(null);
     const containerPositionRef = useRef<DOMRect | null>(null);
 
-    const songDuration = currentSong?.duration ? currentSong.duration / 1000 : 0;
+    const songDuration = usePlaybackDurationSec(currentSong?.duration);
+    const seekable = usePlaybackSeekable();
 
     const streamUrl = useSongUrl(currentSong, true, { bitrate: 64, enabled: false, format: 'mp3' });
 
@@ -182,7 +190,7 @@ export const PlayerbarWaveform = () => {
 
             setTooltipPosition(null);
 
-            if (duration > 0 && seekTime >= 0) {
+            if (seekable && duration > 0 && seekTime >= 0) {
                 mediaSeekToTimestamp(seekTime);
                 lastSeekValueRef.current = seekTime;
 
@@ -251,7 +259,7 @@ export const PlayerbarWaveform = () => {
 
             setTooltipPosition(null);
 
-            if (duration > 0 && seekTime >= 0) {
+            if (seekable && duration > 0 && seekTime >= 0) {
                 mediaSeekToTimestamp(seekTime);
                 lastSeekValueRef.current = seekTime;
 
@@ -283,7 +291,7 @@ export const PlayerbarWaveform = () => {
                 clearTimeout(seekTimeoutRef.current);
             }
         };
-    }, [wavesurfer, songDuration, mediaSeekToTimestamp]);
+    }, [mediaSeekToTimestamp, seekable, songDuration, wavesurfer]);
 
     // Sync dragging state when currentTime catches up to seek value
     useEffect(() => {
@@ -359,7 +367,11 @@ export const PlayerbarWaveform = () => {
                         }}
                         transition={{ duration: 0.2 }}
                     >
-                        <PlayerbarSeekSlider max={songDuration} min={0} />
+                        <PlayerbarSeekSlider
+                            disabled={!seekable || songDuration <= 0}
+                            max={songDuration}
+                            min={0}
+                        />
                     </motion.div>
                 )}
             </AnimatePresence>

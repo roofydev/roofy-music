@@ -6,6 +6,7 @@ import { HomeCommands } from '/@/renderer/features/search/components/home-comman
 import { SearchAlbumArtistsSection } from '/@/renderer/features/search/components/search-album-artists-section';
 import { SearchAlbumsSection } from '/@/renderer/features/search/components/search-albums-section';
 import { SearchSongsSection } from '/@/renderer/features/search/components/search-songs-section';
+import { SearchPaletteEmptyState } from '/@/renderer/features/search/components/search-palette-empty-state';
 import { SearchYoutubeMusicSection } from '/@/renderer/features/search/components/search-youtube-music-section';
 import { ServerCommands } from '/@/renderer/features/search/components/server-commands';
 import { useAppStore } from '/@/renderer/store';
@@ -136,6 +137,10 @@ function CommandPaletteSearch({
                             )
                         }
                         query={query}
+                    />
+                    <SearchPaletteEmptyState
+                        debouncedQuery={deferredSearchQuery}
+                        isHome={isHome}
                     />
                 </Stack>
                 {children}

@@ -2,6 +2,7 @@ import isElectron from 'is-electron';
 import { lazy, memo, Suspense, useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 
+import { LyricSettings } from '/@/renderer/features/settings/components/general/lyric-settings';
 import { AudioSettings } from '/@/renderer/features/settings/components/playback/audio-settings';
 import { AutoDJSettings } from '/@/renderer/features/settings/components/playback/auto-dj-settings';
 import { PlayerFilterSettings } from '/@/renderer/features/settings/components/playback/player-filter-settings';
@@ -43,6 +44,8 @@ export const PlaybackTab = memo(() => {
             <PlayerFilterSettings />
             <Divider />
             <AutoDJSettings />
+            <Divider />
+            <LyricSettings />
         </Stack>
     );
 });

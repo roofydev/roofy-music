@@ -552,7 +552,7 @@
         "discordListening_description": "Zobraziť status počúvanie namiesto prehrávanie",
         "discordRichPresence_description": "Povoliť status prehrávania v {{discord}} rich presence. Obrázky kláves sú: {{icon}}, {{playing}} a {{paused}}",
         "discordServeImage": "Poskytuje {{discord}} obrázky zo servera",
-        "discordServeImage_description": "Zdieľať obrázok albumu na {{discord}} rich presence priamo zo servera, dostupné iba pre Jellyfin a Navidrome",
+        "discordServeImage_description": "Show album art in {{discord}} from your music server when it is reachable on your network. Some servers need a public URL for art to appear.",
         "discordUpdateInterval": "Interval aktualizácií {{discord}} rich presence",
         "discordUpdateInterval_description": "Čas v sekundách medzi dvomi nasledujúcimi aktualizáciami (minimálne 15 sekúnd)",
         "discordDisplayType": "Typ zobrazenia {{discord}} presence",

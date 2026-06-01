@@ -3,6 +3,7 @@ import isElectron from 'is-electron';
 import debounce from 'lodash/debounce';
 import isEqual from 'lodash/isEqual';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { api } from '/@/renderer/api';
@@ -15,6 +16,7 @@ import { AppRoute } from '/@/renderer/router/routes';
 import { getServerById, useAuthStoreActions, useCurrentServerId } from '/@/renderer/store';
 import { LogCategory, logFn } from '/@/renderer/utils/logger';
 import { logMsg } from '/@/renderer/utils/logger-message';
+import { showLibraryConnectionError } from '/@/shared/product-ux';
 import { toast } from '/@/shared/components/toast/toast';
 import { AuthState, ServerType } from '/@/shared/types/types';
 
@@ -43,6 +45,7 @@ const isNetworkError = (error: any): boolean => {
 };
 
 export const useServerAuthenticated = () => {
+    const { t } = useTranslation();
     const priorServerId = useRef<string | undefined>(undefined);
     const serverId = useCurrentServerId();
     const [ready, setReady] = useState(AuthState.LOADING);
@@ -342,16 +345,14 @@ export const useServerAuthenticated = () => {
                     localSettings.passwordRemove(serverWithAuth.id);
                 }
 
-                toast.error({
-                    message: errorMessage,
-                });
+                showLibraryConnectionError(t, errorMessage);
 
                 // Log the user out by setting current server to null
                 setCurrentServer(null);
                 setReady(AuthState.INVALID);
             }
         },
-        [updateServer, setCurrentServer],
+        [t, updateServer, setCurrentServer],
     );
 
     const debouncedAuth = useMemo(

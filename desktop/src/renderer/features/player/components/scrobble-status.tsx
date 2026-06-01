@@ -52,7 +52,7 @@ export const ScrobbleStatus = ({ formattedTime }: { formattedTime: string }) => 
             <HoverCard.Target>
                 <Group
                     align="center"
-                    aria-label={`${t('player.scrobble')}, ${formattedTime}`}
+                    aria-label={`${t('page.setting.scrobble')}, ${formattedTime}`}
                     fz="xs"
                     gap="sm"
                     justify="center"

@@ -376,14 +376,15 @@
             "sidebar": "Zijbalk",
             "remote": "Afstand",
             "exportImport": "Importeren/exporteren",
-            "scrobble": "Scrobble",
+            "scrobble": "Listening history",
             "audio": "Geluid",
             "lyrics": "Songtekst",
             "transcoding": "Transcoderen",
             "discord": "Discord",
             "lyricsDisplay": "Songtekstweergave",
             "logger": "Logger",
-            "playerFilters": "Spelerfilters"
+            "playerFilters": "Spelerfilters",
+            "downloadsOffline": "Downloads & Offline"
         },
         "sidebar": {
             "albumArtists": "$t(entity.albumArtist, {\"count\": 2})",
@@ -406,7 +407,8 @@
         "trackList": {
             "artistTracks": "Nummers van {{artist}}",
             "genreTracks": "\"{{genre}}\" $t(entity.track, {\"count\": 2})",
-            "title": "$t(entity.track, {\"count\": 2})"
+            "title": "$t(entity.track, {\"count\": 2})",
+            "viewImportProgress": "$t(productUx.import.pageTitle)"
         },
         "radioList": {
             "title": "Radiostations"
@@ -759,10 +761,10 @@
         "logLevel_optionWarn": "Waarschuwingen",
         "minimizeToTray_description": "Minimaliseer de applicatie naar het systeemvak",
         "minimizeToTray": "Minimaliseer naar systeemvak",
-        "minimumScrobblePercentage_description": "Het minimumpercentage dat van een nummer gespeeld om worden om deze te scrobblen",
-        "minimumScrobblePercentage": "Minimale duur voor scrobblen (percentage)",
-        "minimumScrobbleSeconds_description": "De minimale duur in seconden dat van een nummer gespeeld moet zijn om deze te scrobblen",
-        "minimumScrobbleSeconds": "Minimale duur voor scrobblen (seconden)",
+        "minimumScrobblePercentage_description": "The minimum percentage of the song that must play before it is logged to your listening history",
+        "minimumScrobblePercentage": "Minimum listening history duration (percentage)",
+        "minimumScrobbleSeconds_description": "The minimum number of seconds that must play before a song is logged to your listening history",
+        "minimumScrobbleSeconds": "Minimum listening history (seconds)",
         "mpvExecutablePath_description": "Bepaal het pad naar het uitvoerbare bestand van mpv. indien leeg wordt het standaard pad gebruikt",
         "showRatings": "Toon beoordelingssterren",
         "showVisualizerInSidebar_description": "Een paneel met de visualiseerder wordt aan de zijbalk toegevoegd",
@@ -798,7 +800,7 @@
         "discordIdleStatus": "Toon inactiviteit in rich presence",
         "discordRichPresence_description": "Toon afspeelstatus in {{discord}} rich presence. Afbeeldingssleutelwoorden zijn {{icon}}, {{playing}} en {{paused}}",
         "discordServeImage": "Deel afbeeldingen van de server met {{discord}}",
-        "discordServeImage_description": "Deel albumhoezen voor {{discord}} rich presence vanaf de server zelf. Enkel beschikbaar voor Jellyfin en Navidrome. {{discord}} gebruikt een bot om afbeeldingen op te vragen, dus moet je server publiek toegankelijk zijn",
+        "discordServeImage_description": "Show album art in {{discord}} from your music server when it is reachable on your network. Some servers need a public URL for art to appear.",
         "discordUpdateInterval": "Verversinterval voor {{discord}} rich presence",
         "discordUpdateInterval_description": "De interval in seconden tussen elke update (minimaal 15 seconden)",
         "enableAutoTranslation_description": "Schakel automatische vertaling in na het laden van songteksten",
@@ -876,8 +878,8 @@
         "sampleRate_description": "De bemonsteringsfrequentie die wordt gebruikt als de gekozen bemonsteringsfrequentie afwijkt van die van de actieve media. bij een waarde lager dan 8000 wordt de standaard frequentie gebruikt",
         "savePlayQueue_description": "Sla de wachtij op bij het afsluiten van de applicatie en herstel deze als de applicatie wordt geopend",
         "savePlayQueue": "Sla wachtrij op",
-        "scrobble_description": "Scrobblet afgespeelde nummers naar de mediaserver",
-        "scrobble": "Scrobblen",
+        "scrobble_description": "Send plays to your media server listening history",
+        "scrobble": "Listening history",
         "showSkipButton_description": "Toont of verstopt de spoelknoppen op de afspeelbalk",
         "showSkipButton": "Toon spoelknoppen",
         "showSkipButtons_description": "Toont of verstopt de spoelknoppen op de afspeelbalk",
@@ -965,7 +967,7 @@
         "discordStateIcon": "Toon afspeelicoon",
         "discordStateIcon_description": "Toon een klein afspeelicoon in de rich-presence-status. het gepauzeerde icoon wordt altijd getoond als \"rich presence tonen wanneer gepauzeerd\" is ingeschakeld",
         "autosave": "Afspeelwachtrij automatisch opslaan",
-        "autosave_description": "Schakel in dat de afspeelwachtrij automatisch wordt opgeslagen op je server. Dit is enkel mogelijk bij gebruik van Navidrome/Subsonic met een niet-gemengde afspeelwachtrij.",
+        "autosave_description": "Automatically save your play queue to your personal library. Requires a connected library and a single-source queue.",
         "autosaveCount": "Frequentie automatisch opslaan afspeelwachtrij",
         "autosaveCount_description": "Aantal nummerwisselingen voordat de wachtrij wordt opgeslagen. bij 1 (het minimum) treedt dit bij elke nummerwissel op",
         "useThemePrimaryShade": "Gebruikt primaire tint van thema",
@@ -985,7 +987,8 @@
         "sidePlayQueueLayout": "Uitlijning afspeelwachtrij aan zijkant",
         "sidePlayQueueLayout_description": "Stel de uitlijning in voor de afspeelwachtrij die aan de zijkant is gekoppeld",
         "sidePlayQueueLayout_optionHorizontal": "Horizontaal",
-        "sidePlayQueueLayout_optionVertical": "Verticaal"
+        "sidePlayQueueLayout_optionVertical": "Verticaal",
+        "scrobbleForceSubmit": "Log to listening history now"
     },
     "form": {
         "addServer": {
@@ -1148,7 +1151,8 @@
         "sleepTimer_timeRemaining": "{{time}} resterend",
         "sleepTimer_setCustom": "Timer instellen",
         "sleepTimer_cancel": "Timer annuleren",
-        "albumRadio": "Albumradio"
+        "albumRadio": "Albumradio",
+        "scrobbleForceSubmit": "Log to listening history now"
     },
     "datetime": {
         "minuteShort": "M",
@@ -1364,5 +1368,228 @@
         "systemAudioCaptureFailed": "Kon opname niet starten: {{message}}",
         "systemAudioNoAudioTrack": "Geen geluidsspoor ontvangen. Verifieer dat audio-opname is ingeschakeld als daar om wordt gevraagd.",
         "systemAudioExclusiveModeNotSupported": "De visualiseerder is niet beschikbaar als audio-exclusieve modus is ingeschakeld. Schakel audio-exclusieve modus in de MPV-instellingen uit en probeer het opnieuw."
+    },
+    "productUx": {
+        "library": {
+            "empty": {
+                "title": "Nothing here yet",
+                "description": "Try a different filter or add music to your library."
+            },
+            "albumsEmpty": {
+                "title": "No albums here yet",
+                "description": "Albums from your library will appear when you add music."
+            },
+            "artistsEmpty": {
+                "title": "No artists here yet",
+                "description": "Artists from your library will appear when you add music."
+            },
+            "playlistsEmpty": {
+                "title": "No playlists here yet",
+                "description": "Create a playlist to organize your music."
+            },
+            "offlineEmpty": {
+                "title": "No offline songs",
+                "description": "Save songs for offline listening from the player menu."
+            },
+            "offlineFilter": "Downloaded only"
+        },
+        "queue": {
+            "emptyTitle": "Nothing in the queue",
+            "emptySubtitle": "Play a song or add tracks from your library."
+        },
+        "search": {
+            "empty": {
+                "title": "Nothing matched your search",
+                "description": "Try different words or check spelling."
+            },
+            "youtubeMusic": {
+                "heading": "Online catalog",
+                "tracks": "Tracks",
+                "albums": "Albums",
+                "artists": "Artists",
+                "badgeOnline": "Online",
+                "loading": "Searching…",
+                "resultCount": "{{count}} results",
+                "searchPrompt": "Type a query to search the online catalog.",
+                "noTracks": "No tracks found.",
+                "loginToSearchTitle": "Sign in to search the online catalog",
+                "loginToSearchDescription": "Paste a direct link here, or sign in from Settings to search your account.",
+                "searchingTitle": "Searching the online catalog",
+                "searchingDescription": "Results will update as you type.",
+                "searchPlaceholder": "Search online catalog",
+                "loginToLoadSongs": "Sign in to load your songs.",
+                "loginToLoadPlaylists": "Sign in to load your playlists.",
+                "loadingSongs": "Loading your songs",
+                "loadingPlaylists": "Loading your playlists",
+                "loadingPlaylist": "Loading playlist",
+                "loadingSearchResults": "Loading search results",
+                "filterPlaylists": "Filter playlists",
+                "noPlaylistsFound": "No playlists found.",
+                "accountTitle": "Online catalog account",
+                "accountDescription": "Sign in to access your account library inside Roofy.",
+                "loginButton": "Sign in to online catalog",
+                "loginTitle": "Online catalog sign-in",
+                "connectDescription": "Uses your Google account on this computer for search, recommendations, and streaming in Roofy.",
+                "dependencyUnavailable": "Online catalog support is not installed. Reinstall desktop dependencies and try again.",
+                "playlistFallback": "Online catalog playlist",
+                "artistUnavailableTitle": "Online catalog artist",
+                "artistUnavailableBody": "Artist details are not available for the online catalog.",
+                "albumUnavailableTitle": "Online catalog album",
+                "albumUnavailableBody": "Album details are not available for the online catalog.",
+                "ratingSavedLocal": "Rating saved on this device",
+                "favoriteSavedLocal": "Favorite saved on this device",
+                "favoriteUpdatedLocal": "Favorite updated on this device",
+                "searchFailed": "Online catalog search could not finish right now.",
+                "searchUnavailable": "Online catalog is not available in this build.",
+                "sectionLoadFailed": "Could not load this section right now.",
+                "browse": "Browse",
+                "mySongs": "My songs",
+                "myPlaylists": "My playlists"
+            }
+        },
+        "import": {
+            "pageTitle": "Downloads",
+            "pageDescription": "Songs you are saving and items already in your library.",
+            "status": {
+                "matching": "Finding a match…",
+                "saving": "Saving to your library…",
+                "saved": "Saved to your library",
+                "failed": "Could not save right now"
+            },
+            "badge": {
+                "queued": "Waiting",
+                "saving": "Saving",
+                "saved": "Saved",
+                "needsReview": "Needs review"
+            },
+            "empty": {
+                "title": "Nothing saving yet",
+                "description": "When you add music to your library, progress appears here."
+            },
+            "filterEmpty": "No items in this view",
+            "filterEmptyHint": "Switch filters to see other save states.",
+            "summary": {
+                "active": "In progress",
+                "failed": "Needs review",
+                "completed": "Saved",
+                "all": "All"
+            },
+            "table": {
+                "track": "Track",
+                "target": "Where",
+                "status": "Status",
+                "progress": "Progress"
+            },
+            "videoBadge": {
+                "metadataMatch": "Matched online",
+                "audioImport": "Audio import",
+                "audioOnly": "Audio only",
+                "videoSaved": "Video saved",
+                "videoNotSaved": "Video not saved",
+                "videoRequested": "Video saving"
+            },
+            "unknownArtist": "Online catalog",
+            "clearCompleted": "Clear saved",
+            "clearFailed": "Clear needs review",
+            "noMatchesReady": "No tracks are ready to save yet. Review matches or try another link.",
+            "spotifyReady": "Import from Spotify available",
+            "spotifySetupRequired": "Spotify import needs setup in Advanced",
+            "spotifyAlternatePathHint": "Some links may use an alternate import path. The saved file can still differ from what you hear on Spotify.",
+            "spotifyInfoTitle": "Importing from Spotify",
+            "spotifyInfoBody1": "Roofy reads track and playlist details from your Spotify link. Audio is matched online before it is saved to your library.",
+            "spotifyInfoBody2": "Matching uses title, artist, album, and length. The saved file may differ from the version on Spotify.",
+            "soundcloudReady": "SoundCloud links supported",
+            "quickTitle": "Import music",
+            "quickDescription": "Search by song, artist, or album, or paste a Spotify, SoundCloud, or link.",
+            "linkPlaceholder": "Search or paste a Spotify, SoundCloud, or link",
+            "linkPlaceholderInline": "Search or paste a music link",
+            "linkUnsupported": "Paste a Spotify, SoundCloud, or public link.",
+            "linkReadFailed": "Could not read this link.",
+            "readingLinkTitle": "Reading link",
+            "readingLinkDescription": "Fetching title, artwork, and playlist details.",
+            "linkPreviewHint": "Play now, add to a playlist, or right-click for more. Save to library only if you want a copy on this device.",
+            "saveToLibrary": "Save to library",
+            "spotifyMatchedOnline": "Spotify link — matched online",
+            "reviewMatchRequired": "Tracks that need review require you to accept the suggested online match. Imports can fail when no close match exists — use Import settings if requests are blocked.",
+            "sourceBadge": {
+                "spotify": "Spotify",
+                "soundcloud": "SoundCloud",
+                "onlineCatalog": "Online catalog"
+            },
+            "toast": {
+                "queuedTitle": "Waiting to save",
+                "queuedMessage": "{{title}} will be saved to {{target}}.",
+                "savingTitle": "Saving to your library",
+                "savingMessage": "{{title}} ({{progress}}%)",
+                "savedTitle": "Saved to your library",
+                "savedMessage": "{{summary}} saved to {{target}}.",
+                "savedWithSkipsTitle": "Saved with issues",
+                "failedTitle": "Could not save",
+                "failedMessage": "{{title}} could not be saved."
+            }
+        },
+        "downloads": {
+            "folderTitle": "Download folder",
+            "folderDescription": "Downloads are saved into a subfolder inside your Roofy Music library.",
+            "chooseFolder": "Choose folder",
+            "folderUpdated": "Library folder updated",
+            "formatTitle": "Format",
+            "formatDescription": "Audio format for songs saved from the online catalog.",
+            "qualityTitle": "Quality",
+            "qualityDescription": "Audio quality for lossy formats.",
+            "applyTitle": "Apply",
+            "applyDescription": "Apply download preferences.",
+            "saved": "Download settings saved"
+        },
+        "video": {
+            "showArtwork": "Show artwork",
+            "checkingVideo": "Checking for video…",
+            "noVideoAvailable": "No video available for this track",
+            "showVideo": "Show video",
+            "toolbarLabel": "Video options",
+            "streaming": "Streaming video",
+            "savedBadge": "Video saved",
+            "savedInLibrary": "Video saved in your library",
+            "fullscreenVideo": "Fullscreen video",
+            "fullscreenArtwork": "Fullscreen artwork",
+            "openSource": "Open video source",
+            "savingVideo": "Saving video…",
+            "saveVideoToLibrary": "Save video to library",
+            "exitFullscreen": "Exit fullscreen",
+            "preparing": "Preparing video…",
+            "unavailable": "Video unavailable",
+            "localPlayFailed": "Saved video could not be played, and streaming is unavailable.",
+            "streamResolveFailed": "Could not load a video stream for this track.",
+            "saveOnImport": "Save video",
+            "saveWithImports": "Save video with imports",
+            "badgeSaved": "Video saved",
+            "badgeStreamable": "Available to stream",
+            "mobileRoadmap": "On Android, video opens in your browser for now. In-app video is planned.",
+            "toast": {
+                "savingTitle": "Saving video",
+                "savedTitle": "Video saved",
+                "savedMessage": "Video is attached to this library track.",
+                "failedTitle": "Could not save video"
+            }
+        },
+        "stats": {
+            "title": "Stats",
+            "subtitle": "Listening totals from this device.",
+            "emptyTitle": "No listening stats yet",
+            "emptyDescription": "Stats appear after you listen long enough for a track to count.",
+            "rangeAllTime": "All time",
+            "summaryLabel": "Listening summary",
+            "plays": "Plays",
+            "listenTime": "Listen time",
+            "songsPlayed": "Songs played",
+            "topArtist": "Top artist",
+            "topGenre": "Top genre"
+        },
+        "home": {
+            "localLibraryHeading": "Your library"
+        },
+        "action": {
+            "openVideo": "Open video"
+        }
     }
 }

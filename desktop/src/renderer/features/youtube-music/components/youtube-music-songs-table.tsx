@@ -21,13 +21,23 @@ export const YoutubeMusicSongsTable = ({ songs }: YoutubeMusicSongsTableProps) =
     const columns = useMemo(
         () =>
             pickTableColumns({
+                autoSizeColumns: [TableColumn.TITLE_COMBINED],
+                columnWidths: {
+                    [TableColumn.ACTIONS]: 52,
+                    [TableColumn.DURATION]: 76,
+                    [TableColumn.ROW_INDEX]: 48,
+                },
                 columns: SONG_TABLE_COLUMNS,
                 enabledColumns: [
                     TableColumn.ROW_INDEX,
                     TableColumn.TITLE_COMBINED,
                     TableColumn.DURATION,
-                    TableColumn.ALBUM,
-                    TableColumn.ARTIST,
+                    TableColumn.ACTIONS,
+                ],
+                pickColumns: [
+                    TableColumn.ROW_INDEX,
+                    TableColumn.TITLE_COMBINED,
+                    TableColumn.DURATION,
                     TableColumn.ACTIONS,
                 ],
             }),

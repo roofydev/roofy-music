@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { isTrackActionVisible } from '/@/shared/product-ux';
 import { ContextMenu } from '/@/shared/components/context-menu/context-menu';
 import { Song, ServerType } from '/@/shared/types/domain-types';
 
@@ -19,11 +20,11 @@ export const OpenYoutubeSourceAction = ({ songs }: OpenYoutubeSourceActionProps)
         window.open(`https://music.youtube.com/watch?v=${videoId}`, '_blank');
     }, [videoId]);
 
-    if (!isSingleYt || !videoId) return null;
+    if (!isSingleYt || !videoId || !isTrackActionVisible(songs, 'watchVideo')) return null;
 
     return (
         <ContextMenu.Item leftIcon="externalLink" onSelect={onSelect}>
-            {t('page.contextMenu.openOnYoutube') || 'Open on YouTube Music'}
+            {t('productUx.action.watchVideo')}
         </ContextMenu.Item>
     );
 };

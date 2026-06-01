@@ -35,6 +35,12 @@ const setRemoteEnabled = (enabled: boolean): Promise<null | string> => {
     return result;
 };
 
+const getRemoteControlLinks = (): Promise<{
+    lan?: string;
+    localhost: string;
+    primary: string;
+}> => ipcRenderer.invoke('remote-control-links');
+
 const setRemotePort = (port: number): Promise<null | string> => {
     const result = ipcRenderer.invoke('remote-port', port);
     return result;
@@ -90,6 +96,7 @@ const updatePosition = (timeSec: number) => {
 };
 
 export const remote = {
+    getRemoteControlLinks,
     requestFavorite,
     requestPosition,
     requestRating,

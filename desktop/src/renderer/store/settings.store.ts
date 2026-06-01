@@ -20,6 +20,7 @@ import {
     PLAYLIST_TABLE_COLUMNS,
     SONG_TABLE_COLUMNS,
 } from '/@/renderer/components/item-list/item-table-list/default-columns';
+import { dedupeSidebarItemsById } from '/@/renderer/features/sidebar/sidebar-nav-utils';
 import { audiomotionanalyzerPresets } from '/@/renderer/features/visualizer/components/audiomotionanalyzer/presets';
 import { AppRoute } from '/@/renderer/router/routes';
 import { getEnvSettingsOverrides } from '/@/renderer/store/env-settings-overrides';
@@ -644,6 +645,28 @@ const RemoteSettingsSchema = z.object({
     username: z.string(),
 });
 
+const PartySettingsSchema = z.object({
+    allowGuestQueueReorder: z.boolean(),
+    autoApproveJoins: z.boolean(),
+    autoApproveSuggestions: z.boolean(),
+    chatRateLimitEnabled: z.boolean().default(false),
+    cloudflaredPath: z.string().optional(),
+    controlMode: z.enum(['all', 'host', 'selected']),
+    exposureMode: z.enum(['lan', 'tunnel']),
+    hostDisplayName: z.string(),
+    maxGuests: z.number(),
+    micAutoGainControl: z.boolean().default(false),
+    micDeviceId: z.string().optional(),
+    micEchoCancellation: z.boolean().default(false),
+    micGain: z.number().default(100),
+    micNoiseSuppression: z.boolean().default(true),
+    port: z.number(),
+    queueLocked: z.boolean(),
+    roomTheme: z.enum(['dark', 'dynamic']),
+    voteToSkipEnabled: z.boolean(),
+    voteToSkipThreshold: z.number(),
+});
+
 const WindowSettingsSchema = z.object({
     disableAutoUpdate: z.boolean(),
     exitToTray: z.boolean(),
@@ -695,6 +718,7 @@ export const ValidationSettingsStateSchema = z.object({
     lyrics: LyricsSettingsSchema,
     lyricsDisplay: z.record(z.string(), LyricsDisplaySettingsSchema),
     playback: PlaybackSettingsSchema,
+    party: PartySettingsSchema,
     queryBuilder: QueryBuilderSettingsSchema,
     remote: RemoteSettingsSchema,
     tab: z.union([
@@ -941,10 +965,6 @@ export const playerItems: SortableItem<PlayerItem>[] = [
         id: PlayerItem.BPM,
     },
     {
-        disabled: false,
-        id: PlayerItem.CODEC,
-    },
-    {
         disabled: true,
         id: PlayerItem.DISC_NUMBER,
     },
@@ -977,17 +997,29 @@ export const playerItems: SortableItem<PlayerItem>[] = [
 export const sidebarItems: SidebarItemType[] = [
     {
         disabled: true,
+        id: 'Party',
+        label: 'Party',
+        route: AppRoute.PARTY,
+    },
+    {
+        disabled: false,
         id: 'Now Playing',
         label: i18n.t('page.sidebar.nowPlaying'),
         route: AppRoute.NOW_PLAYING,
     },
     {
-        disabled: true,
+        disabled: false,
         id: 'Search',
         label: i18n.t('page.sidebar.search'),
         route: generatePath(AppRoute.SEARCH, { itemType: LibraryItem.SONG }),
     },
     { disabled: false, id: 'Home', label: i18n.t('page.sidebar.home'), route: AppRoute.HOME },
+    {
+        disabled: true,
+        id: 'Offline',
+        label: i18n.t('page.sidebar.offline'),
+        route: `${AppRoute.LIBRARY_SONGS}?offline=1`,
+    },
     {
         disabled: false,
         id: 'Favorites',
@@ -1055,7 +1087,7 @@ export const sidebarItems: SidebarItemType[] = [
         route: AppRoute.RADIO,
     },
     {
-        disabled: true,
+        disabled: false,
         id: 'Settings',
         label: i18n.t('page.sidebar.settings'),
         route: AppRoute.SETTINGS,
@@ -1869,6 +1901,25 @@ const initialState: SettingsState = {
         port: 4333,
         username: 'roofy',
     },
+    party: {
+        allowGuestQueueReorder: false,
+        autoApproveJoins: true,
+        autoApproveSuggestions: false,
+        chatRateLimitEnabled: false,
+        controlMode: 'host',
+        exposureMode: 'tunnel',
+        hostDisplayName: 'Host',
+        maxGuests: 20,
+        micAutoGainControl: false,
+        micEchoCancellation: false,
+        micGain: 100,
+        micNoiseSuppression: true,
+        port: 4334,
+        queueLocked: false,
+        roomTheme: 'dark',
+        voteToSkipEnabled: false,
+        voteToSkipThreshold: 0.5,
+    },
     tab: 'general',
     visualizer: {
         audiomotionanalyzer: {
@@ -2062,7 +2113,7 @@ export const useSettingsStore = createWithEqualityFn<SettingsSlice>()(
                         },
                         setSidebarItems: (items: SidebarItemType[]) => {
                             set((state) => {
-                                state.general.sidebarItems = items;
+                                state.general.sidebarItems = dedupeSidebarItemsById(items);
                             });
                         },
                         setTable: (type: ItemListKey, data: DataTableProps) => {
@@ -2466,10 +2517,111 @@ export const useSettingsStore = createWithEqualityFn<SettingsSlice>()(
                     }
                 }
 
+                if (version <= 31) {
+                    state.party = {
+                        ...initialState.party,
+                        ...state.party,
+                        autoApproveJoins: true,
+                        controlMode: state.party?.controlMode || initialState.party.controlMode,
+                    };
+                }
+
+                if (version <= 32) {
+                    state.party = {
+                        ...initialState.party,
+                        ...state.party,
+                        allowGuestQueueReorder:
+                            state.party?.allowGuestQueueReorder ??
+                            initialState.party.allowGuestQueueReorder,
+                    };
+                }
+
+                if (version <= 33) {
+                    state.party = {
+                        ...initialState.party,
+                        ...state.party,
+                        micAutoGainControl:
+                            state.party?.micAutoGainControl ??
+                            initialState.party.micAutoGainControl,
+                        micEchoCancellation:
+                            state.party?.micEchoCancellation ??
+                            initialState.party.micEchoCancellation,
+                        micGain: state.party?.micGain ?? initialState.party.micGain,
+                        micNoiseSuppression:
+                            state.party?.micNoiseSuppression ??
+                            initialState.party.micNoiseSuppression,
+                    };
+                }
+
+                if (version <= 34) {
+                    state.general.sideQueueType = 'sideQueue';
+
+                    for (const item of state.general.sidebarItems) {
+                        if (
+                            item.id === 'Search' ||
+                            item.id === 'Now Playing' ||
+                            item.id === 'Settings'
+                        ) {
+                            item.disabled = false;
+                        }
+                        if (item.id === 'Party') {
+                            item.disabled = true;
+                        }
+                    }
+                }
+
+                if (version <= 35) {
+                    const hasOffline = state.general.sidebarItems.some(
+                        (item) => item.id === 'Offline' || item.id === 'Downloads',
+                    );
+                    if (!hasOffline) {
+                        const homeIndex = state.general.sidebarItems.findIndex(
+                            (item) => item.id === 'Home',
+                        );
+                        state.general.sidebarItems.splice(homeIndex + 1, 0, {
+                            disabled: false,
+                            id: 'Offline',
+                            label: i18n.t('page.sidebar.offline'),
+                            route: `${AppRoute.LIBRARY_SONGS}?offline=1`,
+                        });
+                    }
+                }
+
+                if (version <= 36) {
+                    for (const item of state.general.sidebarItems) {
+                        if (item.id === 'Downloads') {
+                            item.id = 'Offline';
+                            item.label = i18n.t('page.sidebar.offline');
+                        }
+                    }
+                }
+
+                if (version <= 37) {
+                    for (const item of state.general.sidebarItems) {
+                        if (item.id === 'Offline' || item.id === 'Downloads') {
+                            item.id = 'Offline';
+                            item.label = i18n.t('page.sidebar.offline');
+                            item.route = `${AppRoute.LIBRARY_SONGS}?offline=1`;
+                        }
+                    }
+                }
+
+                if (version <= 38) {
+                    state.general.playerItems = state.general.playerItems.filter(
+                        (item) => item.id !== PlayerItem.CODEC,
+                    );
+                }
+
+                if (version <= 39) {
+                    state.general.sidebarItems = dedupeSidebarItemsById(
+                        state.general.sidebarItems ?? [],
+                    );
+                }
+
                 return persistedState;
             },
             name: 'store_settings',
-            version: 31,
+            version: 40,
         },
     ),
 );
@@ -2519,6 +2671,8 @@ export const useLyricsDisplaySettings = (key: string = 'default') =>
     useSettingsStore((state) => state.lyricsDisplay[key] || state.lyricsDisplay.default, shallow);
 
 export const useRemoteSettings = () => useSettingsStore((state) => state.remote, shallow);
+
+export const usePartySettings = () => useSettingsStore((state) => state.party, shallow);
 
 export const useFontSettings = () => useSettingsStore((state) => state.font, shallow);
 

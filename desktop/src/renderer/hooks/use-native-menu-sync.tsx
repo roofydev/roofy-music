@@ -20,6 +20,7 @@ import {
 import { PlayerShuffle } from '/@/shared/types/types';
 
 const ipc = window.api?.ipc ?? null;
+const utils = window.api?.utils ?? null;
 
 export const useNativeMenuSync = () => {
     const { t } = useTranslation();
@@ -33,11 +34,11 @@ export const useNativeMenuSync = () => {
     const playerStatus = usePlayerStatus();
 
     useEffect(() => {
-        if (!isElectron()) {
+        if (!isElectron() || !utils) {
             return undefined;
         }
 
-        window.api.utils.rendererOpenSettings(() => {
+        utils.rendererOpenSettings(() => {
             openSettingsModal();
         });
 
@@ -47,11 +48,11 @@ export const useNativeMenuSync = () => {
     }, []);
 
     useEffect(() => {
-        if (!isElectron()) {
+        if (!isElectron() || !utils) {
             return undefined;
         }
 
-        window.api.utils.rendererOpenCommandPalette(() => {
+        utils.rendererOpenCommandPalette(() => {
             openCommandPalette();
         });
 
@@ -61,11 +62,11 @@ export const useNativeMenuSync = () => {
     }, [openCommandPalette]);
 
     useEffect(() => {
-        if (!isElectron()) {
+        if (!isElectron() || !utils) {
             return undefined;
         }
 
-        window.api.utils.rendererOpenManageServers(() => {
+        utils.rendererOpenManageServers(() => {
             openModal({
                 children: <ServerList />,
                 title: t('page.manageServers.title'),
@@ -78,11 +79,11 @@ export const useNativeMenuSync = () => {
     }, [t]);
 
     useEffect(() => {
-        if (!isElectron()) {
+        if (!isElectron() || !utils) {
             return undefined;
         }
 
-        window.api.utils.rendererTogglePrivateMode(() => {
+        utils.rendererTogglePrivateMode(() => {
             setPrivateMode(!privateMode);
         });
 
@@ -92,11 +93,11 @@ export const useNativeMenuSync = () => {
     }, [privateMode, setPrivateMode]);
 
     useEffect(() => {
-        if (!isElectron()) {
+        if (!isElectron() || !utils) {
             return undefined;
         }
 
-        window.api.utils.rendererToggleSidebar(() => {
+        utils.rendererToggleSidebar(() => {
             setSideBar({ collapsed: !sidebar.collapsed });
         });
 
@@ -136,11 +137,11 @@ export const useNativeMenuSync = () => {
     }, [sidebar.collapsed]);
 
     useEffect(() => {
-        if (!isElectron()) {
+        if (!isElectron() || !utils) {
             return undefined;
         }
 
-        window.api.utils.rendererOpenReleaseNotes(() => {
+        utils.rendererOpenReleaseNotes(() => {
             openReleaseNotesModal(
                 t('common.newVersion', { version: packageJson.version }) as string,
             );

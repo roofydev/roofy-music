@@ -10,7 +10,7 @@ const LocalFirstRoute = () => {
     const { setSettings } = useSettingsStoreActions();
 
     useEffect(() => {
-        setSettings({ tab: 'local' });
+        setSettings({ tab: 'advanced' });
         navigate(AppRoute.SETTINGS, { replace: true });
     }, [navigate, setSettings]);
 

@@ -8,6 +8,7 @@ import styles from './mobile-playerbar.module.css';
 
 import { ItemImage } from '/@/renderer/components/item-image/item-image';
 import { ContextMenuController } from '/@/renderer/features/context-menu/context-menu-controller';
+import { DevicesButton } from '/@/renderer/features/devices/components/devices-button';
 import { MainPlayButton, PlayerButton } from '/@/renderer/features/player/components/player-button';
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
 import { AppRoute } from '/@/renderer/router/routes';
@@ -199,6 +200,7 @@ export const MobilePlayerbar = () => {
                 </LayoutGroup>
             </div>
             <div className={styles.controlsWrapper}>
+                <DevicesButton />
                 <PlayerButton
                     icon={<Icon fill="default" icon="mediaPrevious" size="md" />}
                     onClick={(e) => {

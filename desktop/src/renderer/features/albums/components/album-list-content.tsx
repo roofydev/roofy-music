@@ -6,10 +6,12 @@ import { ListFilters, ListFiltersTitle } from '/@/renderer/features/shared/compo
 import { ListWithSidebarContainer } from '/@/renderer/features/shared/components/list-with-sidebar-container';
 import { SaveAsCollectionButton } from '/@/renderer/features/shared/components/save-as-collection-button';
 import { ItemListSettings, useCurrentServer, useListSettings } from '/@/renderer/store';
+import { LibraryListEmptyHint } from '/@/renderer/features/shared/components/library-list-empty-hint';
 import { ScrollArea } from '/@/shared/components/scroll-area/scroll-area';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Stack } from '/@/shared/components/stack/stack';
 import { AlbumListQuery, LibraryItem } from '/@/shared/types/domain-types';
+import { FILTER_KEYS } from '/@/renderer/features/shared/utils';
 import { ItemListKey, ListDisplayType, ListPaginationType } from '/@/shared/types/types';
 
 const AlbumListInfiniteGrid = lazy(() =>
@@ -127,6 +129,11 @@ export const AlbumListView = ({
         };
     }, [query, overrideQuery]);
 
+    const searchTerm =
+        mergedQuery.searchTerm ??
+        (mergedQuery as Record<string, string | undefined>)[FILTER_KEYS.SHARED.SEARCH_TERM];
+
+    const listBody = (() => {
     switch (display) {
         case ListDisplayType.GRID: {
             switch (pagination) {
@@ -227,4 +234,12 @@ export const AlbumListView = ({
     }
 
     return null;
+    })();
+
+    return (
+        <Stack gap={0}>
+            <LibraryListEmptyHint itemType={LibraryItem.ALBUM} searchTerm={searchTerm} />
+            {listBody}
+        </Stack>
+    );
 };

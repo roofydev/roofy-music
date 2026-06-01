@@ -1,5 +1,6 @@
 import isElectron from 'is-electron';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import {
     SettingOption,
@@ -10,8 +11,10 @@ import { Group } from '/@/shared/components/group/group';
 import { Select } from '/@/shared/components/select/select';
 import { Text } from '/@/shared/components/text/text';
 import { toast } from '/@/shared/components/toast/toast';
+import { showImportError } from '/@/shared/product-ux';
 
 export const DownloadSettings = () => {
+    const { t } = useTranslation();
     const [format, setFormat] = useState('bestaudio');
     const [quality, setQuality] = useState('best');
     const [busy, setBusy] = useState(false);
@@ -30,17 +33,17 @@ export const DownloadSettings = () => {
         if (!isElectron()) return;
         window.api?.localSettings?.set('roofy.downloadFormat', format);
         window.api?.localSettings?.set('roofy.downloadQuality', quality);
-        toast.success({ message: 'Download settings saved' });
-    }, [format, quality]);
+        toast.success({ message: t('productUx.downloads.saved') });
+    }, [format, quality, t]);
 
     const selectLibrary = async () => {
         if (!isElectron() || !window.api?.localFirst?.selectLibrary) return;
         setBusy(true);
         try {
             await window.api.localFirst.selectLibrary();
-            toast.success({ message: 'Library folder updated' });
+            toast.success({ message: t('productUx.downloads.folderUpdated') });
         } catch (error) {
-            toast.error({ message: (error as Error).message });
+            showImportError(t, error);
         } finally {
             setBusy(false);
         }
@@ -56,16 +59,16 @@ export const DownloadSettings = () => {
                         onClick={selectLibrary}
                         variant="default"
                     >
-                        Choose Folder
+                        {t('productUx.downloads.chooseFolder')}
                     </Button>
                 </Group>
             ),
             description: (
                 <Text isMuted size="sm">
-                    Downloads are saved into a subfolder inside your Roofy Music library.
+                    {t('productUx.downloads.folderDescription')}
                 </Text>
             ),
-            title: 'Download folder',
+            title: t('productUx.downloads.folderTitle'),
         },
         {
             control: (
@@ -82,10 +85,10 @@ export const DownloadSettings = () => {
             ),
             description: (
                 <Text isMuted size="sm">
-                    Audio format for downloaded YouTube Music tracks.
+                    {t('productUx.downloads.formatDescription')}
                 </Text>
             ),
-            title: 'Format',
+            title: t('productUx.downloads.formatTitle'),
         },
         {
             control: (
@@ -102,25 +105,25 @@ export const DownloadSettings = () => {
             ),
             description: (
                 <Text isMuted size="sm">
-                    Audio quality for lossy formats.
+                    {t('productUx.downloads.qualityDescription')}
                 </Text>
             ),
-            title: 'Quality',
+            title: t('productUx.downloads.qualityTitle'),
         },
         {
             control: (
                 <Button onClick={save} variant="state-info">
-                    Save
+                    {t('common.save')}
                 </Button>
             ),
             description: (
                 <Text isMuted size="sm">
-                    Apply download preferences.
+                    {t('productUx.downloads.applyDescription')}
                 </Text>
             ),
-            title: 'Apply',
+            title: t('productUx.downloads.applyTitle'),
         },
     ];
 
-    return <SettingsSection options={options} title="Downloads" />;
+    return <SettingsSection options={options} title={t('page.setting.downloadsOffline')} />;
 };

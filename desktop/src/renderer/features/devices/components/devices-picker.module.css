@@ -1,0 +1,214 @@
+.panel {
+    width: 100%;
+}
+
+.statusLine {
+    color: var(--roofy-text-muted, rgba(255, 255, 255, 0.55));
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    margin: 0 0 0.25rem;
+    padding: 0 0.25rem;
+}
+
+.footerLink {
+    background: none;
+    border: none;
+    color: var(--roofy-text-muted, rgba(255, 255, 255, 0.55));
+    cursor: pointer;
+    font-size: 0.8125rem;
+    margin-top: 0.35rem;
+    padding: 0.35rem 0.5rem;
+    text-align: left;
+    width: 100%;
+}
+
+.footerLink:hover {
+    color: var(--roofy-text-color, #fff);
+}
+
+.header {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+}
+
+.controlBanner {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--roofy-primary-color, rgba(255, 255, 255, 0.26));
+    border-radius: var(--roofy-radius-md, 8px);
+    display: flex;
+    gap: 0.65rem;
+    padding: 0.65rem 0.7rem;
+}
+
+.controlBannerTitle {
+    color: var(--roofy-text-color, #fff);
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.controlBannerSubtitle {
+    color: var(--roofy-text-muted, rgba(255, 255, 255, 0.55));
+    font-size: 0.72rem;
+    line-height: 1.35;
+    margin-top: 0.1rem;
+}
+
+.row {
+    align-items: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--roofy-radius-md, 8px);
+    cursor: default;
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.65rem 0.5rem;
+    text-align: left;
+    transition:
+        background 120ms ease,
+        border-color 120ms ease;
+    width: 100%;
+}
+
+.rowInteractive {
+    cursor: pointer;
+}
+
+.rowInteractive:hover {
+    background: var(--roofy-hover-bg, rgba(255, 255, 255, 0.06));
+}
+
+.rowActive {
+    border-color: var(--roofy-primary-color, rgba(255, 255, 255, 0.2));
+}
+
+.rowIcon {
+    align-items: center;
+    color: var(--roofy-text-muted, rgba(255, 255, 255, 0.55));
+    display: flex;
+    flex-shrink: 0;
+    justify-content: center;
+    width: 1.5rem;
+}
+
+.rowBody {
+    flex: 1;
+    min-width: 0;
+}
+
+.rowTitle {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.rowSubtitle {
+    color: var(--roofy-text-muted, rgba(255, 255, 255, 0.55));
+    font-size: 0.75rem;
+    line-height: 1.35;
+    margin-top: 0.1rem;
+}
+
+.rowStatus {
+    align-items: center;
+    display: flex;
+    flex-shrink: 0;
+}
+
+.playingDot {
+    background: var(--roofy-primary-color, #fff);
+    border-radius: 50%;
+    height: 8px;
+    width: 8px;
+}
+
+.libraryAction {
+    align-items: center;
+    background: var(--roofy-primary-color, rgba(255, 255, 255, 0.92));
+    border: 1px solid transparent;
+    border-radius: var(--roofy-radius-md, 8px);
+    color: var(--roofy-primary-contrast, #050505);
+    cursor: pointer;
+    display: flex;
+    gap: 0.7rem;
+    margin-top: 0.35rem;
+    min-width: 0;
+    padding: 0.7rem 0.75rem;
+    text-align: left;
+    transition:
+        filter 120ms ease,
+        transform 120ms ease;
+    width: 100%;
+}
+
+.libraryAction:hover {
+    filter: brightness(1.04);
+    transform: translateY(-1px);
+}
+
+.libraryActionIcon {
+    align-items: center;
+    display: flex;
+    flex-shrink: 0;
+    justify-content: center;
+    width: 1.35rem;
+}
+
+.libraryActionBody {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.libraryActionTitle {
+    font-size: 0.84rem;
+    font-weight: 800;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.libraryActionSubtitle {
+    color: color-mix(in srgb, currentColor 72%, transparent);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-top: 0.12rem;
+    overflow-wrap: anywhere;
+}
+
+:global([data-theme='retroMonochrome']) .libraryAction {
+    background: transparent;
+    border-color: var(--retro-border-strong, #f5f5f5);
+    color: var(--roofy-text-color, #fff);
+    transform: none;
+}
+
+.hint {
+    color: var(--roofy-text-muted, rgba(255, 255, 255, 0.5));
+    font-size: 0.75rem;
+    line-height: 1.4;
+    padding: 0 0.25rem;
+}
+
+.moreToggle {
+    background: none;
+    border: none;
+    color: var(--roofy-text-muted, rgba(255, 255, 255, 0.55));
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0.35rem 0.5rem;
+    text-align: left;
+    width: 100%;
+}
+
+.moreToggle:hover {
+    color: var(--roofy-text-color, #fff);
+}
+
+.morePanel {
+    padding: 0.25rem 0 0.5rem 0.5rem;
+}

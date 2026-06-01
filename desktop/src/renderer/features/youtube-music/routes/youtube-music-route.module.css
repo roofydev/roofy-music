@@ -16,7 +16,22 @@
     border-radius: 8px;
 }
 
+.list-section {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+}
+
 .content-panel {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.content-panel-body {
     display: flex;
     flex: 1;
     flex-direction: column;

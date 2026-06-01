@@ -1,4 +1,5 @@
 import { forwardRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import styles from './youtube-music-playlist-detail.module.css';
 import { YoutubeMusicSongsTable } from './youtube-music-songs-table';
@@ -45,6 +46,7 @@ export const YoutubeMusicPlaylistDetail = forwardRef<
         }: YoutubeMusicPlaylistDetailProps,
         ref,
     ) => {
+        const { t } = useTranslation();
         const metadata = useMemo(() => {
             const parts: string[] = [];
             if (playlist?.owner) {
@@ -55,7 +57,7 @@ export const YoutubeMusicPlaylistDetail = forwardRef<
         }, [playlist?.owner, songs.length]);
 
         return (
-            <Stack gap={0} ref={ref}>
+            <Stack className={styles.detail} gap={0} ref={ref}>
                 <PageHeader>
                     <div className={styles.headerRow}>
                         <Group gap="md" wrap="nowrap">
@@ -73,7 +75,8 @@ export const YoutubeMusicPlaylistDetail = forwardRef<
                             )}
                             <Stack gap="xs">
                                 <Text fw={700} size="lg">
-                                    {playlist?.name || 'YouTube Music playlist'}
+                                    {playlist?.name ||
+                                        t('productUx.search.youtubeMusic.playlistFallback')}
                                 </Text>
                                 <Text isMuted size="sm">
                                     {metadata}
@@ -87,7 +90,7 @@ export const YoutubeMusicPlaylistDetail = forwardRef<
                                 )}
                                 <Checkbox
                                     checked={saveVideoImports}
-                                    label="Save MP4"
+                                    label={t('productUx.video.saveOnImport')}
                                     onChange={(event) =>
                                         setSaveVideoImports(event.currentTarget.checked)
                                     }

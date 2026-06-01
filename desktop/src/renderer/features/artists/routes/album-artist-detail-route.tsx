@@ -1,5 +1,6 @@
 import { useSuspenseQueries } from '@tanstack/react-query';
 import { Suspense, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 
 import { useItemImageUrl } from '/@/renderer/components/item-image/item-image';
@@ -129,19 +130,22 @@ const AlbumArtistDetailRouteContent = () => {
     );
 };
 
-const YoutubeMusicArtistPlaceholder = ({ id }: { id: string }) => (
-    <AnimatedPage key={`album-artist-detail-${id}`}>
-        <Center style={{ padding: '3rem' }}>
-            <Stack align="center" gap="sm">
-                <Icon icon="artist" size="xl" />
-                <Text size="lg" weight={700}>
-                    YouTube Music Artist
-                </Text>
-                <Text isMuted>Artist details are not available for YouTube Music.</Text>
-            </Stack>
-        </Center>
-    </AnimatedPage>
-);
+const YoutubeMusicArtistPlaceholder = ({ id }: { id: string }) => {
+    const { t } = useTranslation();
+    return (
+        <AnimatedPage key={`album-artist-detail-${id}`}>
+            <Center style={{ padding: '3rem' }}>
+                <Stack align="center" gap="sm">
+                    <Icon icon="artist" size="xl" />
+                    <Text size="lg" weight={700}>
+                        {t('productUx.search.youtubeMusic.artistUnavailableTitle')}
+                    </Text>
+                    <Text isMuted>{t('productUx.search.youtubeMusic.artistUnavailableBody')}</Text>
+                </Stack>
+            </Center>
+        </AnimatedPage>
+    );
+};
 
 const AlbumArtistDetailRoute = () => {
     const { albumArtistId, artistId } = useParams() as {

@@ -26,6 +26,7 @@ import { Checkbox } from '/@/shared/components/checkbox/checkbox';
 import { ConfirmModal } from '/@/shared/components/modal/modal';
 import { Stack } from '/@/shared/components/stack/stack';
 import { Text } from '/@/shared/components/text/text';
+import { showPlaybackErrorFromUnknown } from '/@/shared/product-ux';
 import { toast } from '/@/shared/components/toast/toast';
 import { useLocalStorage } from '/@/shared/hooks/use-local-storage';
 import {
@@ -298,10 +299,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
                     toast.hide(toastId);
                 }
 
-                toast.error({
-                    message: err.message,
-                    title: t('error.genericError') as string,
-                });
+                showPlaybackErrorFromUnknown(t, err);
             }
         },
         [queryClient, storeActions, t],
@@ -479,10 +477,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
                     toast.hide(toastId);
                 }
 
-                toast.error({
-                    message: err.message,
-                    title: t('error.genericError') as string,
-                });
+                showPlaybackErrorFromUnknown(t, err);
             }
         },
         [queryClient, confirmLargeFetch, t, addToQueueByData, addToQueueByFetch],

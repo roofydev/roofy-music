@@ -1,0 +1,235 @@
+/* Popover shell — merged with shared popover.dropdown in devices-button */
+.popoverDropdown {
+    box-sizing: border-box;
+    filter: none;
+    max-height: min(85vh, 40rem);
+    max-width: min(360px, calc(100vw - 1.5rem));
+    overflow: auto;
+    padding: 0 !important;
+    width: 360px;
+}
+
+:global([data-theme='retroMonochrome']) .popoverDropdown {
+    background: var(--retro-panel, #0b0b0b);
+    border: 1px solid var(--retro-border, #7a7a7a);
+    box-shadow: none;
+}
+
+.panel {
+    align-items: stretch;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    padding: 1rem 1rem 1.125rem;
+    width: 100%;
+}
+
+.header {
+    align-items: center;
+    box-sizing: border-box;
+    display: grid;
+    gap: 0.25rem;
+    grid-template-columns: 2rem minmax(0, 1fr) 2rem;
+    max-width: 100%;
+    width: 100%;
+}
+
+.headerSide {
+    align-items: center;
+    display: flex;
+    flex-shrink: 0;
+    height: 2rem;
+    justify-content: center;
+    width: 2rem;
+}
+
+.headerTitle {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: center;
+}
+
+.subtitle {
+    color: var(--roofy-text-muted, rgba(255, 255, 255, 0.58));
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    margin: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    padding: 0;
+    text-align: center;
+}
+
+.staleBadge {
+    align-self: center;
+    background: rgba(255, 212, 59, 0.1);
+    border: 1px solid rgba(255, 212, 59, 0.35);
+    border-radius: 999px;
+    color: var(--roofy-warning-color, #ffd43b);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 0;
+    max-width: 100%;
+    padding: 0.35rem 0.75rem;
+    text-align: center;
+}
+
+.pairedBadge {
+    align-self: center;
+    background: rgba(64, 192, 87, 0.12);
+    border: 1px solid rgba(64, 192, 87, 0.35);
+    border-radius: 999px;
+    color: var(--roofy-success-color, #69db7c);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 0;
+    max-width: 100%;
+    padding: 0.35rem 0.75rem;
+    text-align: center;
+}
+
+.error {
+    color: var(--roofy-error-color, #fa5252);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    margin: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    text-align: center;
+}
+
+.qrWrap {
+    align-items: center;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    max-width: 100%;
+    width: 100%;
+}
+
+.qrFrame {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.32);
+    box-sizing: border-box;
+    flex-shrink: 0;
+    line-height: 0;
+    max-width: 100%;
+    padding: 10px;
+}
+
+.qrImage {
+    border-radius: 4px;
+    display: block;
+    height: auto;
+    max-width: 100%;
+    width: 168px;
+}
+
+.qrPlaceholder {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    box-sizing: border-box;
+    color: var(--roofy-text-muted, rgba(255, 255, 255, 0.55));
+    display: flex;
+    font-size: 0.8125rem;
+    justify-content: center;
+    line-height: 1.45;
+    margin: 0 auto;
+    max-width: 100%;
+    min-height: 188px;
+    padding: 1rem;
+    text-align: center;
+    width: 188px;
+}
+
+.hint {
+    color: var(--roofy-text-muted, rgba(255, 255, 255, 0.5));
+    font-size: 0.75rem;
+    line-height: 1.4;
+    margin: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    text-align: center;
+}
+
+.actions {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+}
+
+.actionButton {
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+}
+
+.actionLabel {
+    line-height: 1.25 !important;
+    overflow-wrap: anywhere;
+    text-align: center;
+    white-space: normal !important;
+}
+
+/* Retro theme: keep buttons inside the panel */
+:global([data-theme='retroMonochrome']) .actionButton {
+    height: auto !important;
+    min-height: var(--button-height, 2rem);
+    padding-block: 0.45rem !important;
+}
+
+:global([data-theme='retroMonochrome']) .actionLabel {
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+}
+
+.linkModal {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-width: 100%;
+    padding: 1rem 1.25rem 1.25rem;
+    width: 100%;
+}
+
+.linkModalTitle {
+    margin: 0;
+}
+
+.linkModalClose {
+    align-self: center;
+    background: none;
+    border: none;
+    color: var(--roofy-text-muted, rgba(255, 255, 255, 0.65));
+    cursor: pointer;
+    font-size: 0.8125rem;
+    margin-top: 0.25rem;
+    padding: 0.35rem 0.5rem;
+}
+
+.linkModalClose:hover {
+    color: var(--roofy-text-color, #fff);
+}
+
+.settingsCard {
+    background: var(--roofy-surface-1, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--roofy-border-color, rgba(255, 255, 255, 0.1));
+    border-radius: var(--roofy-radius-md, 8px);
+    padding: 1rem;
+}

@@ -3,8 +3,8 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useImportJobActions } from '/@/renderer/store';
+import { showImportError } from '/@/shared/product-ux';
 import { ContextMenu } from '/@/shared/components/context-menu/context-menu';
-import { toast } from '/@/shared/components/toast/toast';
 import { ServerType, Song } from '/@/shared/types/domain-types';
 
 interface DownloadToLibraryActionProps {
@@ -22,9 +22,7 @@ export const DownloadToLibraryAction = ({ songs }: DownloadToLibraryActionProps)
     const queueImports = useCallback(
         async (saveVideo: boolean) => {
             if (!isElectron() || !window.api?.youtubeMusic?.downloadTrack) {
-                toast.error({
-                    message: 'Download to library is only available in the desktop app.',
-                });
+                showImportError(t, new Error('desktop_only'));
                 return;
             }
 
@@ -45,13 +43,11 @@ export const DownloadToLibraryAction = ({ songs }: DownloadToLibraryActionProps)
                     });
                     setJob(job);
                 } catch (error) {
-                    toast.error({
-                        message: `Failed to queue "${song.name}": ${(error as Error).message}`,
-                    });
+                    showImportError(t, error);
                 }
             }
         },
-        [setJob, songs],
+        [setJob, songs, t],
     );
 
     const onSelect = useCallback(() => queueImports(false), [queueImports]);
@@ -62,10 +58,10 @@ export const DownloadToLibraryAction = ({ songs }: DownloadToLibraryActionProps)
     return (
         <>
             <ContextMenu.Item leftIcon="download" onSelect={onSelect}>
-                {t('page.contextMenu.downloadToLibrary') || 'Import to Library'}
+                {t('productUx.action.addToLibrary')}
             </ContextMenu.Item>
             <ContextMenu.Item leftIcon="video" onSelect={onSelectWithVideo}>
-                Import to Library with MP4
+                {t('productUx.action.addToLibraryWithVideo')}
             </ContextMenu.Item>
         </>
     );

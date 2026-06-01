@@ -3,6 +3,7 @@ import { lazy, MouseEvent, Suspense } from 'react';
 
 import styles from './playerbar.module.css';
 
+import { PlayingFromPhoneBanner } from '/@/renderer/features/devices/components/playing-from-phone-banner';
 import { CenterControls } from '/@/renderer/features/player/components/center-controls';
 import { LeftControls } from '/@/renderer/features/player/components/left-controls';
 import { RightControls } from '/@/renderer/features/player/components/right-controls';
@@ -42,6 +43,7 @@ export const Playerbar = () => {
             className={clsx(styles.container, PlaybackSelectors.mediaPlayer)}
             onClick={playerbarOpenDrawer ? handleToggleFullScreenPlayer : undefined}
         >
+            <PlayingFromPhoneBanner />
             <div className={styles.controlsGrid}>
                 <div className={styles.leftGridItem}>
                     <LeftControls />

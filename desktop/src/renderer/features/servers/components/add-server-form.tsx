@@ -1,7 +1,7 @@
 import { closeAllModals } from '@mantine/modals';
 import isElectron from 'is-electron';
 import { nanoid } from 'nanoid/non-secure';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '/@/renderer/api';
@@ -72,31 +72,42 @@ function useAutodiscovery() {
     return { isDone, servers };
 }
 
-const SERVER_TYPES: Record<AddableServerType, ServerDetails> = {
-    [ServerType.JELLYFIN]: {
-        icon: JellyfinIcon,
-        name: 'Jellyfin',
-    },
-    [ServerType.NAVIDROME]: {
-        icon: NavidromeIcon,
-        name: 'Navidrome',
-    },
-    [ServerType.SUBSONIC]: {
-        icon: SubsonicIcon,
-        name: 'OpenSubsonic',
-    },
+const SERVER_ICONS: Record<AddableServerType, string> = {
+    [ServerType.JELLYFIN]: JellyfinIcon,
+    [ServerType.NAVIDROME]: NavidromeIcon,
+    [ServerType.SUBSONIC]: SubsonicIcon,
 };
-
-const ALL_SERVERS = Object.keys(SERVER_TYPES).map((serverType) => {
-    const info = SERVER_TYPES[serverType];
-    return {
-        label: <ServerIconWithLabel icon={info.icon} label={info.name} />,
-        value: serverType,
-    };
-});
 
 export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
     const { t } = useTranslation();
+    const serverTypes: Record<AddableServerType, ServerDetails> = useMemo(
+        () => ({
+            [ServerType.JELLYFIN]: {
+                icon: SERVER_ICONS[ServerType.JELLYFIN],
+                name: t('productUx.serverType.jellyfin'),
+            },
+            [ServerType.NAVIDROME]: {
+                icon: SERVER_ICONS[ServerType.NAVIDROME],
+                name: t('productUx.serverType.personalLibrary'),
+            },
+            [ServerType.SUBSONIC]: {
+                icon: SERVER_ICONS[ServerType.SUBSONIC],
+                name: t('productUx.serverType.compatibleMusicServer'),
+            },
+        }),
+        [t],
+    );
+    const allServers = useMemo(
+        () =>
+            (Object.keys(serverTypes) as AddableServerType[]).map((serverType) => {
+                const info = serverTypes[serverType];
+                return {
+                    label: <ServerIconWithLabel icon={info.icon} label={info.name} />,
+                    value: serverType,
+                };
+            }),
+        [serverTypes],
+    );
     const focusTrapRef = useFocusTrap(true);
     const [isLoading, setIsLoading] = useState(false);
     const { addServer, setCurrentServer } = useAuthStoreActions();
@@ -227,14 +238,14 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
                 {discovered.map((server) => (
                     <Paper key={server.url} p="10px">
                         <Group>
-                            <img height="32" src={SERVER_TYPES[server.type].icon} width="32" />
+                            <img height="32" src={serverTypes[server.type].icon} width="32" />
                             <div
                                 onClick={() => fillServerDetails(server)}
                                 style={{ cursor: 'pointer' }}
                             >
                                 <Text fw={700}>{server.name}</Text>
                                 <Text>
-                                    {SERVER_TYPES[server.type].name} server at {server.url}
+                                    {serverTypes[server.type].name} · {server.url}
                                 </Text>
                             </div>
                         </Group>
@@ -244,7 +255,7 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
             <form onSubmit={handleSubmit}>
                 <Stack m={5} ref={focusTrapRef}>
                     <SegmentedControl
-                        data={ALL_SERVERS}
+                        data={allServers}
                         disabled={serverLock}
                         p="md"
                         withItemsBorders={false}

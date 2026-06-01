@@ -4,11 +4,14 @@ import http from 'http';
 import https from 'https';
 import { createRequire } from 'module';
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { createReadStream, existsSync, promises as fsPromises, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import vm from 'vm';
 
 import { store } from '../settings';
+
+import { getYtDlpCookieArgs } from './yt-dlp-cookies';
 
 import {
     Album,
@@ -21,6 +24,7 @@ import {
     ServerType,
     Song,
 } from '/@/shared/types/domain-types';
+import { isYoutubeVideoId } from '/@/shared/utils/youtube-video-id';
 import {
     YOUTUBE_MUSIC_SOURCE_ID,
     YOUTUBE_MUSIC_SOURCE_NAME,
@@ -52,8 +56,15 @@ type StoredSession = {
 
 type StreamCacheEntry = {
     expiresAt: number;
-    source: 'direct' | 'yt-dlp';
+    seekable: boolean;
+    source: 'direct' | 'yt-dlp' | 'yt-dlp-file';
     url: string;
+};
+
+type SeekableFileCacheEntry = {
+    expiresAt: number;
+    inflight?: Promise<string>;
+    path: string;
 };
 
 type YoutubeAccountIdentity = {
@@ -133,20 +144,234 @@ const streamUrlExpiresAt = (url: string) => {
     }
 };
 
-const cacheStreamUrl = (videoId: string, url: string, source: StreamCacheEntry['source']) => {
+const cacheStreamUrl = (
+    videoId: string,
+    url: string,
+    source: StreamCacheEntry['source'],
+    seekable = true,
+) => {
     streamCache.set(videoId, {
         expiresAt: streamUrlExpiresAt(url),
+        seekable,
         source,
         url,
     });
 };
 
-const cacheVideoStreamUrl = (videoId: string, url: string, source: StreamCacheEntry['source']) => {
+const cacheVideoStreamUrl = (
+    videoId: string,
+    url: string,
+    source: StreamCacheEntry['source'],
+    seekable = true,
+) => {
     videoStreamCache.set(videoId, {
         expiresAt: streamUrlExpiresAt(url),
+        seekable,
         source,
         url,
     });
+};
+
+const seekableFileCache = new Map<string, SeekableFileCacheEntry>();
+
+const getSeekableCacheDir = () => path.join(app.getPath('temp') || tmpdir(), 'roofy-yt-seekable');
+
+const probeStreamSeekable = async (url: string, timeoutMs = 2500): Promise<boolean> =>
+    new Promise((resolve) => {
+        let settled = false;
+        const finish = (ok: boolean) => {
+            if (settled) return;
+            settled = true;
+            resolve(ok);
+        };
+
+        let parsed: URL;
+        try {
+            parsed = new URL(url);
+        } catch {
+            finish(false);
+            return;
+        }
+
+        const clientUserAgent = userAgentForYoutubeClient(youtubeClientParam(url));
+        const hasSignedRange =
+            parsed.hostname.endsWith('.googlevideo.com') && parsed.searchParams.has('range');
+        const probeRange = 'bytes=65536-66535';
+        const requestUrl = applyGoogleVideoRangeParam(url, probeRange);
+
+        const req = https.request(
+            requestUrl,
+            {
+                headers: {
+                    Accept: '*/*',
+                    'Accept-Encoding': 'identity',
+                    Origin: SOURCE_URL,
+                    ...(hasSignedRange || new URL(requestUrl).searchParams.has('range')
+                        ? {}
+                        : { Range: probeRange }),
+                    Referer: `${SOURCE_URL}/`,
+                    ...(clientUserAgent ? { 'User-Agent': clientUserAgent } : {}),
+                },
+                method: 'GET',
+            },
+            (res) => {
+                const status = res.statusCode || 0;
+                res.resume();
+                finish(status === 206);
+            },
+        );
+
+        req.setTimeout(timeoutMs, () => {
+            req.destroy();
+            finish(false);
+        });
+
+        req.on('error', () => finish(false));
+        req.end();
+    });
+
+const serveLocalFileWithRange = (
+    filePath: string,
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+) => {
+    const stat = statSync(filePath);
+    const fileSize = stat.size;
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Expose-Headers', '*');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Type', 'audio/mp4');
+    res.setHeader('X-Roofy-Stream-Seekable', '1');
+
+    if (req.method === 'HEAD') {
+        res.setHeader('Content-Length', fileSize);
+        res.statusCode = 200;
+        res.end();
+        return;
+    }
+
+    const rangeHeader = rangeHeaderValue(req.headers.range);
+    if (!rangeHeader) {
+        res.setHeader('Content-Length', fileSize);
+        res.statusCode = 200;
+        createReadStream(filePath).pipe(res);
+        return;
+    }
+
+    const range = parseRangeHeader(rangeHeader);
+    if (!range) {
+        res.statusCode = 416;
+        res.end();
+        return;
+    }
+
+    const start = range.start;
+    const end = range.end ? Number(range.end) : fileSize - 1;
+    if (start >= fileSize || end >= fileSize) {
+        res.statusCode = 416;
+        res.end();
+        return;
+    }
+
+    const chunkSize = end - start + 1;
+    res.statusCode = 206;
+    res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+    res.setHeader('Content-Length', chunkSize);
+    createReadStream(filePath, { start, end }).pipe(res);
+};
+
+const downloadAudioToTempFile = (videoId: string): Promise<string> => {
+    const existing = seekableFileCache.get(videoId);
+    if (existing?.path && existsSync(existing.path) && existing.expiresAt > Date.now()) {
+        return Promise.resolve(existing.path);
+    }
+    if (existing?.inflight) {
+        return existing.inflight;
+    }
+
+    const inflight = new Promise<string>((resolve, reject) => {
+        const dir = getSeekableCacheDir();
+        const filePath = path.join(dir, `${videoId}.m4a`);
+
+        void fsPromises.mkdir(dir, { recursive: true }).then(() => {
+            if (existsSync(filePath)) {
+                resolve(filePath);
+                return;
+            }
+
+            const ytDlpPath = getYtDlpPath();
+            const stored = getStoredSession();
+            const args = [
+                '--no-check-certificates',
+                '--no-warnings',
+                '--quiet',
+                '--no-playlist',
+                '-f',
+                'bestaudio/best',
+                '-o',
+                filePath,
+                ...getYtDlpCookieArgs(stored?.cookie),
+                `https://music.youtube.com/watch?v=${videoId}`,
+            ];
+
+            const child = spawn(ytDlpPath, args, { windowsHide: true });
+            let stderr = '';
+
+            child.stderr.on('data', (data: Buffer) => {
+                stderr += data.toString();
+            });
+
+            child.on('close', (code) => {
+                if (code === 0 && existsSync(filePath)) {
+                    resolve(filePath);
+                    return;
+                }
+                reject(new Error(stderr || `yt-dlp exited with code ${code ?? 'unknown'}`));
+            });
+
+            child.on('error', reject);
+        });
+    });
+
+    inflight
+        .then((filePath) => {
+            seekableFileCache.set(videoId, {
+                expiresAt: Date.now() + STREAM_CACHE_TTL_MS,
+                path: filePath,
+            });
+            cacheStreamUrl(videoId, `file://${filePath}`, 'yt-dlp-file', true);
+        })
+        .catch(() => {
+            seekableFileCache.delete(videoId);
+        });
+
+    seekableFileCache.set(videoId, {
+        expiresAt: Date.now() + STREAM_CACHE_TTL_MS,
+        inflight,
+        path: '',
+    });
+
+    return inflight;
+};
+
+const serveSeekableYtDlpBuffer = async (
+    videoId: string,
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+) => {
+    try {
+        const filePath = await downloadAudioToTempFile(videoId);
+        console.log(`[YT Stream Proxy] Serving seekable buffered file for ${videoId}`);
+        serveLocalFileWithRange(filePath, req, res);
+    } catch (error) {
+        console.error(`[YT Stream Proxy] Seekable buffer failed for ${videoId}:`, error);
+        if (!res.headersSent) {
+            res.statusCode = 502;
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.end();
+        }
+    }
 };
 
 const probeStreamUrl = async (url: string, timeoutMs = 2500): Promise<boolean> =>
@@ -514,6 +739,12 @@ const startYtProxyServer = () => {
 
             const isVideoProxy = match[1] === 'video-stream';
             const videoId = match[2];
+            if (!isYoutubeVideoId(videoId)) {
+                res.statusCode = 400;
+                res.end();
+                return;
+            }
+
             let streamUrl: null | string = null;
 
             try {
@@ -522,13 +753,20 @@ const startYtProxyServer = () => {
                     : await resolveStreamUrl(videoId);
             } catch (error) {
                 console.error('Failed to resolve YouTube stream URL:', error);
-                res.statusCode = 502;
-                res.end();
-                return;
             }
 
             if (!streamUrl) {
-                res.statusCode = 404;
+                try {
+                    streamUrl = isVideoProxy
+                        ? await resolveVideoStreamUrlWithYtdlp(videoId)
+                        : await resolveStreamUrlWithYtdlp(videoId);
+                } catch (fallbackError) {
+                    console.error('yt-dlp stream fallback failed:', fallbackError);
+                }
+            }
+
+            if (!streamUrl) {
+                res.statusCode = 502;
                 res.end();
                 return;
             }
@@ -724,12 +962,12 @@ const startYtProxyServer = () => {
                             }
 
                             console.warn(
-                                `[YT Stream Proxy] Falling back to non-seekable yt-dlp pipe for ${videoId}`,
+                                `[YT Stream Proxy] Falling back to seekable yt-dlp buffer for ${videoId}`,
                             );
                             if (isVideoProxy) {
                                 pipeVideoStreamWithYtdlp(videoId, res);
                             } else {
-                                pipeStreamWithYtdlp(videoId, res);
+                                void serveSeekableYtDlpBuffer(videoId, req, res);
                             }
                             return;
                         }
@@ -746,6 +984,13 @@ const startYtProxyServer = () => {
                     }
                     res.setHeader('Access-Control-Allow-Origin', '*');
                     res.setHeader('Access-Control-Expose-Headers', '*');
+                    const cachedEntry = isVideoProxy
+                        ? videoStreamCache.get(videoId)
+                        : streamCache.get(videoId);
+                    res.setHeader(
+                        'X-Roofy-Stream-Seekable',
+                        cachedEntry?.seekable === false ? '0' : '1',
+                    );
 
                     if (req.method === 'HEAD') {
                         res.end();
@@ -806,12 +1051,14 @@ const getYtDlpPath = () => {
 const resolveStreamUrlWithYtdlp = async (videoId: string): Promise<null | string> => {
     const ytDlpPath = getYtDlpPath();
     const stored = getStoredSession();
-    const args = ['--no-check-certificates', '--no-warnings', '-f', 'bestaudio', '--get-url'];
-
-    if (stored?.cookie) {
-        args.push('--add-header', `Cookie:${stored.cookie}`);
-        args.push('--add-header', 'Referer:https://music.youtube.com/');
-    }
+    const args = [
+        '--no-check-certificates',
+        '--no-warnings',
+        '-f',
+        'bestaudio/best',
+        '--get-url',
+        ...getYtDlpCookieArgs(stored?.cookie),
+    ];
 
     args.push(`https://music.youtube.com/watch?v=${videoId}`);
 
@@ -855,12 +1102,8 @@ const resolveVideoStreamUrlWithYtdlp = async (videoId: string): Promise<null | s
         '-f',
         'bestvideo[ext=mp4][vcodec^=avc1]/best[ext=mp4]/bestvideo[ext=mp4]/bestvideo',
         '--get-url',
+        ...getYtDlpCookieArgs(stored?.cookie),
     ];
-
-    if (stored?.cookie) {
-        args.push('--add-header', `Cookie:${stored.cookie}`);
-        args.push('--add-header', 'Referer:https://music.youtube.com/');
-    }
 
     args.push(`https://music.youtube.com/watch?v=${videoId}`);
 
@@ -904,15 +1147,11 @@ const pipeStreamWithYtdlp = (videoId: string, res: http.ServerResponse) => {
         '--quiet',
         '--no-playlist',
         '-f',
-        'bestaudio[ext=m4a]/bestaudio',
+        'bestaudio/best',
         '-o',
         '-',
+        ...getYtDlpCookieArgs(stored?.cookie),
     ];
-
-    if (stored?.cookie) {
-        args.push('--add-header', `Cookie:${stored.cookie}`);
-        args.push('--add-header', 'Referer:https://music.youtube.com/');
-    }
 
     args.push(`https://music.youtube.com/watch?v=${videoId}`);
 
@@ -975,12 +1214,8 @@ const pipeVideoStreamWithYtdlp = (videoId: string, res: http.ServerResponse) => 
         'bestvideo[ext=mp4][vcodec^=avc1]/best[ext=mp4]/bestvideo[ext=mp4]/bestvideo',
         '-o',
         '-',
+        ...getYtDlpCookieArgs(stored?.cookie),
     ];
-
-    if (stored?.cookie) {
-        args.push('--add-header', `Cookie:${stored.cookie}`);
-        args.push('--add-header', 'Referer:https://music.youtube.com/');
-    }
 
     args.push(`https://music.youtube.com/watch?v=${videoId}`);
 
@@ -1041,7 +1276,10 @@ const resolveStreamUrl = async (
         return cached.url;
     }
 
-    const yt = await getInnertube();
+    const yt = await getInnertube().catch((error) => {
+        console.warn('[YT Stream] Innertube unavailable, using yt-dlp fallback:', error);
+        return null;
+    });
     let contentPoToken: null | string | undefined;
     const getContentPoToken = async () => {
         if (contentPoToken !== undefined) return contentPoToken;
@@ -1066,13 +1304,19 @@ const resolveStreamUrl = async (
             return null;
         }
 
-        console.log(`[YT Stream] Resolved via ${label} for ${videoId}`);
-        cacheStreamUrl(videoId, url, source);
+        const seekable = await probeStreamSeekable(url).catch(() => false);
+        if (!seekable) {
+            console.warn(`[YT Stream] ${label} URL is not mid-range seekable for ${videoId}`);
+        }
+
+        console.log(
+            `[YT Stream] Resolved via ${label} for ${videoId} (seekable=${seekable})`,
+        );
+        cacheStreamUrl(videoId, url, source, seekable);
         return url;
     };
 
-    // Method 1: TV_EMBEDDED client (often bypasses bot checks without po_token)
-    if (!rejectedClients.has('TVHTML5_SIMPLY_EMBEDDED_PLAYER')) {
+    if (yt && !rejectedClients.has('TVHTML5_SIMPLY_EMBEDDED_PLAYER')) {
         try {
             const info = await yt.getBasicInfo(videoId, { client: 'TV_EMBEDDED' });
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
@@ -1087,7 +1331,7 @@ const resolveStreamUrl = async (
     }
 
     // Method 2: WEB_REMIX with auth
-    if (!rejectedClients.has('WEB_REMIX')) {
+    if (yt && !rejectedClients.has('WEB_REMIX')) {
         try {
             const poToken = await getContentPoToken();
             const info = await yt.music.getInfo(
@@ -1108,7 +1352,7 @@ const resolveStreamUrl = async (
     }
 
     // Method 3: WEB client with auth
-    if (!rejectedClients.has('WEB')) {
+    if (yt && !rejectedClients.has('WEB')) {
         try {
             const poToken = await getContentPoToken();
             const info = await yt.getBasicInfo(
@@ -1127,7 +1371,7 @@ const resolveStreamUrl = async (
     }
 
     // Method 4: iOS native client
-    if (!rejectedClients.has('IOS') && !rejectedClients.has('iOS')) {
+    if (yt && !rejectedClients.has('IOS') && !rejectedClients.has('iOS')) {
         try {
             const info = await yt.getBasicInfo(videoId, { client: 'IOS' });
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
@@ -1142,7 +1386,7 @@ const resolveStreamUrl = async (
     }
 
     // Method 5: Android Music native client
-    if (!rejectedClients.has('ANDROID_MUSIC')) {
+    if (yt && !rejectedClients.has('ANDROID_MUSIC')) {
         try {
             const info = await yt.getBasicInfo(videoId, { client: 'YTMUSIC_ANDROID' });
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
@@ -1157,7 +1401,7 @@ const resolveStreamUrl = async (
     }
 
     // Method 6: Android native client
-    if (!rejectedClients.has('ANDROID')) {
+    if (yt && !rejectedClients.has('ANDROID')) {
         try {
             const info = await yt.getBasicInfo(videoId, { client: 'ANDROID' });
             const format = chooseAudioFormat(info.streaming_data?.adaptive_formats);
@@ -1193,7 +1437,10 @@ const resolveVideoStreamUrl = async (
         return cached.url;
     }
 
-    const yt = await getInnertube();
+    const yt = await getInnertube().catch((error) => {
+        console.warn('[YT Video Stream] Innertube unavailable, using yt-dlp fallback:', error);
+        return null;
+    });
     let contentPoToken: null | string | undefined;
     const getContentPoToken = async () => {
         if (contentPoToken !== undefined) return contentPoToken;
@@ -1218,12 +1465,17 @@ const resolveVideoStreamUrl = async (
             return null;
         }
 
-        console.log(`[YT Video Stream] Resolved via ${label} for ${videoId}`);
-        cacheVideoStreamUrl(videoId, url, source);
+        const seekable = await probeStreamSeekable(url).catch(() => false);
+        if (!seekable) {
+            console.warn(`[YT Video Stream] ${label} URL is not mid-range seekable for ${videoId}`);
+        }
+
+        console.log(`[YT Video Stream] Resolved via ${label} for ${videoId} (seekable=${seekable})`);
+        cacheVideoStreamUrl(videoId, url, source, seekable);
         return url;
     };
 
-    if (!rejectedClients.has('WEB')) {
+    if (yt && !rejectedClients.has('WEB')) {
         try {
             const poToken = await getContentPoToken();
             const info = await yt.getBasicInfo(
@@ -1241,7 +1493,7 @@ const resolveVideoStreamUrl = async (
         }
     }
 
-    if (!rejectedClients.has('IOS') && !rejectedClients.has('iOS')) {
+    if (yt && !rejectedClients.has('IOS') && !rejectedClients.has('iOS')) {
         try {
             const info = await yt.getBasicInfo(videoId, { client: 'IOS' });
             const url = await decipherFormatUrl(
@@ -1255,7 +1507,7 @@ const resolveVideoStreamUrl = async (
         }
     }
 
-    if (!rejectedClients.has('ANDROID')) {
+    if (yt && !rejectedClients.has('ANDROID')) {
         try {
             const info = await yt.getBasicInfo(videoId, { client: 'ANDROID' });
             const url = await decipherFormatUrl(
@@ -3148,6 +3400,9 @@ const getAccountPlaylistSongs = async (id: string): Promise<Song[]> => {
 const getStreamUrl = async (id: string): Promise<string> => {
     await startYtProxyServer();
     const videoId = id.startsWith('ytm:') ? id.slice(4) : id;
+    if (!isYoutubeVideoId(videoId)) {
+        throw new Error('Invalid YouTube video id for streaming.');
+    }
     return `http://127.0.0.1:${ytProxyPort}/yt-stream/${videoId}`;
 };
 
@@ -3170,12 +3425,20 @@ ipcMain.handle(
     async (_event, args: { id: string; reason?: 'playback' | 'preload' | 'retry' }) => {
         await startYtProxyServer();
         const videoId = args.id.startsWith('ytm:') ? args.id.slice(4) : args.id;
+        if (!isYoutubeVideoId(videoId)) {
+            return {
+                error: 'Invalid YouTube video id for streaming.',
+                resolvedAt: Date.now(),
+                source: 'youtube_music',
+                trackId: `youtube_music:${videoId}`,
+            };
+        }
         const cached = streamCache.get(videoId);
 
         // If cached and not expired, return the proxy URL (never leak raw googlevideo URLs to renderer)
         if (cached && cached.expiresAt > Date.now() + 30_000) {
             console.log(
-                `[StreamResolver] Cache hit for ${videoId} (reason=${args.reason || 'playback'})`,
+                `[StreamResolver] Cache hit for ${videoId} (reason=${args.reason || 'playback'}, seekable=${cached.seekable})`,
             );
             return {
                 bitrate: undefined,
@@ -3183,6 +3446,7 @@ ipcMain.handle(
                 expiresAt: cached.expiresAt,
                 mimeType: undefined,
                 resolvedAt: Date.now(),
+                seekable: cached.seekable,
                 source: 'youtube_music',
                 trackId: `youtube_music:${videoId}`,
                 url: `http://127.0.0.1:${ytProxyPort}/yt-stream/${videoId}`,
@@ -3200,12 +3464,14 @@ ipcMain.handle(
                     trackId: `youtube_music:${videoId}`,
                 };
             }
+            const entry = streamCache.get(videoId);
             return {
                 bitrate: undefined,
                 codec: undefined,
-                expiresAt: streamCache.get(videoId)?.expiresAt || Date.now() + STREAM_CACHE_TTL_MS,
+                expiresAt: entry?.expiresAt || Date.now() + STREAM_CACHE_TTL_MS,
                 mimeType: undefined,
                 resolvedAt: Date.now(),
+                seekable: entry?.seekable ?? true,
                 source: 'youtube_music',
                 trackId: `youtube_music:${videoId}`,
                 url: `http://127.0.0.1:${ytProxyPort}/yt-stream/${videoId}`,
@@ -3279,6 +3545,7 @@ ipcMain.handle('stream:invalidate', (_event, id: string) => {
     const had = streamCache.has(videoId);
     streamCache.delete(videoId);
     videoStreamCache.delete(videoId);
+    seekableFileCache.delete(videoId);
     console.log(`[StreamResolver] Invalidated ${videoId} (was cached=${had})`);
     return had;
 });

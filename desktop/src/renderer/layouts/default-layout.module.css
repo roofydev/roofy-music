@@ -1,40 +1,56 @@
 .layout {
+    --phone-playing-banner-height: 32px;
+    --phone-banner-offset: 0px;
+    --player-bar-row-height: 90px;
+    --layout-chrome-below-main: 90px;
+
     display: grid;
     grid-template-areas:
         'window-bar'
         'main-content'
         'player';
-    grid-template-rows: 0 calc(100vh - 90px) 90px;
-    grid-template-rows: 0 calc(100dvh - 90px) 90px;
+    grid-template-rows: 0 calc(100vh - var(--layout-chrome-below-main) - var(--phone-banner-offset)) calc(var(--player-bar-row-height) + var(--phone-banner-offset));
+    grid-template-rows: 0 calc(100dvh - var(--layout-chrome-below-main) - var(--phone-banner-offset)) calc(var(--player-bar-row-height) + var(--phone-banner-offset));
     grid-template-columns: 1fr;
     gap: 0;
     height: 100%;
     overflow: hidden;
 }
 
+.layout:has(#player-bar [data-phone-banner]) {
+    --phone-banner-offset: var(--phone-playing-banner-height);
+}
+
 .windows {
-    grid-template-rows: 30px calc(100vh - 120px) 90px;
-    grid-template-rows: 30px calc(100dvh - 120px) 90px;
+    --layout-chrome-below-main: 120px;
+
+    grid-template-rows: 30px calc(100vh - var(--layout-chrome-below-main) - var(--phone-banner-offset)) calc(var(--player-bar-row-height) + var(--phone-banner-offset));
+    grid-template-rows: 30px calc(100dvh - var(--layout-chrome-below-main) - var(--phone-banner-offset)) calc(var(--player-bar-row-height) + var(--phone-banner-offset));
 }
 
 .macos {
-    grid-template-rows: 30px calc(100vh - 120px) 90px;
-    grid-template-rows: 30px calc(100dvh - 120px) 90px;
+    --layout-chrome-below-main: 120px;
+
+    grid-template-rows: 30px calc(100vh - var(--layout-chrome-below-main) - var(--phone-banner-offset)) calc(var(--player-bar-row-height) + var(--phone-banner-offset));
+    grid-template-rows: 30px calc(100dvh - var(--layout-chrome-below-main) - var(--phone-banner-offset)) calc(var(--player-bar-row-height) + var(--phone-banner-offset));
 }
 
 .retro {
+    --player-bar-row-height: 108px;
+    --layout-chrome-below-main: 226px;
+
     grid-template-areas:
         'window-bar'
         'top-bar'
         'main-content'
         'player'
         'status-bar';
-    grid-template-rows: 30px 58px calc(100vh - 226px) 108px 28px;
-    grid-template-rows: 30px 58px calc(100dvh - 226px) 108px 28px;
+    grid-template-rows: 30px 58px calc(100vh - var(--layout-chrome-below-main) - var(--phone-banner-offset)) calc(var(--player-bar-row-height) + var(--phone-banner-offset)) 28px;
+    grid-template-rows: 30px 58px calc(100dvh - var(--layout-chrome-below-main) - var(--phone-banner-offset)) calc(var(--player-bar-row-height) + var(--phone-banner-offset)) 28px;
 }
 
 .retro.windows,
 .retro.macos {
-    grid-template-rows: 30px 58px calc(100vh - 226px) 108px 28px;
-    grid-template-rows: 30px 58px calc(100dvh - 226px) 108px 28px;
+    grid-template-rows: 30px 58px calc(100vh - var(--layout-chrome-below-main) - var(--phone-banner-offset)) calc(var(--player-bar-row-height) + var(--phone-banner-offset)) 28px;
+    grid-template-rows: 30px 58px calc(100dvh - var(--layout-chrome-below-main) - var(--phone-banner-offset)) calc(var(--player-bar-row-height) + var(--phone-banner-offset)) 28px;
 }

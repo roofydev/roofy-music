@@ -12,6 +12,7 @@ extraResources:
     - from: resources/bin
       to: bin
       filter:
+          - '**/cloudflared*'
           - '**/deno*'
           - '**/ffmpeg*'
           - '**/navidrome*'

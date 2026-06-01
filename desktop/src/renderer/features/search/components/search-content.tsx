@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import isElectron from 'is-electron';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router';
 
 import {
@@ -34,6 +35,8 @@ import {
     SortOrder,
 } from '/@/shared/types/domain-types';
 import { ItemListKey } from '/@/shared/types/types';
+import { SearchRouteEmptyHint } from '/@/renderer/features/search/components/search-route-empty-hint';
+import { showSearchError } from '/@/shared/product-ux';
 
 export const SearchContent = () => {
     const { itemType } = useParams() as { itemType: LibraryItem };
@@ -63,6 +66,7 @@ const AlbumSearch = () => {
 
     return (
         <Stack gap="lg">
+            <SearchRouteEmptyHint itemType={LibraryItem.ALBUM} searchTerm={searchTerm} />
             <AlbumListView
                 display={display}
                 grid={grid}
@@ -90,6 +94,7 @@ const SongSearch = () => {
 
     return (
         <Stack gap="lg">
+            <SearchRouteEmptyHint itemType={LibraryItem.SONG} searchTerm={searchTerm} />
             <SongListView
                 display={display}
                 grid={grid}
@@ -117,6 +122,7 @@ const ArtistSearch = () => {
 
     return (
         <Stack gap="lg">
+            <SearchRouteEmptyHint itemType={LibraryItem.ALBUM_ARTIST} searchTerm={searchTerm} />
             <AlbumArtistListView
                 display={display}
                 grid={grid}
@@ -140,6 +146,7 @@ const YoutubeMusicSearchSection = ({
     itemType: LibraryItem.ALBUM | LibraryItem.ALBUM_ARTIST | LibraryItem.SONG;
     searchTerm: string;
 }) => {
+    const { t } = useTranslation();
     const enabled = Boolean(searchTerm.trim() && isElectron() && window.api?.youtubeMusic);
 
     const statusQuery = useQuery({
@@ -156,6 +163,12 @@ const YoutubeMusicSearchSection = ({
         staleTime: 30_000,
     });
 
+    useEffect(() => {
+        if (searchQuery.isError) {
+            showSearchError(t, searchQuery.error);
+        }
+    }, [searchQuery.isError, searchQuery.error, t]);
+
     if (!enabled || statusQuery.data?.connected === false) {
         return null;
     }
@@ -165,10 +178,10 @@ const YoutubeMusicSearchSection = ({
     const artists = searchQuery.data?.albumArtists || [];
     const title =
         itemType === LibraryItem.SONG
-            ? 'YouTube Music tracks'
+            ? t('productUx.search.youtubeMusic.tracks')
             : itemType === LibraryItem.ALBUM
-              ? 'YouTube Music albums'
-              : 'YouTube Music artists';
+              ? t('productUx.search.youtubeMusic.albums')
+              : t('productUx.search.youtubeMusic.artists');
     const count =
         itemType === LibraryItem.SONG
             ? songs.length
@@ -189,10 +202,12 @@ const YoutubeMusicSearchSection = ({
             <Group justify="space-between" mb="xs">
                 <Group>
                     <Text fw={600}>{title}</Text>
-                    <Badge>Remote</Badge>
+                    <Badge>{t('productUx.search.youtubeMusic.badgeOnline')}</Badge>
                 </Group>
                 <Text isMuted size="sm">
-                    {searchQuery.isLoading ? 'Loading' : `${count} results`}
+                    {searchQuery.isLoading
+                        ? t('productUx.search.youtubeMusic.loading')
+                        : t('productUx.search.youtubeMusic.resultCount', { count })}
                 </Text>
             </Group>
             {itemType === LibraryItem.SONG && songs.length > 0 && (

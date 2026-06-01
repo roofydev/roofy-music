@@ -35,7 +35,13 @@ export const PlayerbarVideoControls = () => {
             metadata={metadata ?? undefined}
             onDownload={isVideoMode ? downloadVideo : undefined}
             onEnterFullscreen={
-                videoFullscreen ? undefined : () => setFullScreenPlayerStore({ videoFullscreen: true })
+                videoFullscreen
+                    ? undefined
+                    : () =>
+                          setFullScreenPlayerStore({
+                              expanded: true,
+                              videoFullscreen: true,
+                          })
             }
             onExitFullscreen={
                 videoFullscreen ? () => setFullScreenPlayerStore({ videoFullscreen: false }) : undefined

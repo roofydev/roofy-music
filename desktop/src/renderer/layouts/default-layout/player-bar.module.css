@@ -26,6 +26,10 @@
     min-height: 108px;
 }
 
+:global(#default-layout.retro:has(#player-bar [data-phone-banner])) .container {
+    min-height: calc(108px + var(--phone-playing-banner-height, 32px));
+}
+
 :global([data-theme="retroMonochrome"]) .container {
     background: rgba(8, 8, 8, 0.98) !important;
     border-top: 1px solid var(--rm-border-soft, rgb(255 255 255 / 8%));

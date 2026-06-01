@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import isElectron from 'is-electron';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
 import styles from './youtube-music-route.module.css';
@@ -29,6 +30,7 @@ import { Spinner } from '/@/shared/components/spinner/spinner';
 import { Stack } from '/@/shared/components/stack/stack';
 import { TextInput } from '/@/shared/components/text-input/text-input';
 import { Text } from '/@/shared/components/text/text';
+import { showImportError, showPlaybackErrorFromUnknown } from '/@/shared/product-ux';
 import { toast } from '/@/shared/components/toast/toast';
 import { useDebouncedValue } from '/@/shared/hooks/use-debounced-value';
 import { LibraryItem, Playlist, Song } from '/@/shared/types/domain-types';
@@ -40,6 +42,7 @@ type YtmView = 'browse' | 'login' | 'playlists' | 'search' | 'songs';
 const VALID_VIEWS = new Set<YtmView>(['browse', 'login', 'playlists', 'search', 'songs']);
 
 const YoutubeMusicRoute = () => {
+    const { t } = useTranslation();
     const [status, setStatus] = useState<null | YoutubeMusicAuthStatus>(null);
     const [query, setQuery] = useState('');
     const [debouncedQuery] = useDebouncedValue(query.trim(), 300);
@@ -62,8 +65,8 @@ const YoutubeMusicRoute = () => {
                 setStatus(nextStatus);
                 queryClient.setQueryData(youtubeMusicAuthStatusQueryKey, nextStatus);
             })
-            .catch((error) => toast.error({ message: (error as Error).message }));
-    }, []);
+            .catch((error) => showPlaybackErrorFromUnknown(t, error));
+    }, [t]);
 
     useEffect(() => {
         if (activeView === 'search' && queryParam) {
@@ -146,7 +149,7 @@ const YoutubeMusicRoute = () => {
                 setJob(job);
                 toast.success({ message: `Import queued: ${song.name}` });
             } catch (error) {
-                toast.error({ message: (error as Error).message });
+                showImportError(t, error);
             }
         },
         [saveVideoImports, setJob],
@@ -173,7 +176,7 @@ const YoutubeMusicRoute = () => {
                 setJob(job);
                 toast.success({ message: `Import queued: ${playlist.name}` });
             } catch (error) {
-                toast.error({ message: (error as Error).message });
+                showImportError(t, error);
             }
         },
         [saveVideoImports, setJob],
@@ -187,7 +190,7 @@ const YoutubeMusicRoute = () => {
                     await handleImportSong(song);
                 }
             } catch (error) {
-                toast.error({ message: (error as Error).message });
+                showImportError(t, error);
             }
         },
         [handleImportSong],
@@ -205,7 +208,7 @@ const YoutubeMusicRoute = () => {
 
             addToQueueByData(playType, songs);
         } catch (error) {
-            toast.error({ message: (error as Error).message });
+            showImportError(t, error);
         }
     }, []);
 
@@ -233,7 +236,7 @@ const YoutubeMusicRoute = () => {
                     setSearchParams({ view: 'browse' }, { replace: true });
                 }
             })
-            .catch((error) => toast.error({ message: (error as Error).message }));
+            .catch((error) => showImportError(t, error));
     };
 
     const handleDisconnect = () => {
@@ -244,7 +247,7 @@ const YoutubeMusicRoute = () => {
                 queryClient.setQueryData(youtubeMusicAuthStatusQueryKey, nextStatus);
                 queryClient.invalidateQueries({ queryKey: ['youtube-music'] });
             })
-            .catch((error) => toast.error({ message: (error as Error).message }));
+            .catch((error) => showImportError(t, error));
     };
 
     return (
@@ -267,18 +270,22 @@ const YoutubeMusicRoute = () => {
                                     />
                                 </LibraryHeaderBar>
                             </PageHeader>
-                            <ListWithSidebarContainer>
-                                <div className={styles.contentPanel}>
-                                    {!isConnected ? (
-                                        <Text isMuted>
-                                            Login to enable recommendations, search, account songs,
-                                            and playlists.
-                                        </Text>
-                                    ) : (
-                                        <YoutubeMusicHomeCarousels maxHeight="calc(100vh - 12rem)" />
-                                    )}
-                                </div>
-                            </ListWithSidebarContainer>
+                            <div className={styles.listSection}>
+                                <ListWithSidebarContainer>
+                                    <div className={styles.contentPanel}>
+                                        <div className={styles.contentPanelBody}>
+                                            {!isConnected ? (
+                                                <Text isMuted>
+                                                    Login to enable recommendations, search, account
+                                                    songs, and playlists.
+                                                </Text>
+                                            ) : (
+                                                <YoutubeMusicHomeCarousels maxHeight="calc(100vh - 12rem)" />
+                                            )}
+                                        </div>
+                                    </div>
+                                </ListWithSidebarContainer>
+                            </div>
                         </Stack>
                     )}
 
@@ -308,42 +315,56 @@ const YoutubeMusicRoute = () => {
                                         className={styles.headerSearch}
                                         leftSection={<Icon icon="search" />}
                                         onChange={(event) => setQuery(event.currentTarget.value)}
-                                        placeholder="Search YouTube Music"
+                                        placeholder={t('productUx.search.youtubeMusic.searchPlaceholder')}
                                         value={query}
                                     />
                                 </Group>
                             </PageHeader>
                             <FilterBar />
-                            <ListWithSidebarContainer>
-                                {isConnected ? (
-                                    <div className={styles.contentPanel}>
-                                        {searchQuery.isLoading || searchQuery.isFetching ? (
-                                            <LoadingState label="Loading search results" />
-                                        ) : searchQuery.error ? (
-                                            <ErrorState error={searchQuery.error} />
-                                        ) : (
-                                            <>
-                                                {searchQuery.data?.songs &&
-                                                searchQuery.data.songs.length > 0 ? (
-                                                    <YoutubeMusicSongsTable
-                                                        songs={searchQuery.data.songs}
+                            <div className={styles.listSection}>
+                                <ListWithSidebarContainer>
+                                    {isConnected ? (
+                                        <div className={styles.contentPanel}>
+                                            <div className={styles.contentPanelBody}>
+                                                {searchQuery.isLoading || searchQuery.isFetching ? (
+                                                    <LoadingState
+                                                        label={t(
+                                                            'productUx.search.youtubeMusic.loadingSearchResults',
+                                                        )}
                                                     />
+                                                ) : searchQuery.error ? (
+                                                    <ErrorState error={searchQuery.error} />
                                                 ) : (
-                                                    <Text isMuted>
-                                                        {debouncedQuery
-                                                            ? 'No tracks found.'
-                                                            : 'Type a query to search YouTube Music.'}
-                                                    </Text>
+                                                    <>
+                                                        {searchQuery.data?.songs &&
+                                                        searchQuery.data.songs.length > 0 ? (
+                                                            <YoutubeMusicSongsTable
+                                                                songs={searchQuery.data.songs}
+                                                            />
+                                                        ) : (
+                                                            <Text isMuted>
+                                                                {debouncedQuery
+                                                                    ? t(
+                                                                          'productUx.search.youtubeMusic.noTracks',
+                                                                      )
+                                                                    : t(
+                                                                          'productUx.search.youtubeMusic.searchPrompt',
+                                                                      )}
+                                                            </Text>
+                                                        )}
+                                                    </>
                                                 )}
-                                            </>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className={styles.contentPanel}>
-                                        <Text isMuted>Login to search YouTube Music.</Text>
-                                    </div>
-                                )}
-                            </ListWithSidebarContainer>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className={styles.contentPanel}>
+                                            <Text isMuted>
+                                                {t('productUx.search.youtubeMusic.loginToSearchTitle')}
+                                            </Text>
+                                        </div>
+                                    )}
+                                </ListWithSidebarContainer>
+                            </div>
                         </Stack>
                     )}
 
@@ -355,7 +376,9 @@ const YoutubeMusicRoute = () => {
                                         itemType={LibraryItem.SONG}
                                         songs={filteredSongs}
                                     />
-                                    <LibraryHeaderBar.Title>My Songs</LibraryHeaderBar.Title>
+                                    <LibraryHeaderBar.Title>
+                                        {t('productUx.search.youtubeMusic.mySongs')}
+                                    </LibraryHeaderBar.Title>
                                     <LibraryHeaderBar.Badge>
                                         {filteredSongs.length}
                                     </LibraryHeaderBar.Badge>
@@ -383,76 +406,106 @@ const YoutubeMusicRoute = () => {
                                 </Group>
                             </PageHeader>
                             <FilterBar />
-                            <ListWithSidebarContainer>
-                                {isConnected ? (
-                                    <div className={styles.contentPanel}>
-                                        {accountSongsQuery.isLoading ? (
-                                            <LoadingState label="Loading YouTube Music songs" />
-                                        ) : accountSongsQuery.error ? (
-                                            <ErrorState error={accountSongsQuery.error} />
-                                        ) : (
-                                            <>
-                                                {filteredSongs.length > 0 ? (
-                                                    <YoutubeMusicSongsTable songs={filteredSongs} />
+                            <div className={styles.listSection}>
+                                <ListWithSidebarContainer>
+                                    {isConnected ? (
+                                        <div className={styles.contentPanel}>
+                                            <div className={styles.contentPanelBody}>
+                                                {accountSongsQuery.isLoading ? (
+                                                    <LoadingState
+                                                        label={t(
+                                                            'productUx.search.youtubeMusic.loadingSongs',
+                                                        )}
+                                                    />
+                                                ) : accountSongsQuery.error ? (
+                                                    <ErrorState error={accountSongsQuery.error} />
                                                 ) : (
-                                                    <Text isMuted>No tracks found.</Text>
+                                                    <>
+                                                        {filteredSongs.length > 0 ? (
+                                                            <YoutubeMusicSongsTable
+                                                                songs={filteredSongs}
+                                                            />
+                                                        ) : (
+                                                            <Text isMuted>
+                                                                {t(
+                                                                    'productUx.search.youtubeMusic.noTracks',
+                                                                )}
+                                                            </Text>
+                                                        )}
+                                                    </>
                                                 )}
-                                            </>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className={styles.contentPanel}>
-                                        <Text isMuted>Login to load your YouTube Music songs.</Text>
-                                    </div>
-                                )}
-                            </ListWithSidebarContainer>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className={styles.contentPanel}>
+                                            <Text isMuted>
+                                                {t('productUx.search.youtubeMusic.loginToLoadSongs')}
+                                            </Text>
+                                        </div>
+                                    )}
+                                </ListWithSidebarContainer>
+                            </div>
                         </Stack>
                     )}
 
                     {activeView === 'playlists' && (
                         <Stack gap={0} style={{ flex: 1, minHeight: 0 }}>
                             {activePlaylistId ? (
-                                <ListWithSidebarContainer>
-                                    {isConnected ? (
-                                        <div className={styles.contentPanel}>
-                                            {accountPlaylistDetailQuery.isLoading ||
-                                            accountPlaylistSongsQuery.isLoading ? (
-                                                <LoadingState label="Loading playlist" />
-                                            ) : accountPlaylistDetailQuery.error ? (
-                                                <ErrorState
-                                                    error={accountPlaylistDetailQuery.error}
-                                                />
-                                            ) : (
-                                                <YoutubeMusicPlaylistDetail
-                                                    onBack={handleClosePlaylist}
-                                                    onImportPlaylist={handlePlaylistImport}
-                                                    onImportTracks={handlePlaylistImportTracks}
-                                                    onPlayPlaylist={handlePlaylistPlay}
-                                                    onRefresh={() => {
-                                                        accountPlaylistDetailQuery.refetch();
-                                                        accountPlaylistSongsQuery.refetch();
-                                                    }}
-                                                    playlist={accountPlaylistDetailQuery.data}
-                                                    saveVideoImports={saveVideoImports}
-                                                    setSaveVideoImports={setSaveVideoImports}
-                                                    songs={accountPlaylistSongsQuery.data || []}
-                                                />
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className={styles.contentPanel}>
-                                            <Text isMuted>
-                                                Login to load your YouTube Music playlists.
-                                            </Text>
-                                        </div>
-                                    )}
-                                </ListWithSidebarContainer>
+                                <div className={styles.listSection}>
+                                    <ListWithSidebarContainer>
+                                        {isConnected ? (
+                                            <div className={styles.contentPanel}>
+                                                <div className={styles.contentPanelBody}>
+                                                    {accountPlaylistDetailQuery.isLoading ||
+                                                    accountPlaylistSongsQuery.isLoading ? (
+                                                        <LoadingState
+                                                            label={t(
+                                                                'productUx.search.youtubeMusic.loadingPlaylist',
+                                                            )}
+                                                        />
+                                                    ) : accountPlaylistDetailQuery.error ? (
+                                                        <ErrorState
+                                                            error={accountPlaylistDetailQuery.error}
+                                                        />
+                                                    ) : (
+                                                        <YoutubeMusicPlaylistDetail
+                                                            onBack={handleClosePlaylist}
+                                                            onImportPlaylist={handlePlaylistImport}
+                                                            onImportTracks={
+                                                                handlePlaylistImportTracks
+                                                            }
+                                                            onPlayPlaylist={handlePlaylistPlay}
+                                                            onRefresh={() => {
+                                                                accountPlaylistDetailQuery.refetch();
+                                                                accountPlaylistSongsQuery.refetch();
+                                                            }}
+                                                            playlist={accountPlaylistDetailQuery.data}
+                                                            saveVideoImports={saveVideoImports}
+                                                            setSaveVideoImports={setSaveVideoImports}
+                                                            songs={
+                                                                accountPlaylistSongsQuery.data || []
+                                                            }
+                                                        />
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className={styles.contentPanel}>
+                                                <Text isMuted>
+                                                    {t(
+                                                        'productUx.search.youtubeMusic.loginToLoadPlaylists',
+                                                    )}
+                                                </Text>
+                                            </div>
+                                        )}
+                                    </ListWithSidebarContainer>
+                                </div>
                             ) : (
                                 <>
                                     <PageHeader>
                                         <LibraryHeaderBar ignoreMaxWidth>
                                             <LibraryHeaderBar.Title>
-                                                My Playlists
+                                                {t('productUx.search.youtubeMusic.myPlaylists')}
                                             </LibraryHeaderBar.Title>
                                             <LibraryHeaderBar.Badge>
                                                 {filteredPlaylists.length}
@@ -475,43 +528,63 @@ const YoutubeMusicRoute = () => {
                                                 onChange={(event) =>
                                                     setPlaylistSearchTerm(event.currentTarget.value)
                                                 }
-                                                placeholder="Filter playlists"
+                                                placeholder={t(
+                                                    'productUx.search.youtubeMusic.filterPlaylists',
+                                                )}
                                                 value={playlistSearchTerm}
                                             />
                                         </Group>
                                     </PageHeader>
                                     <FilterBar />
-                                    <ListWithSidebarContainer>
-                                        {isConnected ? (
-                                            <div className={styles.contentPanel}>
-                                                {accountPlaylistsQuery.isLoading ? (
-                                                    <LoadingState label="Loading YouTube Music playlists" />
-                                                ) : accountPlaylistsQuery.error ? (
-                                                    <ErrorState
-                                                        error={accountPlaylistsQuery.error}
-                                                    />
-                                                ) : (
-                                                    <>
-                                                        {filteredPlaylists.length > 0 ? (
-                                                            <YoutubeMusicPlaylistGrid
-                                                                onOpenPlaylist={handleOpenPlaylist}
-                                                                onPlayPlaylist={handlePlaylistPlay}
-                                                                playlists={filteredPlaylists}
+                                    <div className={styles.listSection}>
+                                        <ListWithSidebarContainer>
+                                            {isConnected ? (
+                                                <div className={styles.contentPanel}>
+                                                    <div className={styles.contentPanelBody}>
+                                                        {accountPlaylistsQuery.isLoading ? (
+                                                            <LoadingState
+                                                                label={t(
+                                                                    'productUx.search.youtubeMusic.loadingPlaylists',
+                                                                )}
+                                                            />
+                                                        ) : accountPlaylistsQuery.error ? (
+                                                            <ErrorState
+                                                                error={accountPlaylistsQuery.error}
                                                             />
                                                         ) : (
-                                                            <Text isMuted>No playlists found.</Text>
+                                                            <>
+                                                                {filteredPlaylists.length > 0 ? (
+                                                                    <YoutubeMusicPlaylistGrid
+                                                                        onOpenPlaylist={
+                                                                            handleOpenPlaylist
+                                                                        }
+                                                                        onPlayPlaylist={
+                                                                            handlePlaylistPlay
+                                                                        }
+                                                                        playlists={filteredPlaylists}
+                                                                    />
+                                                                ) : (
+                                                                    <Text isMuted>
+                                                                        {t(
+                                                                            'productUx.search.youtubeMusic.noPlaylistsFound',
+                                                                        )}
+                                                                    </Text>
+                                                                )}
+                                                            </>
                                                         )}
-                                                    </>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div className={styles.contentPanel}>
-                                                <Text isMuted>
-                                                    Login to load your YouTube Music playlists.
-                                                </Text>
-                                            </div>
-                                        )}
-                                    </ListWithSidebarContainer>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className={styles.contentPanel}>
+                                                    <Text isMuted>
+                                                        {t(
+                                                        'productUx.search.youtubeMusic.loginToLoadPlaylists',
+                                                    )}
+                                                    </Text>
+                                                </div>
+                                            )}
+                                        </ListWithSidebarContainer>
+                                    </div>
                                 </>
                             )}
                         </Stack>
@@ -522,7 +595,7 @@ const YoutubeMusicRoute = () => {
                             <PageHeader>
                                 <LibraryHeaderBar ignoreMaxWidth>
                                     <LibraryHeaderBar.Title>
-                                        YouTube Music account
+                                        {t('productUx.search.youtubeMusic.accountTitle')}
                                     </LibraryHeaderBar.Title>
                                     <YoutubeMusicIcon size="2rem" />
                                 </LibraryHeaderBar>
@@ -530,8 +603,7 @@ const YoutubeMusicRoute = () => {
                             <div className={styles.remotePanel}>
                                 <Stack gap="md">
                                     <Text isMuted size="sm">
-                                        Login enables your signed-in YouTube Music library inside
-                                        Roofy.
+                                        {t('productUx.search.youtubeMusic.accountDescription')}
                                     </Text>
                                     {!isConnected ? (
                                         <Button
@@ -575,14 +647,18 @@ const LoadingState = ({ label }: { label: string }) => (
     </div>
 );
 
-const ErrorState = ({ error }: { error: Error }) => (
+const ErrorState = ({ error }: { error: Error }) => {
+    const { t } = useTranslation();
+
+    return (
     <div className={styles.errorState}>
-        <Text fw={600}>Could not load this YouTube Music section.</Text>
+        <Text fw={600}>{t('productUx.search.youtubeMusic.sectionLoadFailed')}</Text>
         <Text isMuted size="sm">
             {error.message}
         </Text>
     </div>
-);
+    );
+};
 
 const ImportVideoCheckbox = ({
     checked,
@@ -590,12 +666,15 @@ const ImportVideoCheckbox = ({
 }: {
     checked: boolean;
     onChange: (checked: boolean) => void;
-}) => (
-    <Checkbox
-        checked={checked}
-        label="Save MP4 with imports"
-        onChange={(event) => onChange(event.currentTarget.checked)}
-    />
-);
+}) => {
+    const { t } = useTranslation();
+    return (
+        <Checkbox
+            checked={checked}
+            label={t('productUx.video.saveWithImports')}
+            onChange={(event) => onChange(event.currentTarget.checked)}
+        />
+    );
+};
 
 export default YoutubeMusicRoute;

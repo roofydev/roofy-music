@@ -11,6 +11,7 @@ import { replaceURLWithHTMLLinks } from '/@/renderer/utils/linkify';
 import { normalizeReleaseTypes } from '/@/renderer/utils/normalize-release-types';
 import { sanitize } from '/@/renderer/utils/sanitize';
 import { SEPARATOR_STRING } from '/@/shared/api/utils';
+import { Button } from '/@/shared/components/button/button';
 import { Icon } from '/@/shared/components/icon/icon';
 import { Select } from '/@/shared/components/select/select';
 import { Separator } from '/@/shared/components/separator/separator';
@@ -267,9 +268,8 @@ const PlaylistPropertyMapping: ItemDetailRow<Playlist>[] = [
     { key: 'id', label: 'filter.id' },
 ];
 
-const SongPropertyMapping: ItemDetailRow<Song>[] = [
+const SongPropertyMappingBasic: ItemDetailRow<Song>[] = [
     { key: 'name', label: 'common.title' },
-    { key: 'path', label: 'common.path', render: SongPath },
     { count: 1, label: 'entity.albumArtist', render: (item) => formatArtists(item.albumArtists) },
     {
         count: 2,
@@ -320,12 +320,6 @@ const SongPropertyMapping: ItemDetailRow<Song>[] = [
         render: (song) => formatDurationString(song.duration),
     },
     { label: 'filter.isCompilation', render: (song) => BoolField(song.compilation || false) },
-    { key: 'container', label: 'common.codec' },
-    { key: 'bitRate', label: 'common.bitrate', render: (song) => `${song.bitRate} kbps` },
-    { key: 'sampleRate', label: 'common.sampleRate' },
-    { key: 'bitDepth', label: 'common.bitDepth' },
-    { count: 2, key: 'channels', label: 'common.channel' },
-    { key: 'size', label: 'common.size', render: (song) => formatSizeString(song.size) },
     {
         label: 'common.favorite',
         render: (song) => BoolField(song.userFavorite),
@@ -340,6 +334,17 @@ const SongPropertyMapping: ItemDetailRow<Song>[] = [
         label: 'common.modified',
         render: (song) => formatDateRelative(song.updatedAt),
     },
+    { label: 'filter.comment', render: formatComment },
+];
+
+const SongPropertyMappingTechnical: ItemDetailRow<Song>[] = [
+    { key: 'path', label: 'common.path', render: SongPath },
+    { key: 'container', label: 'productUx.technical.audioFormat' },
+    { key: 'bitRate', label: 'common.bitrate', render: (song) => `${song.bitRate} kbps` },
+    { key: 'sampleRate', label: 'common.sampleRate' },
+    { key: 'bitDepth', label: 'common.bitDepth' },
+    { count: 2, key: 'channels', label: 'common.channel' },
+    { key: 'size', label: 'common.size', render: (song) => formatSizeString(song.size) },
     {
         label: 'common.albumGain',
         render: (song) => (song.gain?.album !== undefined ? `${song.gain.album} dB` : null),
@@ -356,7 +361,6 @@ const SongPropertyMapping: ItemDetailRow<Song>[] = [
         label: 'common.trackPeak',
         render: (song) => (song.peak?.track !== undefined ? `${song.peak.track}` : null),
     },
-    { label: 'filter.comment', render: formatComment },
     { key: 'id', label: 'filter.id' },
 ];
 
@@ -420,6 +424,7 @@ export const ItemDetailsModal = ({ item, items }: ItemDetailsModalProps) => {
     const { t } = useTranslation();
     const allItems = useMemo(() => items || (item ? [item] : []), [item, items]);
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
 
     const selectedItem = useMemo(() => {
         return allItems[selectedIndex] || null;
@@ -451,7 +456,14 @@ export const ItemDetailsModal = ({ item, items }: ItemDetailsModalProps) => {
             body = PlaylistPropertyMapping.map((rule) => handleRow(t, selectedItem, rule));
             break;
         case LibraryItem.SONG:
-            body = SongPropertyMapping.map((rule) => handleRow(t, selectedItem, rule));
+            body = SongPropertyMappingBasic.map((rule) => handleRow(t, selectedItem, rule));
+            if (showTechnicalDetails) {
+                body.push(
+                    ...SongPropertyMappingTechnical.map((rule) =>
+                        handleRow(t, selectedItem, rule),
+                    ),
+                );
+            }
             body.push(...handleParticipants(selectedItem, t));
             body.push(...handleTags(selectedItem, t));
             break;
@@ -471,6 +483,19 @@ export const ItemDetailsModal = ({ item, items }: ItemDetailsModalProps) => {
                     }}
                     value={String(selectedIndex)}
                 />
+            )}
+            {selectedItem._itemType === LibraryItem.SONG && (
+                <Button
+                    onClick={() => setShowTechnicalDetails((open) => !open)}
+                    size="compact-sm"
+                    variant="subtle"
+                >
+                    {t(
+                        showTechnicalDetails
+                            ? 'productUx.error.recovery.hideTechnicalDetails'
+                            : 'productUx.error.recovery.viewTechnicalDetails',
+                    )}
+                </Button>
             )}
             <Table
                 highlightOnHover={false}

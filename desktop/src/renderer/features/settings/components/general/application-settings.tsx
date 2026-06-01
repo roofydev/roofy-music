@@ -530,7 +530,7 @@ export const ApplicationSettings = memo(() => {
             description: t('setting.sidePlayQueueStyle', {
                 context: 'description',
             }),
-            isHidden: false,
+            isHidden: true,
             title: t('setting.sidePlayQueueStyle'),
         },
         {

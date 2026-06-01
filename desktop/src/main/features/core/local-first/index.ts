@@ -1,13 +1,49 @@
 import { ChildProcessWithoutNullStreams, spawn, spawnSync } from 'child_process';
-import { randomBytes, randomUUID } from 'crypto';
-import { app, dialog, ipcMain, shell } from 'electron';
-import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'fs';
+import { createHash, randomBytes, randomUUID } from 'crypto';
+import { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } from 'electron';
+import {
+    copyFileSync,
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    statSync,
+    unlinkSync,
+    writeFileSync,
+} from 'fs';
+import http from 'http';
+import { hostname, networkInterfaces } from 'os';
 import path from 'path';
 import { pathToFileURL } from 'url';
 
+import { ensureCloudflared } from '../party/cloudflared-binary';
 import { store } from '../settings';
+import {
+    collectAudioFiles,
+    getSpotdlInvocation,
+    runSpotdlDownload,
+    runSpotdlSave,
+    spotdlAvailable,
+    type SpotdlRunContext,
+    spotdlSongToNormalizedTrack,
+    summarizeSpotdlPreview,
+} from './spotdl';
+import { enrichAudioFileMetadata, probeAudioTags } from './metadata-enrichment';
+import { parseCloudflaredTunnelUrl } from './cloudflared-tunnel-url';
+import {
+    createDeviceBridgeCoordinator,
+    type PhoneLinkRequestMode,
+} from './device-bridge-coordinator';
+import {
+    buildDevicePairingUrl,
+    buildImportPairingUrl,
+    buildSubsonicPairingUrl,
+} from './pairing-urls';
 
+import { applyHandoffState, requestHandoffState } from '/@/main/features/core/handoff';
+import type { PhoneLinkStatus } from '/@/shared/types/device-session-types';
 import { getMainWindow } from '/@/main/index';
+import { HandoffSnapshot } from '/@/shared/types/handoff-types';
+import { extractYoutubeVideoId, isYoutubeVideoId } from '/@/shared/utils/youtube-video-id';
 
 type CreateLocalUserArgs = {
     email?: string;
@@ -19,11 +55,15 @@ type CreateLocalUserArgs = {
 
 type ImportJob = {
     album?: string;
+    albumArtist?: string;
     artist?: string;
+    artists?: string[];
+    artworkUrl?: string;
     audioFormat: string;
     cookieBrowser: string;
     createdAt: string;
     createPlaylist: boolean;
+    discNumber?: number;
     downloadedCount?: number;
     error: string;
     expectedFiles?: string[];
@@ -35,24 +75,83 @@ type ImportJob = {
     playlist: boolean;
     playlistName?: string;
     progress: number;
+    releaseDate?: string;
     saveVideo?: boolean;
     skippedCount?: number;
-    source?: 'youtube_music';
+    source?: ImportSource;
+    sourcePlaylistId?: string;
     sourceTrackId?: string;
+    sourceTracks?: NormalizedImportTrack[];
+    sourceUrl?: string;
     status: 'cancelled' | 'completed' | 'failed' | 'queued' | 'running';
     targetPlaylistIds?: string[];
     targetPlaylistNames?: string[];
     title?: string;
+    trackNumber?: number;
     updatedAt: string;
     videoDownloadedCount?: number;
     videoId?: string;
     warning?: string;
 };
 
+type ImportMatchState = 'in_library' | 'matched' | 'needs_review' | 'unavailable';
+
+type ImportPreview = {
+    album?: string;
+    albumArtist?: string;
+    artist?: string;
+    artists?: string[];
+    artworkUrl?: string;
+    count: number;
+    discNumber?: number;
+    duration: null | number;
+    durationMs?: number;
+    explicit?: boolean;
+    isPlaylist: boolean;
+    isrc?: string;
+    matchConfidence?: number;
+    matchState?: ImportMatchState;
+    playlistDescription?: string;
+    playlistId?: string;
+    releaseDate?: string;
+    resolvedSource?: ImportSource;
+    resolvedSourceTrackId?: string;
+    resolvedSourceUrl?: string;
+    source: ImportSource;
+    sourcePlaylistId?: string;
+    sourceTrackId?: string;
+    sourceUrl: string;
+    thumbnail: string;
+    title: string;
+    trackNumber?: number;
+    tracks?: NormalizedImportTrack[];
+    uploader: string;
+    useSpotdl?: boolean;
+    webpageUrl: string;
+};
+
+type ImportSource = 'soundcloud' | 'spotify' | 'youtube_music';
+
 type LocalFirstStatus = {
     dataPath: string;
     imports: ImportJob[];
+    importSources: {
+        soundcloud: {
+            configured: boolean;
+            message: string;
+        };
+        spotify: {
+            clientId: string;
+            configured: boolean;
+            connected: boolean;
+            displayName?: string;
+            message: string;
+            spotdlAvailable?: boolean;
+        };
+    };
     libraryPath: string;
+    mobileImport: LocalMobileImportStatus;
+    phoneLink: PhoneLinkStatus;
     navidrome: {
         available: boolean;
         binaryPath: null | string;
@@ -64,12 +163,38 @@ type LocalFirstStatus = {
         url: string;
         username: string;
     };
+    pairing: LocalPairingStatus;
+    metadata: {
+        autoEnrich: boolean;
+    };
     tools: {
         deno: boolean;
         ffmpeg: boolean;
         navidrome: boolean;
+        spotdl: boolean;
         ytDlp: boolean;
     };
+};
+
+type LocalMobileImportStatus = {
+    error?: string;
+    mode: LocalPairingMode;
+    pairingUrl?: string;
+    state: 'connected' | 'disabled' | 'starting' | 'unavailable';
+    token: string;
+    url?: string;
+};
+
+type LocalPairingMode = 'lan' | 'tunnel';
+
+type LocalPairingStatus = {
+    error?: string;
+    /** Other IPv4 addresses on this PC (LAN mode troubleshooting). */
+    lanHosts?: string[];
+    mode: LocalPairingMode;
+    pairingUrl?: string;
+    state: 'connected' | 'disabled' | 'starting' | 'unavailable';
+    url?: string;
 };
 
 type LocalVideoMetadata = {
@@ -82,22 +207,74 @@ type LocalVideoMetadata = {
     videoPath?: string;
 };
 
+type NormalizedImportTrack = {
+    album?: string;
+    albumArtist?: string;
+    artist?: string;
+    artists?: string[];
+    artworkUrl?: string;
+    discNumber?: number;
+    durationMs?: number;
+    explicit?: boolean;
+    isrc?: string;
+    matchConfidence?: number;
+    matchState?: ImportMatchState;
+    releaseDate?: string;
+    resolvedSource?: ImportSource;
+    resolvedSourceTrackId?: string;
+    resolvedSourceUrl?: string;
+    source?: ImportSource;
+    sourceTrackId?: string;
+    sourceUrl?: string;
+    title: string;
+    trackNumber?: number;
+    musicBrainzRecordingId?: string;
+};
+
 type SourceImportMetadata = {
     album?: string;
+    albumArtist?: string;
     artist?: string;
+    artists?: string[];
+    artworkUrl?: string;
+    discNumber?: number;
     imageUrl?: string;
-    source?: 'youtube_music';
+    releaseDate?: string;
+    source?: ImportSource;
+    sourcePlaylistId?: string;
     sourceTrackId?: string;
+    sourceTracks?: NormalizedImportTrack[];
+    sourceUrl?: string;
     title?: string;
+    trackNumber?: number;
     videoId?: string;
+};
+
+type StoredSpotifySession = {
+    accessToken: string;
+    displayName?: string;
+    expiresAt: number;
+    refreshToken?: string;
+    scope?: string;
 };
 
 const LOCAL_SERVER_ID = 'roofy-local-navidrome';
 const LOCAL_SERVER_USERNAME = 'admin';
 const IMPORT_JOBS_KEY = 'roofy.importJobs';
 const LOCAL_VIDEO_METADATA_KEY = 'roofy.localVideoMetadata';
+const MOBILE_IMPORT_TOKEN_KEY = 'roofy.mobileImportToken';
+const MOBILE_IMPORT_PORT_KEY = 'roofy.mobileImportPort';
+/** Stable LAN handoff/import port so re-pairing is not required after every desktop restart. */
+const DEFAULT_MOBILE_IMPORT_PORT = 60952;
+const AUTO_ENRICH_METADATA_KEY = 'roofy.autoEnrichMetadata';
+
+const isAutoEnrichMetadataEnabled = () => Boolean(store.get(AUTO_ENRICH_METADATA_KEY));
+const SPOTIFY_SESSION_KEY = 'roofy.spotifySession';
 const DEFAULT_PORT = 4533;
 const DEFAULT_IMPORT_FORMAT = 'best';
+const DEFAULT_SPOTIFY_CALLBACK_PORT = 43879;
+const SPOTIFY_ACCOUNTS_URL = 'https://accounts.spotify.com';
+const SPOTIFY_API_URL = 'https://api.spotify.com/v1';
 const COOKIE_BROWSER_ALLOWLIST = new Set([
     '',
     'auto',
@@ -123,6 +300,15 @@ const now = () => new Date().toISOString();
 
 let navidromeProcess: ChildProcessWithoutNullStreams | null = null;
 let activeImport: null | { child: ChildProcessWithoutNullStreams; id: string } = null;
+let mobileImportServer: http.Server | null = null;
+let mobileImportTunnelProcess: ChildProcessWithoutNullStreams | null = null;
+let mobileImportStatus: Omit<LocalMobileImportStatus, 'token'> = {
+    mode: 'tunnel',
+    state: 'disabled',
+};
+let localPairingLanServer: http.Server | null = null;
+let localPairingTunnelProcess: ChildProcessWithoutNullStreams | null = null;
+let localPairingStatus: LocalPairingStatus = { mode: 'tunnel', state: 'disabled' };
 
 const loadImportJobs = (): ImportJob[] => {
     const savedJobs = store.get(IMPORT_JOBS_KEY) as ImportJob[] | undefined;
@@ -165,6 +351,156 @@ const getDataPath = () => path.join(getLocalRoot(), 'navidrome-data');
 const getDefaultLibraryPath = () => path.join(app.getPath('music'), 'Roofy Music');
 const getConfigPath = () => path.join(app.getPath('userData'), 'config.json');
 
+const encryptLocalSecret = (raw: string) =>
+    safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(raw).toString('hex') : raw;
+
+const decryptLocalSecret = (raw: string) => {
+    if (!raw) return '';
+    if (!safeStorage.isEncryptionAvailable()) return raw;
+    try {
+        return safeStorage.decryptString(Buffer.from(raw, 'hex'));
+    } catch {
+        return '';
+    }
+};
+
+const getSpotifyClientId = () =>
+    (
+        process.env.ROOFY_SPOTIFY_CLIENT_ID ||
+        (store.get('roofy.spotifyClientId') as string | undefined) ||
+        ''
+    ).trim();
+
+const getSpotifyClientSecret = () =>
+    (
+        process.env.ROOFY_SPOTIFY_CLIENT_SECRET ||
+        (store.get('roofy.spotifyClientSecret') as string | undefined) ||
+        ''
+    ).trim();
+
+const getSpotifyCallbackPort = () =>
+    Number(process.env.ROOFY_SPOTIFY_CALLBACK_PORT || store.get('roofy.spotifyCallbackPort')) ||
+    DEFAULT_SPOTIFY_CALLBACK_PORT;
+
+const getSpotifyRedirectUri = () => `http://127.0.0.1:${getSpotifyCallbackPort()}/spotify/callback`;
+
+const setSpotifyClientId = (clientId: string) => {
+    store.set('roofy.spotifyClientId', clientId.trim());
+    return getLocalFirstStatus();
+};
+
+const getStoredSpotifySession = (): null | StoredSpotifySession => {
+    const saved = store.get(SPOTIFY_SESSION_KEY) as any;
+    if (!saved?.accessToken) return null;
+
+    return {
+        ...saved,
+        accessToken: decryptLocalSecret(saved.accessToken),
+        refreshToken: saved.refreshToken ? decryptLocalSecret(saved.refreshToken) : undefined,
+    };
+};
+
+const setStoredSpotifySession = (session: StoredSpotifySession) => {
+    store.set(SPOTIFY_SESSION_KEY, {
+        ...session,
+        accessToken: encryptLocalSecret(session.accessToken),
+        refreshToken: session.refreshToken ? encryptLocalSecret(session.refreshToken) : undefined,
+    });
+};
+
+const clearStoredSpotifySession = () => {
+    store.delete(SPOTIFY_SESSION_KEY);
+    return getLocalFirstStatus();
+};
+
+const spotifyStatus = () => {
+    const clientId = getSpotifyClientId();
+    const session = getStoredSpotifySession();
+    const connected = Boolean(session?.accessToken && session.expiresAt > Date.now() + 30_000);
+
+    return {
+        clientId,
+        configured: Boolean(clientId),
+        connected,
+        displayName: session?.displayName,
+        message: spotdlAvailable()
+            ? 'Spotify links import through spotDL.'
+            : 'Install spotDL to import Spotify track, playlist, album, and artist links.',
+        redirectUri: getSpotifyRedirectUri(),
+        spotdlAvailable: spotdlAvailable(),
+    };
+};
+
+const detectImportSource = (input: string): ImportSource => {
+    try {
+        const url = new URL(input.trim());
+        const hostname = url.hostname.replace(/^www\./, '').toLowerCase();
+        if (hostname === 'open.spotify.com') return 'spotify';
+        if (hostname === 'soundcloud.com' || hostname === 'on.soundcloud.com') return 'soundcloud';
+    } catch {
+        // Search text defaults to YouTube Music tooling.
+    }
+
+    return 'youtube_music';
+};
+
+const isSoundCloudUrl = (input: string) => detectImportSource(input) === 'soundcloud';
+
+const isSpotifyUrlInput = (input: string) => detectImportSource(input) === 'spotify';
+
+const getSpotifyUrlParts = (
+    input: string,
+): null | { id: string; type: 'album' | 'artist' | 'playlist' | 'track' } => {
+    try {
+        const url = new URL(input.trim());
+        const hostname = url.hostname.replace(/^www\./, '').toLowerCase();
+        if (hostname !== 'open.spotify.com') return null;
+        const [type, id] = url.pathname.split('/').filter(Boolean);
+        if (
+            (type === 'track' || type === 'playlist' || type === 'album' || type === 'artist') &&
+            id
+        ) {
+            return { id, type };
+        }
+    } catch {
+        const uriMatch = /^spotify:(track|playlist|album|artist):([A-Za-z0-9]+)$/.exec(
+            input.trim(),
+        );
+        if (uriMatch) {
+            return {
+                id: uriMatch[2],
+                type: uriMatch[1] as 'album' | 'artist' | 'playlist' | 'track',
+            };
+        }
+    }
+
+    return null;
+};
+
+const getSpotdlRunContext = (): SpotdlRunContext => ({
+    cookieFilePath: store.get('roofy.cookiesFilePath') as string | undefined,
+    ffmpegPath: ffmpegBinaryPath(),
+    getSpotifyClientId,
+    getSpotifyClientSecret,
+    libraryPath: getLibraryPath(),
+    spotdlPath: getSpotdlInvocation()?.command || null,
+});
+
+const shouldUseSpotdlImport = (job: ImportJob) =>
+    job.source === 'spotify' &&
+    spotdlAvailable() &&
+    isSpotifyUrlInput(job.input) &&
+    !(job.sourceTracks || []).some((track) => extractYoutubeVideoId(track.resolvedSourceUrl));
+
+const isSoundCloudSetUrl = (input: string) => {
+    try {
+        const url = new URL(input.trim());
+        return isSoundCloudUrl(input) && url.pathname.split('/').includes('sets');
+    } catch {
+        return false;
+    }
+};
+
 const getLibraryPath = () => {
     const configured = store.get('roofy.libraryPath') as string | undefined;
     return configured || getDefaultLibraryPath();
@@ -182,28 +518,6 @@ const toLibraryAbsolutePath = (filePath: string) => {
 
 const normalizeMetadataPath = (filePath: string) =>
     toLibraryRelativePath(toLibraryAbsolutePath(filePath));
-
-const extractYoutubeVideoId = (input?: null | string) => {
-    if (!input) return '';
-
-    const trimmed = input.trim();
-    const bracketMatch = /\[([a-zA-Z0-9_-]{11})\](?:\.[^.]+)?$/.exec(trimmed);
-    if (bracketMatch) return bracketMatch[1];
-
-    if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
-
-    try {
-        const url = new URL(trimmed);
-        if (url.searchParams.get('v')) return url.searchParams.get('v') || '';
-        if (url.hostname === 'youtu.be') return url.pathname.replace(/^\//, '').slice(0, 11);
-        const embedMatch = /\/embed\/([a-zA-Z0-9_-]{11})/.exec(url.pathname);
-        if (embedMatch) return embedMatch[1];
-    } catch {
-        // Not a URL.
-    }
-
-    return '';
-};
 
 const getYoutubeWatchUrl = (videoId: string) => `https://www.youtube.com/watch?v=${videoId}`;
 
@@ -245,8 +559,8 @@ const findLocalVideoMetadata = (args: {
         ) || null;
 
     const videoId =
-        byStoredMetadata?.videoId ||
-        args.youtubeMusic?.videoId ||
+        (isYoutubeVideoId(byStoredMetadata?.videoId) ? byStoredMetadata.videoId : undefined) ||
+        (isYoutubeVideoId(args.youtubeMusic?.videoId) ? args.youtubeMusic.videoId : undefined) ||
         extractYoutubeVideoId(args.youtubeMusic?.watchUrl) ||
         extractYoutubeVideoId(args.path);
     const sourceUrl = byStoredMetadata?.sourceUrl || args.youtubeMusic?.watchUrl || '';
@@ -285,20 +599,59 @@ const getPassword = () => {
     return password;
 };
 
+const getMobileImportToken = () => {
+    let token = store.get(MOBILE_IMPORT_TOKEN_KEY) as string | undefined;
+    if (!token) {
+        token = randomBytes(24).toString('base64url');
+        store.set(MOBILE_IMPORT_TOKEN_KEY, token);
+    }
+    return token;
+};
+
 const getPort = () => {
     return (store.get('roofy.navidromePort') as number | undefined) || DEFAULT_PORT;
 };
 
 const getUrl = () => `http://127.0.0.1:${getPort()}`;
 
-const commandExists = (command: string) => {
+const TOOL_PROBE_CACHE_TTL_MS = 60_000;
+const toolProbeCache = new Map<string, { available: boolean; expiresAt: number }>();
+
+const probeCommandExists = (command: string) => {
+    if (process.platform === 'win32') {
+        const where = spawnSync('where.exe', [command], {
+            encoding: 'utf8',
+            timeout: 2000,
+            windowsHide: true,
+        });
+        if (!where.error && where.status === 0 && where.stdout?.trim()) {
+            return true;
+        }
+    }
+
     const result = spawnSync(command, ['--version'], {
         encoding: 'utf8',
-        timeout: 5000,
+        timeout: 3000,
         windowsHide: true,
     });
 
     return !result.error && result.status === 0;
+};
+
+const commandExists = (command: string) => {
+    const cached = toolProbeCache.get(command);
+    const now = Date.now();
+    if (cached && cached.expiresAt > now) {
+        return cached.available;
+    }
+
+    const available = probeCommandExists(command);
+    toolProbeCache.set(command, { available, expiresAt: now + TOOL_PROBE_CACHE_TTL_MS });
+    return available;
+};
+
+export const invalidateLocalFirstToolProbeCache = () => {
+    toolProbeCache.clear();
 };
 
 const bundledExecutableName = (baseName: string) => {
@@ -535,6 +888,9 @@ export const startLocalFirst = async () => {
     }
 
     configureRendererServerLock();
+    void ensurePhoneLinkReady().catch(() => {
+        // Paired phones reconnect after the local engine starts.
+    });
     return getLocalFirstStatus();
 };
 
@@ -544,10 +900,587 @@ export const shutdownLocalFirst = () => {
         activeImport = null;
     }
 
+    stopLocalPairing();
+    stopMobileImport();
+
     if (navidromeProcess) {
         navidromeProcess.kill();
         navidromeProcess = null;
     }
+};
+
+const PRIVATE_IPV4 =
+    /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/;
+
+const VIRTUAL_INTERFACE =
+    /^(lo|loopback|docker|veth|br-|vmware|virtualbox|vethernet|wsl|hyper-v|npcap|tailscale|zerotier|hamachi|nordlynx|wireguard|tun|tap)/i;
+
+const PREFERRED_INTERFACE = /(wi-?fi|wlan|ethernet|eth|en\d|local area connection)/i;
+
+const isIPv4Address = (family: string | number) => family === 'IPv4' || family === 4;
+
+const getLanHostCandidates = () => {
+    const scored: Array<{ address: string; score: number }> = [];
+
+    for (const [name, entries] of Object.entries(networkInterfaces())) {
+        if (VIRTUAL_INTERFACE.test(name)) continue;
+
+        for (const entry of entries || []) {
+            if (!isIPv4Address(entry.family) || entry.internal) continue;
+
+            let score = 0;
+            if (PRIVATE_IPV4.test(entry.address)) score += 20;
+            if (PREFERRED_INTERFACE.test(name)) score += 10;
+            if (entry.address.startsWith('169.254.')) score -= 30;
+
+            scored.push({ address: entry.address, score });
+        }
+    }
+
+    return [...new Map(scored.map((item) => [item.address, item])).values()]
+        .sort((left, right) => right.score - left.score)
+        .map((item) => item.address);
+};
+
+const getLanHost = () => {
+    const configured = process.env.ROOFY_LAN_HOST?.trim();
+    if (configured) return configured;
+
+    return getLanHostCandidates()[0];
+};
+
+const withLanHostHints = (status: LocalPairingStatus): LocalPairingStatus => {
+    if (status.mode !== 'lan' || status.state !== 'connected') return status;
+    const candidates = getLanHostCandidates();
+    return {
+        ...status,
+        lanHosts: candidates.length > 1 ? candidates : undefined,
+    };
+};
+
+const getLanPairingUrl = (port: number) => {
+    const host = getLanHost();
+    if (!host) return undefined;
+    return `http://${host}:${port}`;
+};
+
+const getPairingUrl = (serverUrl: string) =>
+    buildSubsonicPairingUrl({
+        password: getPassword(),
+        serverUrl,
+        username: LOCAL_SERVER_USERNAME,
+    });
+
+const withPairingUrl = (status: LocalPairingStatus): LocalPairingStatus =>
+    withLanHostHints({
+        ...status,
+        pairingUrl: status.url ? getPairingUrl(status.url) : undefined,
+    });
+
+let markPhoneHasPaired: (req?: http.IncomingMessage) => void;
+let setActiveOutput: (
+    output: import('/@/shared/types/device-session-types').DeviceActiveOutput,
+    req?: http.IncomingMessage,
+) => void;
+let ensurePhoneLinkReady: () => Promise<void>;
+let isPhoneLinkReady: () => boolean;
+let getPhoneLinkStatus: () => PhoneLinkStatus;
+let startPhoneLink: (mode?: PhoneLinkRequestMode) => Promise<LocalFirstStatus>;
+let stopPhoneLink: () => LocalFirstStatus;
+let disconnectPhoneLink: () => LocalFirstStatus;
+let getPublicMobileImportEndpoint: () => string | undefined;
+
+const settleStuckPhoneLinkStarting = () => {
+    if (localPairingStatus.state === 'starting') {
+        localPairingStatus = {
+            ...localPairingStatus,
+            error: 'Timed out preparing your library link.',
+            state: 'unavailable',
+        };
+    }
+    if (mobileImportStatus.state === 'starting') {
+        mobileImportStatus = {
+            ...mobileImportStatus,
+            error: 'Timed out preparing save-to-phone link.',
+            state: 'unavailable',
+        };
+    }
+};
+
+const stopLocalPairing = () => {
+    localPairingTunnelProcess?.kill();
+    localPairingTunnelProcess = null;
+    localPairingLanServer?.close();
+    localPairingLanServer = null;
+    localPairingStatus = { mode: localPairingStatus.mode, state: 'disabled' };
+    return getLocalFirstStatus();
+};
+
+const startLocalPairingLanServer = () =>
+    new Promise<string | undefined>((resolve) => {
+        const host = getLanHost();
+        if (!host) {
+            resolve(undefined);
+            return;
+        }
+
+        localPairingLanServer?.close();
+        localPairingLanServer = http.createServer((req, res) => {
+            const target = new URL(req.url || '/', getUrl());
+            const proxyReq = http.request(
+                target,
+                {
+                    headers: {
+                        ...req.headers,
+                        host: target.host,
+                    },
+                    method: req.method,
+                },
+                (proxyRes) => {
+                    res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+                    proxyRes.pipe(res);
+                },
+            );
+
+            proxyReq.on('error', (error) => {
+                res.statusCode = 502;
+                res.end(error.message);
+            });
+            req.pipe(proxyReq);
+        });
+
+        localPairingLanServer.once('error', () => {
+            localPairingLanServer = null;
+            resolve(undefined);
+        });
+
+        localPairingLanServer.listen(0, '0.0.0.0', () => {
+            const address = localPairingLanServer?.address();
+            const port = typeof address === 'object' && address ? address.port : undefined;
+            resolve(port ? getLanPairingUrl(port) : undefined);
+        });
+    });
+
+const startLocalPairing = async (mode: LocalPairingMode): Promise<LocalFirstStatus> => {
+    if (!navidromeProcess || navidromeProcess.killed) {
+        await startLocalFirst();
+    }
+
+    if (mode === 'lan') {
+        localPairingTunnelProcess?.kill();
+        localPairingTunnelProcess = null;
+
+        const lanUrl = await startLocalPairingLanServer();
+        localPairingStatus = lanUrl
+            ? { mode, state: 'connected', url: lanUrl }
+            : {
+                  error: 'No LAN IPv4 address or available proxy port was found. Try Tunnel mode instead.',
+                  mode,
+                  state: 'unavailable',
+              };
+        return getLocalFirstStatus();
+    }
+
+    localPairingLanServer?.close();
+    localPairingLanServer = null;
+
+    if (
+        localPairingTunnelProcess &&
+        !localPairingTunnelProcess.killed &&
+        localPairingStatus.mode === 'tunnel' &&
+        localPairingStatus.state === 'connected'
+    ) {
+        return getLocalFirstStatus();
+    }
+
+    localPairingTunnelProcess?.kill();
+    localPairingTunnelProcess = null;
+    localPairingStatus = { mode, state: 'starting' };
+
+    const binaryResult = await ensureCloudflared();
+    if (!binaryResult.ok) {
+        localPairingStatus = {
+            error: binaryResult.error,
+            mode,
+            state: 'unavailable',
+        };
+        return getLocalFirstStatus();
+    }
+
+    await new Promise<void>((resolve) => {
+        let settled = false;
+        const finish = (status: LocalPairingStatus) => {
+            if (settled) return;
+            settled = true;
+            localPairingStatus = status;
+            resolve();
+        };
+
+        localPairingTunnelProcess = spawn(binaryResult.path, ['tunnel', '--url', getUrl()], {
+            windowsHide: true,
+        });
+
+        const parseOutput = (chunk: Buffer) => {
+            const url = parseCloudflaredTunnelUrl(chunk.toString());
+            if (url) finish({ mode, state: 'connected', url });
+        };
+
+        localPairingTunnelProcess.stdout.on('data', parseOutput);
+        localPairingTunnelProcess.stderr.on('data', parseOutput);
+        localPairingTunnelProcess.on('error', (error) => {
+            finish({
+                error: error.message,
+                mode,
+                state: 'unavailable',
+            });
+        });
+        localPairingTunnelProcess.on('exit', () => {
+            if (!settled) {
+                finish({
+                    error: 'Cloudflare Tunnel exited before publishing a URL.',
+                    mode,
+                    state: 'unavailable',
+                });
+            }
+        });
+
+        setTimeout(() => {
+            if (!settled) {
+                finish({
+                    error: 'Timed out waiting for Cloudflare Tunnel URL.',
+                    mode,
+                    state: 'unavailable',
+                });
+            }
+        }, 45_000);
+    });
+
+    return getLocalFirstStatus();
+};
+
+const getMobileImportPairingUrl = (endpointUrl: string) =>
+    buildImportPairingUrl({
+        endpointUrl,
+        token: getMobileImportToken(),
+    });
+
+const withMobileImportPairingUrl = (
+    status: Omit<LocalMobileImportStatus, 'token'>,
+): LocalMobileImportStatus => ({
+    ...status,
+    pairingUrl: status.url ? getMobileImportPairingUrl(status.url) : undefined,
+    token: getMobileImportToken(),
+});
+
+const readJsonRequest = async (req: http.IncomingMessage) =>
+    new Promise<any>((resolve, reject) => {
+        let body = '';
+        req.on('data', (chunk) => {
+            body += chunk.toString();
+            if (body.length > 1024 * 1024) {
+                req.destroy();
+                reject(new Error('Request body is too large.'));
+            }
+        });
+        req.on('end', () => {
+            if (!body.trim()) {
+                resolve({});
+                return;
+            }
+            try {
+                resolve(JSON.parse(body));
+            } catch {
+                reject(new Error('Request body must be JSON.'));
+            }
+        });
+        req.on('error', reject);
+    });
+
+const writeJsonResponse = (res: http.ServerResponse, statusCode: number, body: unknown) => {
+    res.writeHead(statusCode, {
+        'Access-Control-Allow-Headers': 'authorization, content-type, x-roofy-import-token',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+    });
+    res.end(JSON.stringify(body));
+};
+
+const isMobileImportAuthorized = (req: http.IncomingMessage) => {
+    const authorization = req.headers.authorization || '';
+    const headerToken = req.headers['x-roofy-import-token'];
+    const token = Array.isArray(headerToken) ? headerToken[0] : headerToken;
+    return authorization === `Bearer ${getMobileImportToken()}` || token === getMobileImportToken();
+};
+
+const handleMobileImportRequest = async (req: http.IncomingMessage, res: http.ServerResponse) => {
+    if (req.method === 'OPTIONS') {
+        writeJsonResponse(res, 204, {});
+        return;
+    }
+
+    if (req.url?.startsWith('/health')) {
+        if (!isMobileImportAuthorized(req)) {
+            writeJsonResponse(res, 401, { error: 'Unauthorized' });
+            return;
+        }
+
+        markPhoneHasPaired(req);
+        void ensurePhoneLinkReady().catch(() => {
+            // Warm library link for handoff; reachability only needs the import bridge.
+        });
+
+        const endpoint = getPublicMobileImportEndpoint();
+        if (mobileImportStatus.state !== 'connected' || !endpoint) {
+            writeJsonResponse(res, 503, {
+                error: 'Save-to-desktop link is not ready. Open Devices on your computer and try again.',
+                ok: false,
+            });
+            return;
+        }
+
+        writeJsonResponse(res, 200, {
+            endpointUrl: endpoint,
+            ok: true,
+            service: 'roofy-mobile-import',
+        });
+        return;
+    }
+
+    if (req.url?.startsWith('/handoff/state') && req.method === 'GET') {
+        if (!isMobileImportAuthorized(req)) {
+            writeJsonResponse(res, 401, { error: 'Unauthorized' });
+            return;
+        }
+
+        markPhoneHasPaired(req);
+        try {
+            await ensurePhoneLinkReady();
+            if (!isPhoneLinkReady()) {
+                writeJsonResponse(res, 503, {
+                    error: 'Desktop connection is not ready. Open Devices on your computer and try again.',
+                });
+                return;
+            }
+            const snapshot = await requestHandoffState();
+            setActiveOutput('phone', req);
+            writeJsonResponse(res, 200, snapshot);
+        } catch (error: any) {
+            writeJsonResponse(res, 503, {
+                error: error?.message || 'Desktop player is not ready for handoff.',
+            });
+        }
+        return;
+    }
+
+    if (req.url?.startsWith('/handoff/play') && req.method === 'POST') {
+        if (!isMobileImportAuthorized(req)) {
+            writeJsonResponse(res, 401, { error: 'Unauthorized' });
+            return;
+        }
+
+        markPhoneHasPaired(req);
+        try {
+            await ensurePhoneLinkReady();
+            if (!isPhoneLinkReady()) {
+                writeJsonResponse(res, 503, {
+                    error: 'Desktop connection is not ready. Open Devices on your computer and try again.',
+                });
+                return;
+            }
+            const body = await readJsonRequest(req);
+            applyHandoffState(body as HandoffSnapshot);
+            setActiveOutput('computer', req);
+            writeJsonResponse(res, 200, { ok: true });
+        } catch (error: any) {
+            writeJsonResponse(res, 400, { error: error?.message || 'Invalid handoff payload.' });
+        }
+        return;
+    }
+
+    if (!req.url?.startsWith('/import') || req.method !== 'POST') {
+        writeJsonResponse(res, 404, { error: 'Not found' });
+        return;
+    }
+
+    if (!isMobileImportAuthorized(req)) {
+        writeJsonResponse(res, 401, { error: 'Unauthorized' });
+        return;
+    }
+
+    markPhoneHasPaired(req);
+    try {
+        const body = await readJsonRequest(req);
+        const input = String(body.url || body.input || body.sourceUrl || '').trim();
+        if (!/^https?:\/\//i.test(input)) {
+            writeJsonResponse(res, 400, { error: 'A YouTube Music URL is required.' });
+            return;
+        }
+
+        const job = await createImportJob(
+            input,
+            false,
+            DEFAULT_IMPORT_FORMAT,
+            undefined,
+            false,
+            undefined,
+            {
+                artist: body.artist,
+                artists: Array.isArray(body.artists) ? body.artists : undefined,
+                imageUrl: body.thumbnailUrl || body.imageUrl,
+                source: 'youtube_music',
+                sourceUrl: input,
+                title: body.title,
+                videoId: body.videoId,
+            },
+        );
+        writeJsonResponse(res, 200, { id: job.id, ok: true, status: job.status });
+    } catch (error: any) {
+        writeJsonResponse(res, 500, { error: error?.message || 'Import failed' });
+    }
+};
+
+const closeMobileImportServer = () => {
+    mobileImportTunnelProcess?.kill();
+    mobileImportTunnelProcess = null;
+    mobileImportServer?.close();
+    mobileImportServer = null;
+};
+
+const startMobileImportServer = () =>
+    new Promise<number | undefined>((resolve) => {
+        mobileImportServer?.close();
+        mobileImportServer = null;
+
+        const storedPort = Number(store.get(MOBILE_IMPORT_PORT_KEY));
+        const preferredPorts: number[] = [];
+        if (Number.isFinite(storedPort) && storedPort > 0 && storedPort < 65536) {
+            preferredPorts.push(storedPort);
+        }
+        if (!preferredPorts.includes(DEFAULT_MOBILE_IMPORT_PORT)) {
+            preferredPorts.push(DEFAULT_MOBILE_IMPORT_PORT);
+        }
+        preferredPorts.push(0);
+
+        const tryListen = (index: number) => {
+            if (index >= preferredPorts.length) {
+                resolve(undefined);
+                return;
+            }
+
+            const port = preferredPorts[index];
+            const server = http.createServer(handleMobileImportRequest);
+
+            server.once('error', (error: NodeJS.ErrnoException) => {
+                server.close();
+                if (port !== 0 && (error.code === 'EADDRINUSE' || error.code === 'EACCES')) {
+                    tryListen(index + 1);
+                    return;
+                }
+                resolve(undefined);
+            });
+
+            server.listen(port, '0.0.0.0', () => {
+                mobileImportServer = server;
+                const address = server.address();
+                const actualPort = typeof address === 'object' && address ? address.port : undefined;
+                if (actualPort) {
+                    store.set(MOBILE_IMPORT_PORT_KEY, actualPort);
+                }
+                resolve(actualPort);
+            });
+        };
+
+        tryListen(0);
+    });
+
+const stopMobileImport = () => {
+    closeMobileImportServer();
+    mobileImportStatus = { mode: mobileImportStatus.mode, state: 'disabled' };
+    return getLocalFirstStatus();
+};
+
+const startMobileImport = async (mode: LocalPairingMode): Promise<LocalFirstStatus> => {
+    const port = await startMobileImportServer();
+    if (!port) {
+        mobileImportStatus = {
+            error: 'Could not start the mobile import command server.',
+            mode,
+            state: 'unavailable',
+        };
+        return getLocalFirstStatus();
+    }
+
+    if (mode === 'lan') {
+        const lanUrl = getLanPairingUrl(port);
+        mobileImportStatus = lanUrl
+            ? { mode, state: 'connected', url: lanUrl }
+            : {
+                  error: 'No LAN IPv4 address was found. Try Tunnel mode instead.',
+                  mode,
+                  state: 'unavailable',
+              };
+        return getLocalFirstStatus();
+    }
+
+    mobileImportStatus = { mode, state: 'starting' };
+    const binaryResult = await ensureCloudflared();
+    if (!binaryResult.ok) {
+        mobileImportStatus = {
+            error: binaryResult.error,
+            mode,
+            state: 'unavailable',
+        };
+        return getLocalFirstStatus();
+    }
+
+    await new Promise<void>((resolve) => {
+        let settled = false;
+        const finish = (status: Omit<LocalMobileImportStatus, 'token'>) => {
+            if (settled) return;
+            settled = true;
+            mobileImportStatus = status;
+            resolve();
+        };
+
+        mobileImportTunnelProcess = spawn(
+            binaryResult.path,
+            ['tunnel', '--url', `http://127.0.0.1:${port}`],
+            { windowsHide: true },
+        );
+
+        const parseOutput = (chunk: Buffer) => {
+            const url = parseCloudflaredTunnelUrl(chunk.toString());
+            if (url) finish({ mode, state: 'connected', url });
+        };
+
+        mobileImportTunnelProcess.stdout.on('data', parseOutput);
+        mobileImportTunnelProcess.stderr.on('data', parseOutput);
+        mobileImportTunnelProcess.on('error', (error) => {
+            finish({ error: error.message, mode, state: 'unavailable' });
+        });
+        mobileImportTunnelProcess.on('exit', () => {
+            if (!settled) {
+                finish({
+                    error: 'Cloudflare Tunnel exited before publishing a URL.',
+                    mode,
+                    state: 'unavailable',
+                });
+            }
+        });
+
+        setTimeout(() => {
+            if (!settled) {
+                finish({
+                    error: 'Timed out waiting for Cloudflare Tunnel URL.',
+                    mode,
+                    state: 'unavailable',
+                });
+            }
+        }, 45_000);
+    });
+
+    return getLocalFirstStatus();
 };
 
 const sendImportJobEvent = (job: ImportJob) => {
@@ -610,6 +1543,7 @@ const normalizeYoutubePlaylistId = (listId: string) => {
 const normalizeDownloadUrl = (input: string, playlist: boolean) => {
     const value = normalizeImportInput(input);
     if (!/^https?:\/\//i.test(value)) return value;
+    if (isSoundCloudUrl(value)) return value;
 
     try {
         const url = new URL(value);
@@ -643,6 +1577,15 @@ const inferPlaylistImport = (input: string, explicit?: boolean) => {
 
     const value = normalizeImportInput(input);
     if (!/^https?:\/\//i.test(value)) return false;
+    if (isSoundCloudSetUrl(value)) return true;
+    const spotifyParts = getSpotifyUrlParts(value);
+    if (
+        spotifyParts?.type === 'playlist' ||
+        spotifyParts?.type === 'album' ||
+        spotifyParts?.type === 'artist'
+    ) {
+        return true;
+    }
 
     try {
         const url = new URL(value);
@@ -782,6 +1725,247 @@ const formatPartialImportWarning = (skippedCount: number, playlist: boolean) => 
               : 'Some items';
 
     return `${skippedCopy} could not be downloaded. Available tracks were imported.`;
+};
+
+const base64Url = (buffer: Buffer) =>
+    buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+
+const spotifyTokenRequest = async (body: URLSearchParams) => {
+    const response = await fetch(`${SPOTIFY_ACCOUNTS_URL}/api/token`, {
+        body,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        method: 'POST',
+    });
+    const data = await parseResponseBody(response);
+    if (!response.ok) {
+        throw new Error(summarizeNavidromeError(data, 'Spotify token request failed.'));
+    }
+    return data;
+};
+
+const spotifyOembedFetch = async (url: string) => {
+    const response = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`);
+    const body = await parseResponseBody(response);
+    if (!response.ok) {
+        throw new Error(summarizeNavidromeError(body, 'Spotify public preview failed.'));
+    }
+    return body;
+};
+
+const parseSpotifyOembedTitle = (title: string) => {
+    const cleanTitle = title.replace(/\s*\|\s*Spotify\s*$/i, '').trim();
+    const songByMatch =
+        /^(.+?)\s+-\s+(?:song and lyrics by|song by|single by)\s+(.+)$/i.exec(cleanTitle) ||
+        /^(.+?)\s+by\s+(.+)$/i.exec(cleanTitle);
+
+    if (!songByMatch) {
+        return {
+            artist: undefined,
+            title: cleanTitle || title || 'Spotify track',
+        };
+    }
+
+    return {
+        artist: songByMatch[2].trim(),
+        title: songByMatch[1].trim(),
+    };
+};
+
+const spotifyOembedTrackPreview = async (
+    id: string,
+    sourceUrl: string,
+    ytDlp: string,
+    cookieBrowser: string,
+    cookiesFilePath: string | undefined,
+    jsRuntimeArgs: string[],
+): Promise<ImportPreview> => {
+    const embed = await spotifyOembedFetch(sourceUrl);
+    const parsed = parseSpotifyOembedTitle(embed?.title || '');
+    const track = await resolveSpotifyTrack(
+        {
+            artist: parsed.artist,
+            artworkUrl: embed?.thumbnail_url || undefined,
+            source: 'spotify',
+            sourceTrackId: id,
+            sourceUrl,
+            title: parsed.title,
+        },
+        ytDlp,
+        cookieBrowser,
+        cookiesFilePath,
+        jsRuntimeArgs,
+    );
+
+    return {
+        artist: track.artist,
+        artworkUrl: track.artworkUrl,
+        count: 1,
+        duration: null,
+        isPlaylist: false,
+        matchConfidence: track.matchConfidence,
+        matchState: track.matchState,
+        resolvedSource: track.resolvedSource,
+        resolvedSourceTrackId: track.resolvedSourceTrackId,
+        resolvedSourceUrl: track.resolvedSourceUrl,
+        source: 'spotify',
+        sourceTrackId: id,
+        sourceUrl,
+        thumbnail: track.artworkUrl || '',
+        title: track.title,
+        tracks: [track],
+        uploader: track.artist || 'Spotify',
+        webpageUrl: sourceUrl,
+    };
+};
+
+const connectSpotify = async () => {
+    const clientId = getSpotifyClientId();
+    if (!clientId) {
+        throw new Error('Add a Spotify app client ID before connecting.');
+    }
+
+    const verifier = base64Url(randomBytes(48));
+    const challenge = base64Url(createHash('sha256').update(verifier).digest());
+    const state = randomBytes(16).toString('hex');
+    const scopes = ['playlist-read-private', 'playlist-read-collaborative'];
+
+    const server = await new Promise<http.Server>((resolve, reject) => {
+        const callbackServer = http.createServer();
+        callbackServer.on('error', reject);
+        callbackServer.listen(getSpotifyCallbackPort(), '127.0.0.1', () => resolve(callbackServer));
+    });
+
+    const address = server.address();
+    if (!address || typeof address === 'string') {
+        server.close();
+        throw new Error('Could not create Spotify local callback.');
+    }
+
+    const redirectUri = `http://127.0.0.1:${address.port}/spotify/callback`;
+    const authorizeUrl = new URL(`${SPOTIFY_ACCOUNTS_URL}/authorize`);
+    authorizeUrl.searchParams.set('client_id', clientId);
+    authorizeUrl.searchParams.set('response_type', 'code');
+    authorizeUrl.searchParams.set('redirect_uri', redirectUri);
+    authorizeUrl.searchParams.set('code_challenge_method', 'S256');
+    authorizeUrl.searchParams.set('code_challenge', challenge);
+    authorizeUrl.searchParams.set('state', state);
+    authorizeUrl.searchParams.set('scope', scopes.join(' '));
+
+    const loginWindow = new BrowserWindow({
+        autoHideMenuBar: true,
+        height: 760,
+        title: 'Connect Spotify',
+        webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: true,
+        },
+        width: 980,
+    });
+
+    const code = await new Promise<string>((resolve, reject) => {
+        let completed = false;
+        const timeout = setTimeout(
+            () => {
+                if (completed) return;
+                completed = true;
+                if (!loginWindow.isDestroyed()) loginWindow.close();
+                server.close();
+                reject(new Error('Spotify login timed out.'));
+            },
+            10 * 60 * 1000,
+        );
+
+        const finishWithError = (error: unknown) => {
+            if (completed) return;
+            completed = true;
+            clearTimeout(timeout);
+            server.close();
+            if (!loginWindow.isDestroyed()) loginWindow.close();
+            reject(error);
+        };
+
+        loginWindow.on('closed', () => {
+            if (completed) return;
+            completed = true;
+            clearTimeout(timeout);
+            server.close();
+            reject(new Error('Spotify login was cancelled.'));
+        });
+
+        server.on('request', (request, response) => {
+            try {
+                const requestUrl = new URL(request.url || '/', redirectUri);
+                if (requestUrl.pathname !== '/spotify/callback') {
+                    response.statusCode = 404;
+                    response.end('Not found');
+                    return;
+                }
+                const error = requestUrl.searchParams.get('error');
+                const returnedState = requestUrl.searchParams.get('state');
+                const returnedCode = requestUrl.searchParams.get('code');
+                if (error) throw new Error(error);
+                if (returnedState !== state) throw new Error('Spotify login state mismatch.');
+                if (!returnedCode) throw new Error('Spotify login did not return a code.');
+                response.statusCode = 200;
+                response.setHeader('Content-Type', 'text/html; charset=utf-8');
+                response.end(
+                    '<html><body><p>Spotify connected. You can close this window.</p></body></html>',
+                );
+                completed = true;
+                clearTimeout(timeout);
+                server.close();
+                if (!loginWindow.isDestroyed()) loginWindow.close();
+                resolve(returnedCode);
+            } catch (error) {
+                finishWithError(error);
+            }
+        });
+
+        loginWindow.loadURL(authorizeUrl.toString()).catch(finishWithError);
+    });
+
+    const tokenData = await spotifyTokenRequest(
+        new URLSearchParams({
+            client_id: clientId,
+            code,
+            code_verifier: verifier,
+            grant_type: 'authorization_code',
+            redirect_uri: redirectUri,
+        }),
+    );
+
+    const profileResponse = await fetch(`${SPOTIFY_API_URL}/me`, {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    const profile = profileResponse.ok ? await parseResponseBody(profileResponse) : null;
+
+    setStoredSpotifySession({
+        accessToken: tokenData.access_token,
+        displayName: profile?.display_name || profile?.id,
+        expiresAt: Date.now() + Number(tokenData.expires_in || 3600) * 1000,
+        refreshToken: tokenData.refresh_token,
+        scope: tokenData.scope,
+    });
+
+    return getLocalFirstStatus();
+};
+
+const normalizeWords = (value: string) =>
+    value
+        .toLowerCase()
+        .replace(/&/g, ' and ')
+        .replace(/\([^)]*(remaster|live|edit|version|mix)[^)]*\)/gi, ' ')
+        .replace(/\[[^\]]*(remaster|live|edit|version|mix)[^\]]*\]/gi, ' ')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+
+const wordSimilarity = (a: string, b: string) => {
+    const aWords = new Set(normalizeWords(a).split(/\s+/).filter(Boolean));
+    const bWords = new Set(normalizeWords(b).split(/\s+/).filter(Boolean));
+    if (aWords.size === 0 || bWords.size === 0) return 0;
+    const overlap = [...aWords].filter((word) => bWords.has(word)).length;
+    return overlap / Math.max(aWords.size, bWords.size);
 };
 
 const runYtDlpVideoDownload = (
@@ -933,12 +2117,454 @@ const processImportQueue = () => {
     runImport(nextJob);
 };
 
+const sanitizeFilenamePart = (value: string, fallback: string) => {
+    const cleaned = value
+        .replace(/[<>:"/\\|?*]/g, '')
+        .split('')
+        .filter((char) => char.charCodeAt(0) >= 32)
+        .join('')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 120);
+    return cleaned || fallback;
+};
+
+const escapeFfmpegMetadataValue = (value: string) =>
+    value.replace(/\\/g, '\\\\').replace(/=/g, '\\=').replace(/:/g, '\\:');
+
+const buildSpotifyMatchedOutputTemplate = (track: NormalizedImportTrack, libraryPath: string) => {
+    const artist = sanitizeFilenamePart(
+        track.artist || track.artists?.join(', ') || '',
+        'Unknown Artist',
+    );
+    const title = sanitizeFilenamePart(track.title || '', 'Untitled');
+    const videoId =
+        extractYoutubeVideoId(track.resolvedSourceUrl) ||
+        track.resolvedSourceTrackId?.slice(0, 11) ||
+        'import';
+    const artistDir = path.join(libraryPath, 'Downloads', artist);
+    mkdirSync(artistDir, { recursive: true });
+    return path.join(artistDir, `${title} [${videoId}].%(ext)s`);
+};
+
+const getYtDlpAudioMetadataArgs = (useYoutubeMetadata: boolean) =>
+    useYoutubeMetadata
+        ? ['--embed-thumbnail', '--convert-thumbnails', 'jpg', '--add-metadata']
+        : ['--no-embed-thumbnail', '--no-add-metadata'];
+
+const downloadArtworkTempFile = async (artworkUrl: string, filePath: string) => {
+    const response = await fetch(artworkUrl);
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get('content-type') || '';
+    const extension = contentType.includes('png')
+        ? '.png'
+        : contentType.includes('webp')
+          ? '.webp'
+          : '.jpg';
+    const tempPath = path.join(
+        path.dirname(filePath),
+        `${path.basename(filePath, path.extname(filePath))}.roofy-cover${extension}`,
+    );
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length === 0) return null;
+
+    writeFileSync(tempPath, buffer);
+    return tempPath;
+};
+
+const writeMetadataTags = async (filePath: string, track: NormalizedImportTrack) => {
+    const ffmpegPath = ffmpegBinaryPath();
+    if (!ffmpegPath) return;
+
+    const ext = path.extname(filePath).toLowerCase();
+    const tempPath = path.join(
+        path.dirname(filePath),
+        `${path.basename(filePath, ext)}.roofy-tags${ext}`,
+    );
+    const metadataArgs = [
+        ['title', track.title],
+        ['artist', track.artist || track.artists?.join(', ')],
+        ['album', track.album],
+        ['album_artist', track.albumArtist],
+        ['date', track.releaseDate],
+        ['track', track.trackNumber ? String(track.trackNumber) : undefined],
+        ['disc', track.discNumber ? String(track.discNumber) : undefined],
+        ['isrc', track.isrc],
+        [
+            'comment',
+            [
+                track.sourceUrl ? `Source: ${track.sourceUrl}` : undefined,
+                track.musicBrainzRecordingId
+                    ? `MusicBrainz: ${track.musicBrainzRecordingId}`
+                    : undefined,
+            ]
+                .filter(Boolean)
+                .join(' | ') || undefined,
+        ],
+    ].flatMap(([key, value]) =>
+        value ? ['-metadata', `${key}=${escapeFfmpegMetadataValue(value)}`] : [],
+    );
+
+    let artworkPath: null | string = null;
+    if (track.artworkUrl) {
+        try {
+            artworkPath = await downloadArtworkTempFile(track.artworkUrl, filePath);
+        } catch {
+            artworkPath = null;
+        }
+    }
+
+    if (metadataArgs.length === 0 && !artworkPath) return;
+
+    const isMp3 = ext === '.mp3';
+
+    await new Promise<void>((resolve) => {
+        const args = ['-y', '-i', filePath];
+        if (artworkPath) args.push('-i', artworkPath);
+        if (artworkPath) {
+            args.push('-map', '0:a?', '-map', '1:0', '-c', 'copy');
+            if (isMp3) {
+                args.push(
+                    '-id3v2_version',
+                    '3',
+                    '-metadata:s:v',
+                    'title=Album cover',
+                    '-metadata:s:v',
+                    'comment=Cover (front)',
+                );
+            } else {
+                args.push(
+                    '-disposition:v:0',
+                    'attached_pic',
+                    '-metadata:s:v',
+                    'title=Album cover',
+                    '-metadata:s:v',
+                    'comment=Cover (front)',
+                );
+            }
+        } else {
+            args.push('-map', '0:a?', '-c', 'copy');
+        }
+        args.push(...metadataArgs, tempPath);
+
+        const child = spawn(ffmpegPath, args, { windowsHide: true });
+        child.on('close', (code) => {
+            if (artworkPath) {
+                try {
+                    unlinkSync(artworkPath);
+                } catch {
+                    // ignore cleanup failures
+                }
+            }
+            if (code === 0 && existsSync(tempPath)) {
+                try {
+                    copyFileSync(tempPath, filePath);
+                    unlinkSync(tempPath);
+                } catch (error) {
+                    console.warn('[local-first] Failed to replace tagged audio file:', error);
+                }
+            } else if (existsSync(tempPath)) {
+                try {
+                    unlinkSync(tempPath);
+                } catch {
+                    // ignore cleanup failures
+                }
+            }
+            resolve();
+        });
+        child.on('error', () => resolve());
+    });
+};
+
+const writeMetadataTagsWithOptionalEnrich = async (
+    filePath: string,
+    track: NormalizedImportTrack,
+) => {
+    if (!isAutoEnrichMetadataEnabled()) {
+        await writeMetadataTags(filePath, track);
+        return;
+    }
+
+    try {
+        const ffprobe = getToolCommand('ffprobe', 'ROOFY_FFPROBE_PATH');
+        const enriched = await enrichAudioFileMetadata(ffprobe, filePath, {
+            album: track.album,
+            albumArtist: track.albumArtist,
+            artist: track.artist || track.artists?.join(', '),
+            artworkUrl: track.artworkUrl,
+            isrc: track.isrc,
+            releaseDate: track.releaseDate,
+            title: track.title,
+        });
+
+        const mergedTrack: NormalizedImportTrack = {
+            ...track,
+            album: enriched.album || track.album,
+            albumArtist: enriched.albumArtist || track.albumArtist,
+            artist: enriched.artist || track.artist,
+            artists: enriched.artist ? [enriched.artist] : track.artists,
+            artworkUrl: enriched.artworkUrl || track.artworkUrl,
+            isrc: enriched.isrc || track.isrc,
+            musicBrainzRecordingId: enriched.mbzRecordingId || track.musicBrainzRecordingId,
+            releaseDate: enriched.releaseDate || track.releaseDate,
+            title: enriched.title || track.title,
+        };
+
+        await writeMetadataTags(filePath, mergedTrack);
+    } catch (error) {
+        console.warn('[local-first] Metadata enrichment failed, writing original tags:', error);
+        await writeMetadataTags(filePath, track);
+    }
+};
+
+const runSingleMatchedDownload = (
+    job: ImportJob,
+    track: NormalizedImportTrack,
+    outputTemplate: string,
+    cookieBrowser: string,
+    cookiesFilePath: string | undefined,
+    progressBase: number,
+    progressShare: number,
+) =>
+    new Promise<{ audioFiles: string[]; output: string; skipped: number }>((resolve, reject) => {
+        const ytDlp = getToolCommand('yt-dlp', 'ROOFY_YT_DLP_PATH');
+        const ffmpegPath = ffmpegBinaryPath();
+        const recentOutput: string[] = [];
+        const candidatePaths: string[] = [];
+        let failedItemCount = 0;
+        const child = spawn(
+            ytDlp,
+            [
+                '--newline',
+                '--progress',
+                '--format',
+                'bestaudio/best',
+                '--extract-audio',
+                '--audio-quality',
+                '0',
+                ...getYtDlpAudioMetadataArgs(false),
+                '--no-mtime',
+                '--no-playlist',
+                '--audio-format',
+                job.audioFormat,
+                ...getCookieArgs(cookieBrowser, cookiesFilePath),
+                ...getJsRuntimeArgs(),
+                ...(ffmpegPath ? ['--ffmpeg-location', path.dirname(ffmpegPath)] : []),
+                '-o',
+                outputTemplate,
+                track.resolvedSourceUrl || '',
+            ],
+            {
+                cwd: getLibraryPath(),
+                windowsHide: true,
+            },
+        );
+
+        activeImport = { child, id: job.id };
+
+        const handleLine = (line: string) => {
+            const clean = line.trim();
+            if (!clean) return;
+            recentOutput.push(clean);
+            if (recentOutput.length > 32) recentOutput.shift();
+            if (/^ERROR:/i.test(clean)) failedItemCount += 1;
+
+            const percent = /\[download\]\s+(\d+(?:\.\d+)?)%/.exec(clean);
+            if (percent) {
+                updateJob(job.id, {
+                    message: `${track.title}: ${clean}`,
+                    progress: Math.min(
+                        99,
+                        Math.round(progressBase + (Number(percent[1]) / 100) * progressShare),
+                    ),
+                });
+                return;
+            }
+
+            const extractAudioDest = /\[ExtractAudio\] Destination:\s*(.+)/.exec(clean);
+            if (extractAudioDest) candidatePaths.push(extractAudioDest[1]);
+
+            const extractAudioSkip = /\[ExtractAudio\] Not converting media file "([^"]+)"/.exec(
+                clean,
+            );
+            if (extractAudioSkip) candidatePaths.push(extractAudioSkip[1]);
+
+            const alreadyDownloaded = /\[download\]\s*(.+?)\s+has already been downloaded/.exec(
+                clean,
+            );
+            if (alreadyDownloaded) candidatePaths.push(alreadyDownloaded[1]);
+
+            const downloadDest = /\[download\] Destination:\s*(.+)/.exec(clean);
+            if (downloadDest) candidatePaths.push(downloadDest[1]);
+
+            updateJob(job.id, { message: `${track.title}: ${clean}` });
+        };
+
+        child.stdout.on('data', (chunk) => chunk.toString().split(/\r?\n/).forEach(handleLine));
+        child.stderr.on('data', (chunk) => chunk.toString().split(/\r?\n/).forEach(handleLine));
+        child.on('error', reject);
+        child.on('close', (code) => {
+            activeImport = null;
+            const audioExts = new Set([
+                '.aac',
+                '.flac',
+                '.m4a',
+                '.mka',
+                '.mp3',
+                '.ogg',
+                '.opus',
+                '.wav',
+                '.webm',
+                '.wma',
+            ]);
+            const audioFiles = [...new Set(candidatePaths)]
+                .filter((p) => audioExts.has(path.extname(p).toLowerCase()))
+                .filter((p) => existsSync(p));
+            const output = recentOutput.join('\n');
+            if (code !== 0 && audioFiles.length === 0) {
+                reject(new Error(output || `yt-dlp exited with code ${code}`));
+                return;
+            }
+            resolve({ audioFiles, output, skipped: failedItemCount });
+        });
+    });
+
+const runSpotifyMatchedImport = async (job: ImportJob) => {
+    const tracks = (job.sourceTracks || []).filter(
+        (track) => track.matchState === 'matched' && track.resolvedSourceUrl,
+    );
+    if (tracks.length === 0) {
+        updateJob(job.id, {
+            error: 'No Spotify tracks have an accepted importable match.',
+            message: 'Import failed',
+            status: 'failed',
+        });
+        processImportQueue();
+        return;
+    }
+
+    updateJob(job.id, {
+        error: '',
+        message: 'Starting Spotify metadata matched import',
+        progress: 1,
+        status: 'running',
+    });
+
+    const cookieBrowser = normalizeCookieBrowser(job.cookieBrowser);
+    const cookiesFilePath = store.get('roofy.cookiesFilePath') as string | undefined;
+    const libraryPath = getLibraryPath();
+    const audioFiles: string[] = [];
+    let skippedCount = 0;
+
+    try {
+        for (let index = 0; index < tracks.length; index += 1) {
+            const current = importJobs.find((item) => item.id === job.id);
+            if (current?.status === 'cancelled') break;
+
+            const track = tracks[index];
+            const outputTemplate = buildSpotifyMatchedOutputTemplate(track, libraryPath);
+            const result = await runSingleMatchedDownload(
+                job,
+                track,
+                outputTemplate,
+                cookieBrowser === 'auto' ? '' : cookieBrowser,
+                cookiesFilePath,
+                Math.round((index / tracks.length) * 95),
+                Math.max(1, Math.round(95 / tracks.length)),
+            );
+            skippedCount += result.skipped;
+            audioFiles.push(...result.audioFiles);
+            for (const filePath of result.audioFiles) {
+                await writeMetadataTagsWithOptionalEnrich(filePath, track);
+                upsertLocalVideoMetadata({
+                    audioPath: filePath,
+                    sourceUrl: track.sourceUrl || job.sourceUrl || job.input,
+                    title: track.title,
+                    updatedAt: now(),
+                    videoId: extractYoutubeVideoId(track.resolvedSourceUrl),
+                });
+            }
+        }
+
+        const current = importJobs.find((item) => item.id === job.id);
+        if (current?.status === 'cancelled') {
+            updateJob(job.id, { message: 'Cancelled' });
+            processImportQueue();
+            return;
+        }
+
+        for (const filePath of audioFiles) {
+            try {
+                processSubtitleForFile(filePath);
+            } catch (error) {
+                console.error('[local-first] Subtitle conversion failed:', error);
+            }
+        }
+
+        if (job.createPlaylist) {
+            writePlaylistM3U(job, audioFiles);
+            updateJob(job.id, { message: 'Import complete - creating playlist' });
+        }
+
+        if (job.createPlaylist || job.targetPlaylistIds?.length) {
+            await triggerNavidromeScan();
+        }
+
+        if (job.createPlaylist) {
+            const songIds = await findAllImportedSongIds(audioFiles);
+            if (songIds.length > 0) {
+                await populatePlaylist(
+                    job.playlistName || job.name || 'Imported Playlist',
+                    songIds,
+                );
+            }
+            getMainWindow()?.webContents.send('roofy-local-playlist-imported');
+        }
+
+        if (job.targetPlaylistIds?.length) {
+            await addImportedSongsToTargetPlaylists(job, audioFiles);
+        }
+
+        updateJob(job.id, {
+            downloadedCount: audioFiles.length,
+            error: '',
+            message: job.createPlaylist
+                ? 'Import complete - playlist populated'
+                : 'Import complete',
+            progress: 100,
+            skippedCount,
+            status: 'completed',
+            warning: skippedCount > 0 ? formatPartialImportWarning(skippedCount, job.playlist) : '',
+        });
+    } catch (error: any) {
+        updateJob(job.id, {
+            error: error?.message || 'Import failed',
+            message: 'Import failed',
+            status: 'failed',
+        });
+    } finally {
+        activeImport = null;
+        processImportQueue();
+    }
+};
+
 const runImport = (
     job: ImportJob,
     attemptIndex = 0,
     attemptedBrowsers: string[] = [],
     triedWithoutCookies = false,
 ) => {
+    if (shouldUseSpotdlImport(job)) {
+        void runSpotdlImport(job);
+        return;
+    }
+
+    if (job.source === 'spotify' && job.sourceTracks?.length) {
+        void runSpotifyMatchedImport(job);
+        return;
+    }
+
     const ytDlp = getToolCommand('yt-dlp', 'ROOFY_YT_DLP_PATH');
     const ffmpegPath = ffmpegBinaryPath();
     const libraryPath = getLibraryPath();
@@ -1303,15 +2929,7 @@ const runYtDlpPreview = (
     cookieBrowser: string,
     cookiesFilePath: string | undefined,
     jsRuntimeArgs: string[],
-): Promise<{
-    count: number;
-    duration: null | number;
-    isPlaylist: boolean;
-    thumbnail: string;
-    title: string;
-    uploader: string;
-    webpageUrl: string;
-}> => {
+): Promise<ImportPreview> => {
     return new Promise((resolve, reject) => {
         const child = spawn(
             ytDlp,
@@ -1349,9 +2967,35 @@ const runYtDlpPreview = (
                 resolve({
                     count: entries.length,
                     duration: first.duration || null,
+                    durationMs: first.duration
+                        ? Math.round(Number(first.duration) * 1000)
+                        : undefined,
                     isPlaylist,
+                    source: isSoundCloudUrl(input) ? 'soundcloud' : 'youtube_music',
+                    sourcePlaylistId: data.playlist_id || data.id,
+                    sourceTrackId: first.id || data.id,
+                    sourceUrl: first.webpage_url || data.webpage_url || input,
                     thumbnail: first.thumbnail || data.thumbnail || '',
                     title: (isPlaylist ? data.title : first.title) || data.title || 'Untitled',
+                    tracks: isPlaylist
+                        ? entries.map((entry: any) => ({
+                              artist: entry.uploader || entry.channel || data.uploader || 'Unknown',
+                              artworkUrl: entry.thumbnail || data.thumbnail || '',
+                              durationMs: entry.duration
+                                  ? Math.round(Number(entry.duration) * 1000)
+                                  : undefined,
+                              matchState: 'matched',
+                              resolvedSource: isSoundCloudUrl(input)
+                                  ? 'soundcloud'
+                                  : 'youtube_music',
+                              resolvedSourceTrackId: entry.id,
+                              resolvedSourceUrl: entry.webpage_url || entry.url,
+                              source: isSoundCloudUrl(input) ? 'soundcloud' : 'youtube_music',
+                              sourceTrackId: entry.id,
+                              sourceUrl: entry.webpage_url || entry.url,
+                              title: entry.title || 'Untitled',
+                          }))
+                        : undefined,
                     uploader: first.uploader || first.channel || data.uploader || 'Unknown',
                     webpageUrl: first.webpage_url || data.webpage_url || '',
                 });
@@ -1362,7 +3006,328 @@ const runYtDlpPreview = (
     });
 };
 
+const findLocalTrackMatch = async (track: NormalizedImportTrack) => {
+    try {
+        const query = [track.isrc, track.title, track.artist].filter(Boolean).join(' ');
+        const response = await fetch(
+            `${getUrl()}/rest/search3?${getSubsonicParams()}&query=${encodeURIComponent(query)}&songCount=20&albumCount=0&artistCount=0`,
+        );
+        const body = await parseResponseBody(response);
+        const songs = body?.['subsonic-response']?.searchResult3?.song || [];
+        const candidates = Array.isArray(songs) ? songs : [songs];
+
+        let best: null | { confidence: number; id: string } = null;
+        for (const song of candidates) {
+            const titleScore = wordSimilarity(track.title, song?.title || '');
+            const artistScore = wordSimilarity(track.artist || '', song?.artist || '');
+            const albumScore = wordSimilarity(track.album || '', song?.album || '');
+            const durationMs = Number(song?.duration || 0) * 1000;
+            const durationDelta =
+                track.durationMs && durationMs ? Math.abs(track.durationMs - durationMs) : 0;
+            const durationScore =
+                !track.durationMs || !durationMs
+                    ? 0.5
+                    : durationDelta <= 4000
+                      ? 1
+                      : durationDelta <= 12000
+                        ? 0.5
+                        : 0;
+            const confidence = Math.round(
+                titleScore * 45 + artistScore * 30 + albumScore * 10 + durationScore * 15,
+            );
+            if (!best || confidence > best.confidence) {
+                best = { confidence, id: String(song?.id || '') };
+            }
+        }
+
+        return best && best.confidence >= 86 ? best : null;
+    } catch {
+        return null;
+    }
+};
+
+const resolveImportableMatch = async (
+    track: NormalizedImportTrack,
+    ytDlp: string,
+    cookieBrowser: string,
+    cookiesFilePath: string | undefined,
+    jsRuntimeArgs: string[],
+) => {
+    const query = track.isrc || `${track.title} ${track.artist || ''} ${track.album || ''}`.trim();
+    if (!query) return track;
+
+    try {
+        const preview = await runYtDlpPreview(
+            ytDlp,
+            `ytsearch1:${query}`,
+            false,
+            cookieBrowser,
+            cookiesFilePath,
+            jsRuntimeArgs,
+        );
+        const titleScore = wordSimilarity(track.title, preview.title);
+        const artistScore = wordSimilarity(track.artist || '', preview.uploader || '');
+        const durationDelta =
+            track.durationMs && preview.durationMs
+                ? Math.abs(track.durationMs - preview.durationMs)
+                : 0;
+        const durationScore =
+            !track.durationMs || !preview.durationMs
+                ? 0.5
+                : durationDelta <= 4000
+                  ? 1
+                  : durationDelta <= 15000
+                    ? 0.55
+                    : 0;
+        const officialScore = /\b(official|topic|provided to youtube)\b/i.test(
+            `${preview.title} ${preview.uploader}`,
+        )
+            ? 8
+            : 0;
+        const confidence = Math.min(
+            100,
+            Math.round(titleScore * 48 + artistScore * 27 + durationScore * 17 + officialScore),
+        );
+
+        return {
+            ...track,
+            matchConfidence: confidence,
+            matchState:
+                confidence >= 82 ? 'matched' : confidence >= 58 ? 'needs_review' : 'unavailable',
+            resolvedSource: 'youtube_music',
+            resolvedSourceTrackId: preview.sourceTrackId,
+            resolvedSourceUrl: preview.webpageUrl || preview.sourceUrl,
+        } satisfies NormalizedImportTrack;
+    } catch {
+        return {
+            ...track,
+            matchConfidence: 0,
+            matchState: 'unavailable',
+        } satisfies NormalizedImportTrack;
+    }
+};
+
+const resolveSpotifyTrack = async (
+    track: NormalizedImportTrack,
+    ytDlp: string,
+    cookieBrowser: string,
+    cookiesFilePath: string | undefined,
+    jsRuntimeArgs: string[],
+) => {
+    const localMatch = await findLocalTrackMatch(track);
+    if (localMatch) {
+        return {
+            ...track,
+            matchConfidence: localMatch.confidence,
+            matchState: 'in_library',
+            resolvedSource: 'youtube_music',
+            resolvedSourceTrackId: localMatch.id,
+        } satisfies NormalizedImportTrack;
+    }
+
+    return resolveImportableMatch(track, ytDlp, cookieBrowser, cookiesFilePath, jsRuntimeArgs);
+};
+
+const spotifyTrackPreview = async (
+    id: string,
+    ytDlp: string,
+    cookieBrowser: string,
+    cookiesFilePath: string | undefined,
+    jsRuntimeArgs: string[],
+): Promise<ImportPreview> =>
+    spotifyOembedTrackPreview(
+        id,
+        `https://open.spotify.com/track/${id}`,
+        ytDlp,
+        cookieBrowser,
+        cookiesFilePath,
+        jsRuntimeArgs,
+    );
+
+const runSpotdlImport = async (job: ImportJob) => {
+    if (!spotdlAvailable()) {
+        updateJob(job.id, {
+            error: 'spotDL is not installed. Install it with pip install spotdl.',
+            message: 'Import failed',
+            status: 'failed',
+        });
+        processImportQueue();
+        return;
+    }
+
+    const context = getSpotdlRunContext();
+    const importDir = path.join(
+        context.libraryPath,
+        'Downloads',
+        `.roofy-spotdl-${job.id.slice(0, 8)}`,
+    );
+    const outputTemplate = path.join(importDir, '{artist} - {title}.{output-ext}');
+    let downloadedCount = 0;
+    let expectedCount = 0;
+
+    updateJob(job.id, {
+        error: '',
+        message: 'Starting spotDL import',
+        progress: 1,
+        status: 'running',
+    });
+
+    try {
+        await runSpotdlDownload(
+            context,
+            job.input,
+            outputTemplate,
+            (line) => {
+                const current = importJobs.find((item) => item.id === job.id);
+                if (current?.status === 'cancelled') return;
+
+                const totalMatch = /(\d+)\/(\d+)/.exec(line);
+                if (totalMatch) {
+                    downloadedCount = Number(totalMatch[1]);
+                    expectedCount = Number(totalMatch[2]);
+                    updateJob(job.id, {
+                        message: line,
+                        progress: Math.min(
+                            99,
+                            Math.round((downloadedCount / Math.max(expectedCount, 1)) * 95),
+                        ),
+                    });
+                    return;
+                }
+
+                if (/Downloaded|Skipping|Processing/i.test(line)) {
+                    updateJob(job.id, { message: line });
+                }
+            },
+            (child) => {
+                activeImport = { child, id: job.id };
+            },
+        );
+
+        const current = importJobs.find((item) => item.id === job.id);
+        if (current?.status === 'cancelled') {
+            updateJob(job.id, { message: 'Cancelled' });
+            processImportQueue();
+            return;
+        }
+
+        const audioFiles = collectAudioFiles(importDir).sort();
+        if (audioFiles.length === 0) {
+            throw new Error('spotDL finished without creating any audio files.');
+        }
+
+        const previewTracks = (job.sourceTracks || []).filter((track) => track.title);
+        for (let index = 0; index < audioFiles.length; index += 1) {
+            const filePath = audioFiles[index];
+            const track = previewTracks[index];
+            if (track) {
+                await writeMetadataTagsWithOptionalEnrich(filePath, track);
+            }
+            try {
+                processSubtitleForFile(filePath);
+            } catch (error) {
+                console.error('[local-first] Subtitle conversion failed:', error);
+            }
+        }
+
+        if (job.createPlaylist) {
+            writePlaylistM3U(job, audioFiles);
+            updateJob(job.id, { message: 'Import complete - creating playlist' });
+        }
+
+        if (job.createPlaylist || job.targetPlaylistIds?.length) {
+            await triggerNavidromeScan();
+        }
+
+        if (job.createPlaylist) {
+            const songIds = await findAllImportedSongIds(audioFiles);
+            if (songIds.length > 0) {
+                await populatePlaylist(
+                    job.playlistName || job.name || job.title || 'Imported Playlist',
+                    songIds,
+                );
+            }
+            getMainWindow()?.webContents.send('roofy-local-playlist-imported');
+        }
+
+        if (job.targetPlaylistIds?.length) {
+            await addImportedSongsToTargetPlaylists(job, audioFiles);
+        }
+
+        updateJob(job.id, {
+            downloadedCount: audioFiles.length,
+            error: '',
+            message: job.createPlaylist
+                ? 'Import complete - playlist populated'
+                : 'Import complete',
+            progress: 100,
+            status: 'completed',
+            warning: '',
+        });
+    } catch (error: any) {
+        updateJob(job.id, {
+            error: error?.message || 'spotDL import failed',
+            message: 'Import failed',
+            status: 'failed',
+        });
+    } finally {
+        activeImport = null;
+        processImportQueue();
+    }
+};
+
+const spotifySpotdlPreview = async (input: string): Promise<ImportPreview> => {
+    const songs = await runSpotdlSave(getSpotdlRunContext(), input.trim());
+    const summary = summarizeSpotdlPreview(input, songs);
+    const ytDlp = getToolCommand('yt-dlp', 'ROOFY_YT_DLP_PATH');
+    const effectiveBrowser = normalizeCookieBrowser(
+        store.get('roofy.cookieBrowser') as string | undefined,
+    );
+    const cookiesFilePath = store.get('roofy.cookiesFilePath') as string | undefined;
+    const jsRuntimeArgs = getJsRuntimeArgs();
+    const cookieBrowser = effectiveBrowser === 'auto' ? '' : effectiveBrowser;
+    const trimmedInput = input.trim();
+
+    const tracks = await Promise.all(
+        songs.map(async (song) => {
+            const track = spotdlSongToNormalizedTrack(song);
+            if (extractYoutubeVideoId(track.resolvedSourceUrl)) {
+                return track;
+            }
+
+            return resolveImportableMatch(
+                {
+                    ...track,
+                    artist: track.artist || song.artist,
+                    source: 'spotify',
+                    sourceTrackId: song.song_id || track.sourceTrackId,
+                    sourceUrl: song.url || trimmedInput,
+                    title: track.title || song.name,
+                },
+                ytDlp,
+                cookieBrowser,
+                cookiesFilePath,
+                jsRuntimeArgs,
+            );
+        }),
+    );
+
+    const useSpotdl = tracks.every((track) => !extractYoutubeVideoId(track.resolvedSourceUrl));
+
+    return {
+        ...summary,
+        count: tracks.length,
+        duration: null,
+        source: 'spotify',
+        tracks,
+        useSpotdl,
+        webpageUrl: trimmedInput,
+    };
+};
+
 const previewImport = async (input: string, playlist?: boolean, cookieBrowser?: string) => {
+    const trimmedInput = input.trim();
+
     const ytDlp = getToolCommand('yt-dlp', 'ROOFY_YT_DLP_PATH');
     const resolvedPlaylist = inferPlaylistImport(input, playlist);
     const normalizedInput = normalizeDownloadUrl(input, resolvedPlaylist);
@@ -1377,6 +3342,11 @@ const previewImport = async (input: string, playlist?: boolean, cookieBrowser?: 
         throw new Error('Enter a URL or search query.');
     }
 
+    const source = detectImportSource(input);
+    if (source === 'spotify' && spotdlAvailable() && isSpotifyUrlInput(trimmedInput)) {
+        return spotifySpotdlPreview(trimmedInput);
+    }
+
     const attempts = getCookieAttempts(effectiveBrowser);
     const attemptedBrowsers: string[] = [];
     let lastError = '';
@@ -1386,6 +3356,30 @@ const previewImport = async (input: string, playlist?: boolean, cookieBrowser?: 
         if (attemptBrowser) attemptedBrowsers.push(attemptBrowser);
 
         try {
+            const spotifyParts = source === 'spotify' ? getSpotifyUrlParts(input) : null;
+            if (spotifyParts?.type === 'track') {
+                return await spotifyTrackPreview(
+                    spotifyParts.id,
+                    ytDlp,
+                    attemptBrowser,
+                    cookiesFilePath,
+                    jsRuntimeArgs,
+                );
+            }
+            if (spotifyParts?.type === 'playlist') {
+                throw new Error(
+                    spotdlAvailable()
+                        ? 'Could not preview this Spotify playlist with spotDL.'
+                        : 'Install spotDL to import Spotify playlist links.',
+                );
+            }
+            if (spotifyParts?.type === 'album' || spotifyParts?.type === 'artist') {
+                throw new Error(
+                    spotdlAvailable()
+                        ? `Could not preview this Spotify ${spotifyParts.type} with spotDL.`
+                        : `Install spotDL to import Spotify ${spotifyParts.type} links.`,
+                );
+            }
             return await runYtDlpPreview(
                 ytDlp,
                 normalizedInput,
@@ -1471,7 +3465,10 @@ export const createImportJob = async (
 
     const job: ImportJob = {
         album: sourceMetadata?.album,
+        albumArtist: sourceMetadata?.albumArtist,
         artist: sourceMetadata?.artist,
+        artists: sourceMetadata?.artists,
+        artworkUrl: sourceMetadata?.artworkUrl,
         audioFormat,
         cookieBrowser: effectiveBrowser,
         createdAt: now(),
@@ -1479,22 +3476,28 @@ export const createImportJob = async (
             typeof createPlaylist === 'boolean'
                 ? createPlaylist
                 : isPlaylist || Boolean(jobPlaylistName),
+        discNumber: sourceMetadata?.discNumber,
         error: '',
         id: randomUUID(),
-        imageUrl: sourceMetadata?.imageUrl,
+        imageUrl: sourceMetadata?.imageUrl || sourceMetadata?.artworkUrl,
         input: input.trim(),
         message: 'Queued',
         name: name || sourceMetadata?.title || singleTrackPlaylistName,
         playlist: isPlaylist,
         playlistName: jobPlaylistName,
         progress: 0,
-        saveVideo,
+        releaseDate: sourceMetadata?.releaseDate,
+        saveVideo: sourceMetadata?.source === 'spotify' ? false : saveVideo,
         source: sourceMetadata?.source,
+        sourcePlaylistId: sourceMetadata?.sourcePlaylistId,
         sourceTrackId: sourceMetadata?.sourceTrackId,
+        sourceTracks: sourceMetadata?.sourceTracks,
+        sourceUrl: sourceMetadata?.sourceUrl,
         status: 'queued',
         targetPlaylistIds,
         targetPlaylistNames,
         title: sourceMetadata?.title,
+        trackNumber: sourceMetadata?.trackNumber,
         updatedAt: now(),
         videoId: sourceMetadata?.videoId,
         warning: '',
@@ -1874,7 +3877,16 @@ const getLocalFirstStatus = (message = ''): LocalFirstStatus => {
     return {
         dataPath: getDataPath(),
         imports: importJobs,
+        importSources: {
+            soundcloud: {
+                configured: true,
+                message: 'Public SoundCloud links are supported through local yt-dlp.',
+            },
+            spotify: spotifyStatus(),
+        },
         libraryPath: getLibraryPath(),
+        mobileImport: withMobileImportPairingUrl(mobileImportStatus),
+        phoneLink: getPhoneLinkStatus(),
         navidrome: {
             available: Boolean(binaryPath),
             binaryPath,
@@ -1886,14 +3898,126 @@ const getLocalFirstStatus = (message = ''): LocalFirstStatus => {
             url: getUrl(),
             username: LOCAL_SERVER_USERNAME,
         },
+        pairing: withPairingUrl(localPairingStatus),
+        metadata: {
+            autoEnrich: isAutoEnrichMetadataEnabled(),
+        },
         tools: {
             deno: toolAvailable('deno', 'ROOFY_DENO_PATH'),
             ffmpeg: toolAvailable('ffmpeg', 'ROOFY_FFMPEG_PATH'),
             navidrome: Boolean(binaryPath),
+            spotdl: spotdlAvailable(),
             ytDlp: toolAvailable('yt-dlp', 'ROOFY_YT_DLP_PATH'),
         },
     };
 };
+
+const deviceBridge = createDeviceBridgeCoordinator({
+    getLocalFirstStatus,
+    getLocalPairingStatus: () => localPairingStatus,
+    getMobileImportStatus: () => mobileImportStatus,
+    getMobileImportToken,
+    getPassword,
+    getRemoteClientCount: () => {
+        try {
+            // Lazy import avoids circular init issues during module load.
+            const { getRemoteClientCount } = require('/@/main/features/core/remote') as {
+                getRemoteClientCount: () => number;
+            };
+            return getRemoteClientCount();
+        } catch {
+            return 0;
+        }
+    },
+    getUsername: () => LOCAL_SERVER_USERNAME,
+    settleStuckPhoneLinkStarting,
+    startLocalPairing,
+    startMobileImport,
+    stopLocalPairing,
+    stopMobileImport,
+    store,
+    withMobileImportPairingUrl,
+    withPairingUrl,
+});
+
+markPhoneHasPaired = (req) => deviceBridge.markPhoneHasPaired(req);
+setActiveOutput = (output, req) => deviceBridge.setActiveOutput(output, req);
+ensurePhoneLinkReady = () => deviceBridge.ensurePhoneLinkReady();
+isPhoneLinkReady = () => deviceBridge.isPhoneLinkReady();
+getPhoneLinkStatus = () => deviceBridge.getPhoneLinkStatus();
+startPhoneLink = (mode) => deviceBridge.startPhoneLink(mode) as Promise<LocalFirstStatus>;
+stopPhoneLink = () => deviceBridge.stopPhoneLink() as LocalFirstStatus;
+disconnectPhoneLink = () => deviceBridge.disconnectPhoneLink() as LocalFirstStatus;
+getPublicMobileImportEndpoint = () => deviceBridge.getPublicMobileImportEndpoint();
+
+ipcMain.handle('roofy-local-probe-audio-tags', (_event, filePath: string) => {
+    const normalizedPath = String(filePath || '').trim();
+    if (!normalizedPath || !existsSync(normalizedPath)) {
+        throw new Error('A valid audio file path is required.');
+    }
+    const ffprobe = getToolCommand('ffprobe', 'ROOFY_FFPROBE_PATH');
+    return probeAudioTags(ffprobe, normalizedPath);
+});
+
+ipcMain.handle(
+    'roofy-local-write-audio-tags',
+    async (
+        _event,
+        args: {
+            album?: string;
+            albumArtist?: string;
+            artist?: string;
+            artworkUrl?: string;
+            filePath: string;
+            title: string;
+        },
+    ) => {
+        const normalizedPath = String(args.filePath || '').trim();
+        if (!normalizedPath || !existsSync(normalizedPath)) {
+            throw new Error('A valid audio file path is required.');
+        }
+
+        await writeMetadataTags(normalizedPath, {
+            album: args.album,
+            albumArtist: args.albumArtist,
+            artist: args.artist,
+            artworkUrl: args.artworkUrl,
+            title: args.title || path.basename(normalizedPath, path.extname(normalizedPath)),
+        });
+
+        return { ok: true };
+    },
+);
+
+ipcMain.handle('roofy-local-set-auto-enrich-metadata', (_event, enabled: boolean) => {
+    store.set(AUTO_ENRICH_METADATA_KEY, Boolean(enabled));
+    return getLocalFirstStatus();
+});
+
+ipcMain.handle('roofy-local-enrich-audio-file', async (_event, filePath: string) => {
+    const normalizedPath = String(filePath || '').trim();
+    if (!normalizedPath || !existsSync(normalizedPath)) {
+        throw new Error('A valid audio file path is required.');
+    }
+
+    const ffprobe = getToolCommand('ffprobe', 'ROOFY_FFPROBE_PATH');
+    const enriched = await enrichAudioFileMetadata(ffprobe, normalizedPath, {
+        title: path.basename(normalizedPath, path.extname(normalizedPath)),
+    });
+
+    await writeMetadataTags(normalizedPath, {
+        album: enriched.album,
+        albumArtist: enriched.albumArtist,
+        artist: enriched.artist,
+        artworkUrl: enriched.artworkUrl,
+        isrc: enriched.isrc,
+        musicBrainzRecordingId: enriched.mbzRecordingId,
+        releaseDate: enriched.releaseDate,
+        title: enriched.title || path.basename(normalizedPath),
+    });
+
+    return enriched;
+});
 
 ipcMain.handle('roofy-local-status', () => getLocalFirstStatus());
 ipcMain.handle('roofy-local-start', async () => startLocalFirst());
@@ -1901,6 +4025,19 @@ ipcMain.handle('roofy-local-stop', () => {
     shutdownLocalFirst();
     return getLocalFirstStatus();
 });
+ipcMain.handle('roofy-local-start-pairing', (_event, mode: LocalPairingMode = 'tunnel') =>
+    startLocalPairing(mode),
+);
+ipcMain.handle('roofy-local-stop-pairing', () => stopLocalPairing());
+ipcMain.handle('roofy-local-start-mobile-import', (_event, mode: LocalPairingMode = 'tunnel') =>
+    startMobileImport(mode),
+);
+ipcMain.handle('roofy-local-stop-mobile-import', () => stopMobileImport());
+ipcMain.handle('roofy-local-start-phone-link', (_event, mode: PhoneLinkRequestMode = 'auto') =>
+    startPhoneLink(mode),
+);
+ipcMain.handle('roofy-local-stop-phone-link', () => stopPhoneLink());
+ipcMain.handle('roofy-local-disconnect-phone-link', () => disconnectPhoneLink());
 
 ipcMain.handle('roofy-local-select-library', async () => {
     const result = await dialog.showOpenDialog({
@@ -1922,6 +4059,12 @@ ipcMain.handle('roofy-local-open-library-folder', async () => {
     return shell.openPath(getLibraryPath());
 });
 
+ipcMain.handle('roofy-local-spotify-connect', () => connectSpotify());
+ipcMain.handle('roofy-local-spotify-disconnect', () => clearStoredSpotifySession());
+ipcMain.handle('roofy-local-spotify-status', () => spotifyStatus());
+ipcMain.handle('roofy-local-spotify-client-id', (_event, clientId: string) =>
+    setSpotifyClientId(clientId),
+);
 ipcMain.handle(
     'roofy-local-preview-import',
     async (_event, args: { cookieBrowser?: string; input: string; playlist?: boolean }) => {
@@ -1935,18 +4078,27 @@ ipcMain.handle(
         _event,
         args: {
             album?: string;
+            albumArtist?: string;
             artist?: string;
+            artists?: string[];
+            artworkUrl?: string;
             audioFormat?: string;
             cookieBrowser?: string;
             createPlaylist?: boolean;
+            discNumber?: number;
             imageUrl?: string;
             input: string;
             playlist?: boolean;
             playlistName?: string;
+            releaseDate?: string;
             saveVideo?: boolean;
-            source?: 'youtube_music';
+            source?: ImportSource;
+            sourcePlaylistId?: string;
             sourceTrackId?: string;
+            sourceTracks?: NormalizedImportTrack[];
+            sourceUrl?: string;
             title?: string;
+            trackNumber?: number;
             videoId?: string;
         },
     ) => {
@@ -1959,11 +4111,20 @@ ipcMain.handle(
             args.playlistName,
             {
                 album: args.album,
+                albumArtist: args.albumArtist,
                 artist: args.artist,
+                artists: args.artists,
+                artworkUrl: args.artworkUrl,
+                discNumber: args.discNumber,
                 imageUrl: args.imageUrl,
+                releaseDate: args.releaseDate,
                 source: args.source,
+                sourcePlaylistId: args.sourcePlaylistId,
                 sourceTrackId: args.sourceTrackId,
+                sourceTracks: args.sourceTracks,
+                sourceUrl: args.sourceUrl,
                 title: args.title,
+                trackNumber: args.trackNumber,
                 videoId: args.videoId,
             },
             undefined,

@@ -12,7 +12,6 @@ const PLAYER_ITEMS: Array<[PlayerItem, string]> = [
     [PlayerItem.BIT_DEPTH, 'common.bitDepth'],
     [PlayerItem.BIT_RATE, 'common.bitrate'],
     [PlayerItem.BPM, 'common.bpm'],
-    [PlayerItem.CODEC, 'common.codec'],
     [PlayerItem.DISC_NUMBER, 'table.config.label.discNumber'],
     [PlayerItem.GENRES, 'entity.genre_other'],
     [PlayerItem.RELEASE_DATE, 'filter.releaseDate'],

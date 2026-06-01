@@ -545,7 +545,7 @@
         "discordListening_description": "Durumu çalma yerine dinleme olarak göster",
         "discordRichPresence_description": "{{discord}} \"Rich Presence\" oynatma durumunu etkinleştirin. Görüntü tuşları şunlardır: {{icon}}, {{playing}} ve {{paused}}",
         "discordServeImage": "Sunucudan {{discord}} resimleri servis et",
-        "discordServeImage_description": "Sunucudan {{discord}} rich presence için kapak resmi paylaşın, yalnızca Jellyfin ve Navidrome için kullanılabilir",
+        "discordServeImage_description": "Show album art in {{discord}} from your music server when it is reachable on your network. Some servers need a public URL for art to appear.",
         "discordUpdateInterval": "{{discord}} rich presence güncelleme aralığı",
         "discordUpdateInterval_description": "Her güncelleme arasındaki saniye cinsinden süre (minimum 15 saniye)",
         "gaplessAudio": "Aralıksız ses",

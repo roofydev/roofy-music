@@ -606,7 +606,7 @@
         "useSystemTheme": "Käytä järjestelmän teemaa",
         "volumeWheelStep": "Äänenvoimakkuusrullan askel",
         "discordServeImage": "Jaa {{discord}} kuvat palvelimelta",
-        "discordServeImage_description": "Jaa kansikuvat {{discord}}n rich presenceä varten suoraan palvelimelta. Saatavilla vain jellyfinille ja navidromelle",
+        "discordServeImage_description": "Show album art in {{discord}} from your music server when it is reachable on your network. Some servers need a public URL for art to appear.",
         "musicbrainz_description": "Näytä linkit MusicBrainz sivulle artistin/albumin sivuilla, jos MusicBrainz ID löytyy",
         "lastfm": "Näytä last.fm linkit",
         "lastfm_description": "Näytä linkit Last.fm sivulle artistin/albumin sivuilla",

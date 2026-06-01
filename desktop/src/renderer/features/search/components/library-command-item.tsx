@@ -1,4 +1,5 @@
 import { CSSProperties, useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import styles from './library-command-item.module.css';
 
@@ -61,6 +62,7 @@ export const LibraryCommandItem = ({
     subtitle,
     title,
 }: LibraryCommandItemProps) => {
+    const { t } = useTranslation();
     const { addToQueueByData, addToQueueByFetch } = usePlayer();
     const server = useCurrentServer();
 
@@ -149,7 +151,7 @@ export const LibraryCommandItem = ({
                                 onImport(song);
                             }}
                             size="xs"
-                            tooltip={{ label: 'Import to local library' }}
+                            tooltip={{ label: t('productUx.action.addToLibrary') }}
                             variant="default"
                         />
                     )}

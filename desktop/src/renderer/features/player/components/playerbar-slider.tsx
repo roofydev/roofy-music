@@ -8,6 +8,8 @@ import { ScrobbleStatus } from '/@/renderer/features/player/components/scrobble-
 import {
     useAppStore,
     useAppStoreActions,
+    usePlaybackDurationSec,
+    usePlaybackSeekable,
     usePlayerSong,
     usePlayerTimestamp,
 } from '/@/renderer/store';
@@ -27,8 +29,9 @@ export const PlayerbarSlider = () => {
     const currentSong = usePlayerSong();
     const playerbarSlider = usePlayerbarSlider();
 
-    const songDuration = currentSong?.duration ? currentSong.duration / 1000 : 0;
+    const songDuration = usePlaybackDurationSec(currentSong?.duration);
     const currentTime = usePlayerTimestamp();
+    const seekable = usePlaybackSeekable();
 
     const formattedDuration = formatDuration(songDuration * 1000 || 0);
     const formattedTimeRemaining = formatDuration((currentTime - songDuration) * 1000 || 0);
@@ -51,7 +54,11 @@ export const PlayerbarSlider = () => {
                             <PlayerbarWaveform />
                         </Suspense>
                     ) : (
-                        <PlayerbarSeekSlider max={songDuration} min={0} />
+                        <PlayerbarSeekSlider
+                            disabled={!seekable || songDuration <= 0}
+                            max={songDuration}
+                            min={0}
+                        />
                     )}
                 </div>
                 <div className={styles.sliderValueWrapper}>

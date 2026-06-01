@@ -20,7 +20,7 @@ export const ScrobbleSettings = memo(() => {
         {
             control: (
                 <Switch
-                    aria-label="Toggle scrobble"
+                    aria-label="Toggle listening history"
                     defaultChecked={settings.scrobble.enabled}
                     onChange={(e) => {
                         setSettings({
@@ -41,7 +41,7 @@ export const ScrobbleSettings = memo(() => {
         {
             control: (
                 <Slider
-                    aria-label="Scrobble percentage"
+                    aria-label="Listening history percentage"
                     defaultValue={settings.scrobble.scrobbleAtPercentage}
                     label={`${settings.scrobble.scrobbleAtPercentage}%`}
                     max={90}
@@ -66,7 +66,7 @@ export const ScrobbleSettings = memo(() => {
         {
             control: (
                 <NumberInput
-                    aria-label="Scrobble duration in seconds"
+                    aria-label="Listening history minimum seconds"
                     defaultValue={settings.scrobble.scrobbleAtDuration}
                     max={1200}
                     min={0}

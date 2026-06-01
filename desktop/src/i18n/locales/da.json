@@ -770,7 +770,7 @@
         "discordRichPresence": "{{discord}} rich presence",
         "discordRichPresence_description": "Aktiver afspilningsstatus i {{discord}} Rich Presence. Billednøgler er: {{icon}}, {{playing}} og {{paused}}",
         "discordServeImage": "Server {{discord}}-billeder fra serveren",
-        "discordServeImage_description": "Del coverart til {{discord}} rich presence fra selve serveren, kun tilgængelig for Jellyfin og Navidrome. {{discord}} bruger en bot til at hente billeder, så din server skal være tilgængelig fra det offentlige internet",
+        "discordServeImage_description": "Show album art in {{discord}} from your music server when it is reachable on your network. Some servers need a public URL for art to appear.",
         "discordUpdateInterval": "{{discord}} rich presence-opdateringsinterval",
         "discordUpdateInterval_description": "Tiden i sekunder mellem hver opdatering (minimum 15 sekunder)",
         "enableAutoTranslation_description": "Aktiver oversættelse automatisk, når sangtekster indlæses",
