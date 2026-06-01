@@ -1288,6 +1288,38 @@
         "import": {
             "pageTitle": "Downloads",
             "pageDescription": "Songs you are saving and items already in your library.",
+            "downloads": {
+                "untitled": "Untitled track",
+                "targetLibrary": "Library",
+                "targetPlaylists": "{{count}} playlists",
+                "savedTo": "Saved to {{target}}",
+                "songsSaved": "{{count}} songs saved",
+                "viewSavedSongs": "Saved songs",
+                "dismiss": "Remove from list",
+                "moreActions": "More actions",
+                "playFromLibraryHint": "Find this track in your saved songs list.",
+                "hero": {
+                    "savingOne": "Saving 1 song",
+                    "savingMany": "Saving {{count}} songs",
+                    "savingHint": "You can keep listening while saves finish in the background.",
+                    "progressLabel": "Overall save progress",
+                    "allCaughtUp": "You're all caught up",
+                    "needsAttention": "{{count}} couldn't be saved",
+                    "needsAttentionHint": "Open Needs review to see what went wrong."
+                },
+                "emptyActive": {
+                    "title": "Nothing in progress",
+                    "description": "New saves will show up here while they finish."
+                },
+                "emptySaved": {
+                    "title": "No saved items yet",
+                    "description": "Completed saves appear here so you can play them right away."
+                },
+                "emptyFailed": {
+                    "title": "Nothing needs review",
+                    "description": "If a save fails, you'll find it here with a short explanation."
+                }
+            },
             "status": {
                 "matching": "Finding a match…",
                 "saving": "Saving to your library…",
