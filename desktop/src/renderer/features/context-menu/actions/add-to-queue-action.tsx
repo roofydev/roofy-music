@@ -36,7 +36,7 @@ export const AddToQueueAction = ({ ids, itemType, songs }: AddToQueueActionProps
 
     return (
         <ContextMenu.Item leftIcon="mediaPlayLast" onSelect={handleAddToQueue}>
-            {t('player.addLast')}
+            {t('productUx.action.addToQueue')}
         </ContextMenu.Item>
     );
 };

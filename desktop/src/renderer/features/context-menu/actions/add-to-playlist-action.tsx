@@ -477,7 +477,7 @@ export const AddToPlaylistAction = ({
                     rightIcon="arrowRightS"
                 >
                     {songs.some((song) => song._serverType === ServerType.YOUTUBE_MUSIC)
-                        ? 'Import to playlist'
+                        ? t('productUx.action.addToPlaylist')
                         : t('page.contextMenu.addToPlaylist')}
                 </ContextMenu.Item>
             </ContextMenu.SubmenuTarget>

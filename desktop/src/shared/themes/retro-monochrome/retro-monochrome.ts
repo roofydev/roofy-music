@@ -2,8 +2,7 @@ import retroOverridesCss from './retro_overrides.css?inline';
 
 import { AppThemeConfiguration } from '/@/shared/themes/app-theme-types';
 
-const UI_FONT =
-    'Inter, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+const UI_FONT = 'Inter, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
 export const retroMonochrome: AppThemeConfiguration = {
     app: {
@@ -28,10 +27,10 @@ export const retroMonochrome: AppThemeConfiguration = {
         foreground: '#f4f4f4',
         'foreground-muted': '#b8b8b8',
         primary: '#ffffff',
-        'state-error': '#777777',
+        'state-error': '#ff6b6b',
         'state-info': '#b8b8b8',
-        'state-success': '#f4f4f4',
-        'state-warning': '#777777',
+        'state-success': '#7ddc9f',
+        'state-warning': '#ffd166',
         surface: '#0d0d0d',
         'surface-foreground': '#f4f4f4',
         white: '#f4f4f4',

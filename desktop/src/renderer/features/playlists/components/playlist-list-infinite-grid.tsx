@@ -1,11 +1,11 @@
-import { UseSuspenseQueryOptions } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo } from 'react';
 
-import { api } from '/@/renderer/api';
-import { useItemListInfiniteLoader } from '/@/renderer/components/item-list/helpers/item-list-infinite-loader';
 import { useGridRows } from '/@/renderer/components/item-list/helpers/use-grid-rows';
 import { useItemListScrollPersist } from '/@/renderer/components/item-list/helpers/use-item-list-scroll-persist';
 import { ItemGridList } from '/@/renderer/components/item-list/item-grid-list/item-grid-list';
 import { ItemListGridComponentProps } from '/@/renderer/components/item-list/types';
+import { useListContext } from '/@/renderer/context/list-context';
 import { playlistsQueries } from '/@/renderer/features/playlists/api/playlists-api';
 import { useGeneralSettings } from '/@/renderer/store';
 import {
@@ -20,7 +20,6 @@ interface PlaylistListInfiniteGridProps extends ItemListGridComponentProps<Playl
 
 export const PlaylistListInfiniteGrid = ({
     gap = 'md',
-    itemsPerPage = 100,
     itemsPerRow,
     query = {
         sortBy: PlaylistListSort.NAME,
@@ -30,23 +29,33 @@ export const PlaylistListInfiniteGrid = ({
     serverId,
     size,
 }: PlaylistListInfiniteGridProps) => {
-    const listCountQuery = playlistsQueries.listCount({
-        query: { ...query },
-        serverId: serverId,
-    }) as UseSuspenseQueryOptions<number, Error, number, readonly unknown[]>;
+    const playlistQuery = useMemo(
+        () => ({
+            ...query,
+            limit: 10000,
+            startIndex: 0,
+        }),
+        [query],
+    );
 
-    const listQueryFn = api.controller.getPlaylistList;
-
-    const { dataVersion, getItem, getItemIndex, itemCount, loadedItems, onRangeChanged } =
-        useItemListInfiniteLoader({
-            eventKey: ItemListKey.PLAYLIST,
-            itemsPerPage,
-            itemType: LibraryItem.PLAYLIST,
-            listCountQuery,
-            listQueryFn,
-            query,
+    const playlistsQuery = useQuery(
+        playlistsQueries.list({
+            query: playlistQuery,
             serverId,
-        });
+        }),
+    );
+
+    const playlistItems = playlistsQuery.data?.items ?? [];
+    const itemCount = playlistsQuery.data?.totalRecordCount ?? playlistItems.length;
+    const { setItemCount } = useListContext();
+
+    useEffect(() => {
+        if (!playlistsQuery.data) {
+            return;
+        }
+
+        setItemCount?.(itemCount);
+    }, [itemCount, playlistsQuery.data, setItemCount]);
 
     const { handleOnScrollEnd, scrollOffset } = useItemListScrollPersist({
         enabled: saveScrollOffset,
@@ -57,20 +66,15 @@ export const PlaylistListInfiniteGrid = ({
 
     return (
         <ItemGridList
-            data={loadedItems}
-            dataVersion={dataVersion}
+            data={playlistItems}
             enableMultiSelect={enableGridMultiSelect}
             gap={gap}
-            getItem={getItem}
-            getItemIndex={getItemIndex}
             initialTop={{
                 to: scrollOffset ?? 0,
                 type: 'offset',
             }}
-            itemCount={itemCount}
             itemsPerRow={itemsPerRow}
             itemType={LibraryItem.PLAYLIST}
-            onRangeChanged={onRangeChanged}
             onScrollEnd={handleOnScrollEnd}
             rows={rows}
             size={size}

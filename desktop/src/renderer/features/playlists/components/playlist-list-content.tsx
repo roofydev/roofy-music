@@ -89,7 +89,7 @@ export const PlaylistListView = ({
         (mergedQuery as Record<string, string | undefined>)[FILTER_KEYS.SHARED.SEARCH_TERM];
 
     const listBody = (() => {
-    switch (display) {
+        switch (display) {
         case ListDisplayType.GRID: {
             switch (pagination) {
                 case ListPaginationType.INFINITE: {
@@ -160,13 +160,30 @@ export const PlaylistListView = ({
                     return null;
             }
         }
-    }
+        default:
+            break;
+        }
 
-    return null;
+        // Fallback when list display settings are missing or unsupported for playlists
+        return (
+            <PlaylistListInfiniteTable
+                autoFitColumns={table.autoFitColumns}
+                columns={table.columns}
+                enableAlternateRowColors={table.enableAlternateRowColors}
+                enableHeader={table.enableHeader}
+                enableHorizontalBorders={table.enableHorizontalBorders}
+                enableRowHoverHighlight={table.enableRowHoverHighlight}
+                enableVerticalBorders={table.enableVerticalBorders}
+                itemsPerPage={itemsPerPage}
+                query={mergedQuery}
+                serverId={server.id}
+                size={table.size}
+            />
+        );
     })();
 
     return (
-        <Stack gap={0}>
+        <Stack gap={0} h="100%" style={{ flex: 1, minHeight: 0 }}>
             <LibraryListEmptyHint itemType={LibraryItem.PLAYLIST} searchTerm={searchTerm} />
             {listBody}
         </Stack>

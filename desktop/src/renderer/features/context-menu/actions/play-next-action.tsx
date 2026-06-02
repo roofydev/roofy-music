@@ -36,7 +36,7 @@ export const PlayNextAction = ({ ids, itemType, songs }: PlayNextActionProps) =>
 
     return (
         <ContextMenu.Item leftIcon="mediaPlayNext" onSelect={handlePlayNext}>
-            {t('player.addNext')}
+            {t('productUx.action.playNext')}
         </ContextMenu.Item>
     );
 };

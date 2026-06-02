@@ -12,7 +12,6 @@ import {
     AlbumArtistListView,
     OverrideAlbumArtistListQuery,
 } from '/@/renderer/features/artists/components/album-artist-list-content';
-import { AnimatedPage } from '/@/renderer/features/shared/components/animated-page';
 import { YoutubeMusicSongsTable } from '/@/renderer/features/youtube-music/components/youtube-music-songs-table';
 import {
     OverrideSongListQuery,
@@ -42,13 +41,13 @@ export const SearchContent = () => {
     const { itemType } = useParams() as { itemType: LibraryItem };
 
     return (
-        <AnimatedPage>
+        <Stack gap="lg" h="100%" style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <Suspense fallback={<Spinner container />}>
                 {itemType === LibraryItem.ALBUM && <AlbumSearch />}
                 {itemType === LibraryItem.SONG && <SongSearch />}
                 {itemType === LibraryItem.ALBUM_ARTIST && <ArtistSearch />}
             </Suspense>
-        </AnimatedPage>
+        </Stack>
     );
 };
 
@@ -65,7 +64,7 @@ const AlbumSearch = () => {
     const searchTerm = searchParams.get('query') || '';
 
     return (
-        <Stack gap="lg">
+        <Stack gap="lg" h="100%" style={{ flex: 1, minHeight: 0 }}>
             <SearchRouteEmptyHint itemType={LibraryItem.ALBUM} searchTerm={searchTerm} />
             <AlbumListView
                 display={display}
@@ -93,7 +92,7 @@ const SongSearch = () => {
     const searchTerm = searchParams.get('query') || '';
 
     return (
-        <Stack gap="lg">
+        <Stack gap="lg" h="100%" style={{ flex: 1, minHeight: 0 }}>
             <SearchRouteEmptyHint itemType={LibraryItem.SONG} searchTerm={searchTerm} />
             <SongListView
                 display={display}
@@ -121,7 +120,7 @@ const ArtistSearch = () => {
     const searchTerm = searchParams.get('query') || '';
 
     return (
-        <Stack gap="lg">
+        <Stack gap="lg" h="100%" style={{ flex: 1, minHeight: 0 }}>
             <SearchRouteEmptyHint itemType={LibraryItem.ALBUM_ARTIST} searchTerm={searchTerm} />
             <AlbumArtistListView
                 display={display}

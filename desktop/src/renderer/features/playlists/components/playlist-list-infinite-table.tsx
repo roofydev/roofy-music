@@ -1,13 +1,13 @@
-import { UseSuspenseQueryOptions } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo } from 'react';
 
-import { api } from '/@/renderer/api';
-import { useItemListInfiniteLoader } from '/@/renderer/components/item-list/helpers/item-list-infinite-loader';
 import { useItemListColumnReorder } from '/@/renderer/components/item-list/helpers/use-item-list-column-reorder';
 import { useItemListColumnResize } from '/@/renderer/components/item-list/helpers/use-item-list-column-resize';
 import { useItemListScrollPersist } from '/@/renderer/components/item-list/helpers/use-item-list-scroll-persist';
 import { ItemTableList } from '/@/renderer/components/item-list/item-table-list/item-table-list';
 import { ItemTableListColumn } from '/@/renderer/components/item-list/item-table-list/item-table-list-column';
 import { ItemListTableComponentProps } from '/@/renderer/components/item-list/types';
+import { useListContext } from '/@/renderer/context/list-context';
 import { playlistsQueries } from '/@/renderer/features/playlists/api/playlists-api';
 import {
     LibraryItem,
@@ -28,7 +28,6 @@ export const PlaylistListInfiniteTable = ({
     enableRowHoverHighlight = true,
     enableSelection = true,
     enableVerticalBorders = false,
-    itemsPerPage = 100,
     query = {
         sortBy: PlaylistListSort.NAME,
         sortOrder: SortOrder.ASC,
@@ -37,23 +36,33 @@ export const PlaylistListInfiniteTable = ({
     serverId,
     size = 'default',
 }: PlaylistListInfiniteTableProps) => {
-    const listCountQuery = playlistsQueries.listCount({
-        query: { ...query },
-        serverId: serverId,
-    }) as UseSuspenseQueryOptions<number, Error, number, readonly unknown[]>;
+    const playlistQuery = useMemo(
+        () => ({
+            ...query,
+            limit: 10000,
+            startIndex: 0,
+        }),
+        [query],
+    );
 
-    const listQueryFn = api.controller.getPlaylistList;
-
-    const { getItem, getItemIndex, itemCount, loadedItems, onRangeChanged } =
-        useItemListInfiniteLoader({
-            eventKey: ItemListKey.PLAYLIST,
-            itemsPerPage,
-            itemType: LibraryItem.PLAYLIST,
-            listCountQuery,
-            listQueryFn,
-            query,
+    const playlistsQuery = useQuery(
+        playlistsQueries.list({
+            query: playlistQuery,
             serverId,
-        });
+        }),
+    );
+
+    const playlistItems = playlistsQuery.data?.items ?? [];
+    const itemCount = playlistsQuery.data?.totalRecordCount ?? playlistItems.length;
+    const { setItemCount } = useListContext();
+
+    useEffect(() => {
+        if (!playlistsQuery.data) {
+            return;
+        }
+
+        setItemCount?.(itemCount);
+    }, [itemCount, playlistsQuery.data, setItemCount]);
 
     const { handleOnScrollEnd, scrollOffset } = useItemListScrollPersist({
         enabled: saveScrollOffset,
@@ -72,24 +81,20 @@ export const PlaylistListInfiniteTable = ({
             autoFitColumns={autoFitColumns}
             CellComponent={ItemTableListColumn}
             columns={columns}
-            data={loadedItems}
+            data={playlistItems}
             enableAlternateRowColors={enableAlternateRowColors}
             enableHeader={enableHeader}
             enableHorizontalBorders={enableHorizontalBorders}
             enableRowHoverHighlight={enableRowHoverHighlight}
             enableSelection={enableSelection}
             enableVerticalBorders={enableVerticalBorders}
-            getItem={getItem}
-            getItemIndex={getItemIndex}
             initialTop={{
                 to: scrollOffset ?? 0,
                 type: 'offset',
             }}
-            itemCount={itemCount}
             itemType={LibraryItem.PLAYLIST}
             onColumnReordered={handleColumnReordered}
             onColumnResized={handleColumnResized}
-            onRangeChanged={onRangeChanged}
             onScrollEnd={handleOnScrollEnd}
             size={size}
         />

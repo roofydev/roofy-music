@@ -1,3 +1,4 @@
+import { useIsFetchingItemListCount } from '/@/renderer/components/item-list/helpers/use-is-fetching-item-list';
 import { useListContext } from '/@/renderer/context/list-context';
 import { ProductUxEmptyState } from '/@/shared/components/product-ux-empty-state';
 import { AppIconSelection } from '/@/shared/components/icon/icon';
@@ -19,8 +20,9 @@ export function LibraryListEmptyHint({
     searchTerm,
 }: LibraryListEmptyHintProps) {
     const { itemCount } = useListContext();
+    const isFetchingCount = useIsFetchingItemListCount({ itemType });
 
-    if (itemCount === undefined || itemCount > 0) {
+    if (itemCount === undefined || itemCount > 0 || isFetchingCount) {
         return null;
     }
 

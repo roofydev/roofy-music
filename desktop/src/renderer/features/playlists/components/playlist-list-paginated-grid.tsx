@@ -33,7 +33,7 @@ export const PlaylistListPaginatedGrid = ({
     size,
 }: PlaylistListPaginatedGridProps) => {
     const listCountQuery = playlistsQueries.listCount({
-        query: { ...query },
+        query: { ...query, limit: itemsPerPage },
         serverId: serverId,
     }) as UseSuspenseQueryOptions<number, Error, number, readonly unknown[]>;
 

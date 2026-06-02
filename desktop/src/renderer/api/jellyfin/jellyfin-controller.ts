@@ -20,6 +20,7 @@ import {
     InternalControllerEndpoint,
     LibraryItem,
     Played,
+    PlaylistListSort,
     playlistListSortMap,
     ReplaceApiClientProps,
     ServerType,
@@ -936,8 +937,8 @@ export const JellyfinController: InternalControllerEndpoint = {
                 MediaTypes: 'Audio',
                 Recursive: true,
                 SearchTerm: query.searchTerm,
-                SortBy: playlistListSortMap.jellyfin[query.sortBy],
-                SortOrder: sortOrderMap.jellyfin[query.sortOrder],
+                SortBy: playlistListSortMap.jellyfin[query.sortBy ?? PlaylistListSort.NAME],
+                SortOrder: sortOrderMap.jellyfin[query.sortOrder ?? SortOrder.ASC],
                 StartIndex: query.startIndex,
             },
         });

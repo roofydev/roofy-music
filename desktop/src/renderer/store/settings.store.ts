@@ -717,8 +717,8 @@ export const ValidationSettingsStateSchema = z.object({
     lists: z.record(z.nativeEnum(ItemListKey), ItemListConfigSchema),
     lyrics: LyricsSettingsSchema,
     lyricsDisplay: z.record(z.string(), LyricsDisplaySettingsSchema),
-    playback: PlaybackSettingsSchema,
     party: PartySettingsSchema,
+    playback: PlaybackSettingsSchema,
     queryBuilder: QueryBuilderSettingsSchema,
     remote: RemoteSettingsSchema,
     tab: z.union([
@@ -879,7 +879,11 @@ export enum SidebarItem {
     FOLDERS = 'Folders',
     GENRES = 'Genres',
     HOME = 'Home',
+    IMPORTS = 'Imports',
     NOW_PLAYING = 'Now Playing',
+    OFFLINE = 'Offline',
+    ONLINE_MUSIC = 'Online Music',
+    PARTY = 'Party',
     PLAYLISTS = 'Playlists',
     RADIO = 'Radio',
     SEARCH = 'Search',
@@ -995,11 +999,12 @@ export const playerItems: SortableItem<PlayerItem>[] = [
 ];
 
 export const sidebarItems: SidebarItemType[] = [
+    { disabled: false, id: 'Home', label: i18n.t('page.sidebar.home'), route: AppRoute.HOME },
     {
-        disabled: true,
-        id: 'Party',
-        label: 'Party',
-        route: AppRoute.PARTY,
+        disabled: false,
+        id: 'Search',
+        label: i18n.t('page.sidebar.search'),
+        route: generatePath(AppRoute.SEARCH, { itemType: LibraryItem.SONG }),
     },
     {
         disabled: false,
@@ -1009,28 +1014,9 @@ export const sidebarItems: SidebarItemType[] = [
     },
     {
         disabled: false,
-        id: 'Search',
-        label: i18n.t('page.sidebar.search'),
-        route: generatePath(AppRoute.SEARCH, { itemType: LibraryItem.SONG }),
-    },
-    { disabled: false, id: 'Home', label: i18n.t('page.sidebar.home'), route: AppRoute.HOME },
-    {
-        disabled: true,
-        id: 'Offline',
-        label: i18n.t('page.sidebar.offline'),
-        route: `${AppRoute.LIBRARY_SONGS}?offline=1`,
-    },
-    {
-        disabled: false,
-        id: 'Favorites',
-        label: i18n.t('page.sidebar.favorites'),
-        route: AppRoute.FAVORITES,
-    },
-    {
-        disabled: false,
-        id: 'Stats',
-        label: i18n.t('page.sidebar.stats'),
-        route: AppRoute.STATS,
+        id: 'Tracks',
+        label: i18n.t('page.sidebar.tracks'),
+        route: AppRoute.LIBRARY_SONGS,
     },
     {
         disabled: false,
@@ -1040,57 +1026,87 @@ export const sidebarItems: SidebarItemType[] = [
     },
     {
         disabled: false,
-        id: 'Tracks',
-        label: i18n.t('page.sidebar.tracks'),
-        route: AppRoute.LIBRARY_SONGS,
-    },
-    {
-        disabled: false,
         id: 'Artists',
-        label: i18n.t('page.sidebar.albumArtists'),
+        label: i18n.t('page.sidebar.artists'),
         route: AppRoute.LIBRARY_ALBUM_ARTISTS,
     },
     {
         disabled: false,
-        id: 'Artists-all',
-        label: i18n.t('page.sidebar.artists'),
-        route: AppRoute.LIBRARY_ARTISTS,
-    },
-    {
-        disabled: false,
-        id: 'Genres',
-        label: i18n.t('page.sidebar.genres'),
-        route: AppRoute.LIBRARY_GENRES,
-    },
-    {
-        disabled: false,
-        id: 'Folders',
-        label: i18n.t('page.sidebar.folders'),
-        route: AppRoute.LIBRARY_FOLDERS,
-    },
-    {
-        disabled: true,
-        id: 'Playlists',
+        id: SidebarItem.PLAYLISTS,
         label: i18n.t('page.sidebar.playlists'),
         route: AppRoute.PLAYLISTS,
-    },
-    {
-        disabled: false,
-        id: 'Collections',
-        label: i18n.t('page.sidebar.collections'),
-        route: '',
-    },
-    {
-        disabled: false,
-        id: 'Radio',
-        label: i18n.t('page.sidebar.radio'),
-        route: AppRoute.RADIO,
     },
     {
         disabled: false,
         id: 'Settings',
         label: i18n.t('page.sidebar.settings'),
         route: AppRoute.SETTINGS,
+    },
+    {
+        disabled: true,
+        id: SidebarItem.PARTY,
+        label: i18n.t('productUx.party.together'),
+        route: AppRoute.PARTY,
+    },
+    {
+        disabled: true,
+        id: SidebarItem.OFFLINE,
+        label: i18n.t('page.sidebar.offline'),
+        route: `${AppRoute.LIBRARY_SONGS}?offline=1`,
+    },
+    {
+        disabled: true,
+        id: SidebarItem.IMPORTS,
+        label: i18n.t('productUx.import.pageTitle'),
+        route: AppRoute.IMPORTS,
+    },
+    {
+        disabled: true,
+        id: 'Favorites',
+        label: i18n.t('page.sidebar.favorites'),
+        route: AppRoute.FAVORITES,
+    },
+    {
+        disabled: true,
+        id: 'Stats',
+        label: i18n.t('page.sidebar.stats'),
+        route: AppRoute.STATS,
+    },
+    {
+        disabled: true,
+        id: 'Artists-all',
+        label: i18n.t('page.sidebar.allArtists'),
+        route: AppRoute.LIBRARY_ARTISTS,
+    },
+    {
+        disabled: true,
+        id: 'Genres',
+        label: i18n.t('page.sidebar.genres'),
+        route: AppRoute.LIBRARY_GENRES,
+    },
+    {
+        disabled: true,
+        id: 'Folders',
+        label: i18n.t('page.sidebar.folders'),
+        route: AppRoute.LIBRARY_FOLDERS,
+    },
+    {
+        disabled: true,
+        id: 'Collections',
+        label: i18n.t('page.sidebar.collections'),
+        route: '',
+    },
+    {
+        disabled: true,
+        id: 'Radio',
+        label: i18n.t('page.sidebar.radio'),
+        route: AppRoute.RADIO,
+    },
+    {
+        disabled: true,
+        id: SidebarItem.ONLINE_MUSIC,
+        label: i18n.t('page.sidebar.onlineMusic'),
+        route: `${AppRoute.YOUTUBE_MUSIC}?view=browse`,
     },
 ];
 
@@ -1403,8 +1419,6 @@ const initialState: SettingsState = {
                         TableColumn.TITLE,
                         TableColumn.DURATION,
                         TableColumn.ALBUM_ARTIST,
-                        TableColumn.BIT_RATE,
-                        TableColumn.BPM,
                         TableColumn.DATE_ADDED,
                         TableColumn.GENRE,
                         TableColumn.PLAY_COUNT,
@@ -1480,8 +1494,6 @@ const initialState: SettingsState = {
                         TableColumn.TITLE,
                         TableColumn.DURATION,
                         TableColumn.ALBUM_ARTIST,
-                        TableColumn.BIT_RATE,
-                        TableColumn.BPM,
                         TableColumn.DATE_ADDED,
                         TableColumn.GENRE,
                         TableColumn.PLAY_COUNT,
@@ -1697,9 +1709,6 @@ const initialState: SettingsState = {
                         TableColumn.ARTIST,
                         TableColumn.DURATION,
                         TableColumn.YEAR,
-                        TableColumn.BIT_RATE,
-                        TableColumn.BPM,
-                        TableColumn.CODEC,
                         TableColumn.DATE_ADDED,
                         TableColumn.GENRE,
                         TableColumn.LAST_PLAYED,
@@ -1773,9 +1782,6 @@ const initialState: SettingsState = {
                         TableColumn.ARTIST,
                         TableColumn.DURATION,
                         TableColumn.YEAR,
-                        TableColumn.BIT_RATE,
-                        TableColumn.BPM,
-                        TableColumn.CODEC,
                         TableColumn.DATE_ADDED,
                         TableColumn.GENRE,
                         TableColumn.LAST_PLAYED,
@@ -1862,6 +1868,25 @@ const initialState: SettingsState = {
             scaleNonActive: 0.95,
         },
     },
+    party: {
+        allowGuestQueueReorder: false,
+        autoApproveJoins: true,
+        autoApproveSuggestions: false,
+        chatRateLimitEnabled: false,
+        controlMode: 'host',
+        exposureMode: 'tunnel',
+        hostDisplayName: 'Host',
+        maxGuests: 20,
+        micAutoGainControl: false,
+        micEchoCancellation: false,
+        micGain: 100,
+        micNoiseSuppression: true,
+        port: 4334,
+        queueLocked: false,
+        roomTheme: 'dark',
+        voteToSkipEnabled: false,
+        voteToSkipThreshold: 0.5,
+    },
     playback: {
         audioDeviceId: undefined,
         audioFadeOnStatusChange: true,
@@ -1900,25 +1925,6 @@ const initialState: SettingsState = {
         password: randomString(24),
         port: 4333,
         username: 'roofy',
-    },
-    party: {
-        allowGuestQueueReorder: false,
-        autoApproveJoins: true,
-        autoApproveSuggestions: false,
-        chatRateLimitEnabled: false,
-        controlMode: 'host',
-        exposureMode: 'tunnel',
-        hostDisplayName: 'Host',
-        maxGuests: 20,
-        micAutoGainControl: false,
-        micEchoCancellation: false,
-        micGain: 100,
-        micNoiseSuppression: true,
-        port: 4334,
-        queueLocked: false,
-        roomTheme: 'dark',
-        voteToSkipEnabled: false,
-        voteToSkipThreshold: 0.5,
     },
     tab: 'general',
     visualizer: {
@@ -2618,10 +2624,72 @@ export const useSettingsStore = createWithEqualityFn<SettingsSlice>()(
                     );
                 }
 
+                if (version <= 40) {
+                    const addSidebarItemAfter = (afterId: string, item: SidebarItemType): void => {
+                        const existing = state.general.sidebarItems.find(
+                            (sidebarItem) => sidebarItem.id === item.id,
+                        );
+
+                        if (existing) {
+                            existing.disabled = item.disabled;
+                            existing.label = item.label;
+                            existing.route = item.route;
+                            return;
+                        }
+
+                        const afterIndex = state.general.sidebarItems.findIndex(
+                            (sidebarItem) => sidebarItem.id === afterId,
+                        );
+                        state.general.sidebarItems.splice(Math.max(afterIndex + 1, 0), 0, item);
+                    };
+
+                    addSidebarItemAfter(SidebarItem.HOME, {
+                        disabled: false,
+                        id: SidebarItem.OFFLINE,
+                        label: i18n.t('page.sidebar.offline'),
+                        route: `${AppRoute.LIBRARY_SONGS}?offline=1`,
+                    });
+                    addSidebarItemAfter(SidebarItem.OFFLINE, {
+                        disabled: false,
+                        id: SidebarItem.IMPORTS,
+                        label: i18n.t('productUx.import.pageTitle'),
+                        route: AppRoute.IMPORTS,
+                    });
+                    addSidebarItemAfter(SidebarItem.NOW_PLAYING, {
+                        disabled: false,
+                        id: SidebarItem.PARTY,
+                        label: i18n.t('productUx.party.together'),
+                        route: AppRoute.PARTY,
+                    });
+
+                    for (const item of state.general.sidebarItems) {
+                        if (
+                            item.id === SidebarItem.PLAYLISTS ||
+                            item.id === SidebarItem.OFFLINE ||
+                            item.id === SidebarItem.IMPORTS ||
+                            item.id === SidebarItem.PARTY
+                        ) {
+                            item.disabled = false;
+                        }
+                    }
+
+                    state.general.sidebarItems = dedupeSidebarItemsById(
+                        state.general.sidebarItems ?? [],
+                    );
+                }
+
+                if (version <= 41) {
+                    state.general.sidebarItems = sidebarItems.map((item) => ({ ...item }));
+                }
+
+                if (version <= 42) {
+                    state.general.sidebarPlaylistList = true;
+                }
+
                 return persistedState;
             },
             name: 'store_settings',
-            version: 40,
+            version: 43,
         },
     ),
 );

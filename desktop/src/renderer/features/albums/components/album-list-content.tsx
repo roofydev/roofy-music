@@ -237,7 +237,7 @@ export const AlbumListView = ({
     })();
 
     return (
-        <Stack gap={0}>
+        <Stack gap={0} h="100%" style={{ flex: 1, minHeight: 0 }}>
             <LibraryListEmptyHint itemType={LibraryItem.ALBUM} searchTerm={searchTerm} />
             {listBody}
         </Stack>
