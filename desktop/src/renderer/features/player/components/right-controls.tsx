@@ -4,13 +4,12 @@ import { useTranslation } from 'react-i18next';
 
 import styles from './right-controls.module.css';
 
-import { PlayerbarVideoControls } from '/@/renderer/features/player/components/playerbar-video-controls';
-import { PlayerConfig } from '/@/renderer/features/player/components/player-config';
-import { CustomPlayerbarSlider } from '/@/renderer/features/player/components/playerbar-slider';
-import { SleepTimerButton } from '/@/renderer/features/player/components/sleep-timer-button';
-import { usePlayer } from '/@/renderer/features/player/context/player-context';
 import { DevicesButton } from '/@/renderer/features/devices/components/devices-button';
 import { PartyPanel } from '/@/renderer/features/party/components/party-panel';
+import { CustomPlayerbarSlider } from '/@/renderer/features/player/components/playerbar-slider';
+import { PlayerbarVideoControls } from '/@/renderer/features/player/components/playerbar-video-controls';
+import { SleepTimerButton } from '/@/renderer/features/player/components/sleep-timer-button';
+import { usePlayer } from '/@/renderer/features/player/context/player-context';
 import { useSetRating } from '/@/renderer/features/shared/hooks/use-set-rating';
 import { useCreateFavorite } from '/@/renderer/features/shared/mutations/create-favorite-mutation';
 import { useDeleteFavorite } from '/@/renderer/features/shared/mutations/delete-favorite-mutation';
@@ -71,18 +70,17 @@ export const RightControls = () => {
     const { showRatings } = useGeneralSettings();
     return (
         <Flex align="flex-end" direction="column" h="100%" px="1rem" py="0.5rem">
-            <Group className={styles.ratingRow} gap="xs" h="calc(100% / 3)" wrap="nowrap">
+            <Group className={styles.secondaryRow} gap="xs" h="calc(100% / 3)" wrap="nowrap">
                 <PlayerbarVideoControls />
                 {showRatings && <RatingButton />}
                 <AutoDJButton />
-            </Group>
-            <Group align="center" gap="xs" wrap="nowrap">
                 <SleepTimerButton />
-                <DevicesButton />
-                <PartyPanel />
-                <PlayerConfig />
                 <LyricsButton />
                 <FavoriteButton />
+            </Group>
+            <Group align="center" className={styles.primaryRow} gap="xs" wrap="nowrap">
+                <DevicesButton />
+                <PartyPanel />
                 <QueueButton />
                 <VolumeButton />
             </Group>
@@ -262,9 +260,7 @@ const FavoriteButton = () => {
         ],
     ]);
 
-    const favoriteLabel = currentSong?.userFavorite
-        ? t('player.unfavorite')
-        : t('player.favorite');
+    const favoriteLabel = currentSong?.userFavorite ? t('player.unfavorite') : t('player.favorite');
 
     return (
         <ActionIcon

@@ -15,6 +15,7 @@ import { ShowInFileExplorerAction } from '/@/renderer/features/context-menu/acti
 import { ShuffleItemsAction } from '/@/renderer/features/context-menu/actions/shuffle-items-action';
 import { ContextMenuPreview } from '/@/renderer/features/context-menu/components/context-menu-preview';
 import { ContextMenu } from '/@/shared/components/context-menu/context-menu';
+import { isTrackActionVisible } from '/@/shared/product-ux';
 import { LibraryItem, QueueSong } from '/@/shared/types/domain-types';
 
 interface QueueContextMenuProps {
@@ -26,6 +27,9 @@ export const QueueContextMenu = ({ items }: QueueContextMenuProps) => {
         const ids = items.map((item) => item.id);
         return { ids };
     }, [items]);
+    const showSaveOrLibrary =
+        isTrackActionVisible(items, 'saveOffline') || isTrackActionVisible(items, 'addToLibrary');
+    const showWatchVideo = isTrackActionVisible(items, 'watchVideo');
 
     return (
         <ContextMenu.Content
@@ -39,12 +43,16 @@ export const QueueContextMenu = ({ items }: QueueContextMenuProps) => {
             <PlayTrackRadioAction disabled={items.length > 1} song={items[0]} />
             <ContextMenu.Divider />
             <AddToPlaylistAction items={ids} itemType={LibraryItem.SONG} songs={items} />
+            {(showSaveOrLibrary || showWatchVideo) && (
+                <>
+                    <ContextMenu.Divider />
+                    {showSaveOrLibrary && <DownloadAction ids={ids} songs={items} />}
+                    {showWatchVideo && <OpenYoutubeSourceAction songs={items} />}
+                </>
+            )}
             <ContextMenu.Divider />
             <SetFavoriteAction ids={ids} itemType={LibraryItem.SONG} songs={items} />
             <SetRatingAction ids={ids} itemType={LibraryItem.SONG} songs={items} />
-            <ContextMenu.Divider />
-            <DownloadAction ids={ids} songs={items} />
-            <OpenYoutubeSourceAction songs={items} />
             <ShareAction ids={ids} itemType={LibraryItem.SONG} />
             <ContextMenu.Divider />
             <GoToAction items={items} />

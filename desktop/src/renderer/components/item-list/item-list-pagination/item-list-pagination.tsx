@@ -1,8 +1,16 @@
-import { Fragment, ReactNode } from 'react';
+import { cloneElement, Fragment, isValidElement, ReactNode } from 'react';
 
 import styles from './item-list-pagination.module.css';
 
 import { Pagination } from '/@/shared/components/pagination/pagination';
+
+const withEntranceAnimationDisabled = (child: ReactNode): ReactNode => {
+    if (!isValidElement(child)) {
+        return child;
+    }
+
+    return cloneElement(child, { enableEntranceAnimation: false });
+};
 
 interface ItemListWithPaginationProps {
     children: ReactNode;
@@ -23,7 +31,11 @@ export const ItemListWithPagination = ({
 }: ItemListWithPaginationProps) => {
     return (
         <div className={styles.container}>
-            <Fragment key={currentPage}>{children}</Fragment>
+            <div className={styles.listContent}>
+                <Fragment key={currentPage}>
+                    {withEntranceAnimationDisabled(children)}
+                </Fragment>
+            </div>
             <div className={styles.paginationContainer}>
                 <Pagination
                     itemsPerPage={itemsPerPage}

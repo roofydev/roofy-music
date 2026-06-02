@@ -33,6 +33,7 @@ export const ActionBar = () => {
             >
                 <Grid.Col span={7}>
                     <TextInput
+                        aria-label={t('productUx.commandPalette.openSearchOrCommand')}
                         leftSection={<Icon icon="search" />}
                         onClick={open}
                         onKeyDown={(e) => {
@@ -40,7 +41,7 @@ export const ActionBar = () => {
                                 open();
                             }
                         }}
-                        placeholder={t('common.search')}
+                        placeholder={t('productUx.commandPalette.searchOrCommand')}
                         readOnly
                     />
                 </Grid.Col>

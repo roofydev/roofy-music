@@ -38,6 +38,7 @@ import {
     useFullScreenPlayerStore,
     useFullScreenPlayerStoreActions,
     useGeneralSettings,
+    useImportJobs,
     usePlayerSong,
     useSetFullScreenPlayerStore,
 } from '/@/renderer/store';
@@ -61,51 +62,90 @@ import { Platform } from '/@/shared/types/types';
 
 export const Sidebar = () => {
     const { t } = useTranslation();
+    const location = useLocation();
 
     const sidebarPlaylistList = useSidebarPlaylistList();
-    const location = useLocation();
 
     const translatedSidebarItemMap = useMemo(
         () => ({
             Albums: t('page.sidebar.albums'),
-            Artists: t('page.sidebar.albumArtists'),
-            'Artists-all': t('page.sidebar.artists'),
+            Artists: t('page.sidebar.artists'),
+            'Artists-all': t('page.sidebar.allArtists'),
             Collections: t('page.sidebar.collections'),
             Favorites: t('page.sidebar.favorites'),
             Folders: t('page.sidebar.folders'),
             Genres: t('page.sidebar.genres'),
             Home: t('page.sidebar.home'),
+            Imports: t('productUx.import.pageTitle'),
             'Now Playing': t('page.sidebar.nowPlaying'),
+            Offline: t('page.sidebar.offline'),
+            'Online Music': t('page.sidebar.onlineMusic'),
+            Party: t('productUx.party.together'),
             Playlists: t('page.sidebar.playlists'),
             Radio: t('page.sidebar.radio'),
             Search: t('page.sidebar.search'),
             Settings: t('page.sidebar.settings'),
             Stats: t('page.sidebar.stats'),
             Tracks: t('page.sidebar.tracks'),
-            Offline: t('page.sidebar.offline'),
         }),
         [t],
     );
 
     const sidebarItems = useSidebarItems();
+    const importJobs = useImportJobs();
     const { windowBarStyle } = useWindowSettings();
     const sidebarImageEnabled = useAppStore((state) => state.sidebar.image);
     const showImage = sidebarImageEnabled;
+    const hasActionableImportJobs = useMemo(
+        () =>
+            Object.values(importJobs).some((job) =>
+                ['failed', 'queued', 'running'].includes(job.status),
+            ),
+        [importJobs],
+    );
+    const showYoutubeMusic = isElectron();
+    const youtubeMusicItems = useMemo(
+        () => [
+            {
+                label: t('productUx.search.youtubeMusic.browse'),
+                search: '?view=browse',
+            },
+            {
+                label: t('common.search'),
+                search: '?view=search',
+            },
+            {
+                label: t('productUx.search.youtubeMusic.mySongs'),
+                search: '?view=songs',
+            },
+            {
+                label: t('productUx.search.youtubeMusic.myPlaylists'),
+                search: '?view=playlists',
+            },
+        ],
+        [t],
+    );
 
     const sidebarItemsWithRoute: SidebarItemType[] = useMemo(() => {
         if (!sidebarItems) return [];
 
         const items = dedupeSidebarItemsById(sidebarItems)
-            .filter((item) => !item.disabled && item.route !== AppRoute.LOCAL_FIRST)
+            .filter(
+                (item) =>
+                    (!item.disabled || (item.id === 'Imports' && hasActionableImportJobs)) &&
+                    item.route !== AppRoute.LOCAL_FIRST &&
+                    !(showYoutubeMusic && item.id === 'Online Music'),
+            )
             .map((item) => ({
                 ...item,
+                disabled: item.id === 'Imports' && hasActionableImportJobs ? false : item.disabled,
                 label:
                     translatedSidebarItemMap[item.id as keyof typeof translatedSidebarItemMap] ??
                     item.label,
             }));
 
         return items;
-    }, [sidebarItems, translatedSidebarItemMap]);
+    }, [hasActionableImportJobs, showYoutubeMusic, sidebarItems, translatedSidebarItemMap]);
 
     const primaryNavItems = useMemo(
         () => sidebarItemsWithRoute.filter((item) => PRIMARY_SIDEBAR_NAV_IDS.has(item.id)),
@@ -119,7 +159,6 @@ export const Sidebar = () => {
                 (item) =>
                     item.id !== 'Collections' &&
                     item.id !== 'Home' &&
-                    item.id !== 'Offline' &&
                     !isPrimarySidebarNavItem(item) &&
                     item.route,
             ),
@@ -132,16 +171,6 @@ export const Sidebar = () => {
 
     const isCustomWindowBar =
         windowBarStyle === Platform.WINDOWS || windowBarStyle === Platform.MACOS;
-    const showYoutubeMusic = isElectron();
-    const youtubeMusicItems = useMemo(
-        () => [
-            { label: t('productUx.search.youtubeMusic.browse'), search: '?view=browse' },
-            { label: t('common.search'), search: '?view=search' },
-            { label: t('productUx.search.youtubeMusic.mySongs'), search: '?view=songs' },
-            { label: t('productUx.search.youtubeMusic.myPlaylists'), search: '?view=playlists' },
-        ],
-        [t],
-    );
 
     return (
         <div
@@ -177,7 +206,12 @@ export const Sidebar = () => {
                         item: styles.accordionItem,
                         root: styles.accordionRoot,
                     }}
-                    defaultValue={['library', 'youtube-music', 'collections', 'playlists']}
+                    defaultValue={[
+                        'library',
+                        ...(showYoutubeMusic ? ['youtube-music'] : []),
+                        'collections',
+                        'playlists',
+                    ]}
                     multiple
                     transitionDuration={0}
                 >
@@ -213,7 +247,7 @@ export const Sidebar = () => {
                                     <Group align="center" gap="xs" wrap="nowrap">
                                         <YoutubeMusicIcon size="1rem" />
                                         <Text fw={500} variant="secondary">
-                                            {t('page.sidebar.online')}
+                                            {t('page.sidebar.youtubeMusic')}
                                         </Text>
                                     </Group>
                                     <YoutubeMusicAccountButton compact labelMode="auth-only" />
@@ -259,8 +293,12 @@ const SidebarImage = () => {
     const { t } = useTranslation();
     const { setSideBar } = useAppStoreActions();
     const currentSong = usePlayerSong();
-    const { canPlayVideo, isCheckingVideo, metadata: videoMetadata, videoUnavailable } =
-        useSongVideoAvailability();
+    const {
+        canPlayVideo,
+        isCheckingVideo,
+        metadata: videoMetadata,
+        videoUnavailable,
+    } = useSongVideoAvailability();
     const videoButtonDisabled = videoUnavailable || isCheckingVideo;
     const isRadioActive = useIsRadioActive();
     const { currentStationArt, isPlaying: isRadioPlaying } = useRadioPlayer();
@@ -292,8 +330,7 @@ const SidebarImage = () => {
         visualMode,
     } = useFullScreenPlayerStore();
     const { setStore } = useFullScreenPlayerStoreActions();
-    const showVideo =
-        !isPlayingRadio && canPlayVideo && visualMode === 'video' && !videoFullscreen;
+    const showVideo = !isPlayingRadio && canPlayVideo && visualMode === 'video' && !videoFullscreen;
     const showVisualModeToggle = !isPlayingRadio && isSongDefined;
 
     useEffect(() => {

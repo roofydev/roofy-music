@@ -592,7 +592,7 @@
             "commands": {
                 "goToPage": "Go to page",
                 "searchFor": "Search for {{query}}",
-                "serverCommands": "Server commands"
+                "serverCommands": "Personal Library commands"
             },
             "title": "Commands"
         },
@@ -652,6 +652,7 @@
         "sidebar": {
             "albumArtists": "$t(entity.albumArtist, {\"count\": 2})",
             "albums": "$t(entity.album, {\"count\": 2})",
+            "allArtists": "All artists",
             "collections": "Collections",
             "artists": "$t(entity.artist, {\"count\": 2})",
             "favorites": "$t(entity.favorite, {\"count\": 2})",
@@ -662,13 +663,15 @@
             "myLibrary": "My Library",
             "offline": "Offline",
             "online": "Online",
+            "onlineMusic": "Online Music",
             "nowPlaying": "Now Playing",
             "playlists": "$t(entity.playlist, {\"count\": 2})",
             "search": "$t(common.search)",
             "settings": "$t(common.setting, {\"count\": 2})",
             "shared": "Shared $t(entity.playlist, {\"count\": 2})",
             "stats": "Stats",
-            "tracks": "$t(entity.track, {\"count\": 2})"
+            "tracks": "$t(entity.song, {\"count\": 2})",
+            "youtubeMusic": "YouTube Music"
         },
         "trackList": {
             "artistTracks": "Tracks by {{artist}}",
@@ -1077,7 +1080,7 @@
         "showSkipButtons": "Show skip buttons",
         "sidebarCollapsedNavigation_description": "Show or hide the navigation in the collapsed sidebar",
         "sidebarCollapsedNavigation": "Sidebar (collapsed) navigation",
-        "sidebarConfiguration_description": "Select the items and order in which they appear in the sidebar",
+        "sidebarConfiguration_description": "Choose optional shortcuts and their order in the sidebar",
         "sidebarConfiguration": "Sidebar configuration",
         "playerItemConfiguration_description": "Configure what items are shown, and in what order, on the fullscreen player",
         "playerItemConfiguration": "Player item configuration",
@@ -1094,8 +1097,8 @@
         "sidebarPlaylistFolderTreeIndent": "Tree indent",
         "sidebarPlaylistFolderTreeLineColor_description": "Color of the connecting tree lines (leave empty for theme default)",
         "sidebarPlaylistFolderTreeLineColor": "Tree line color",
-        "sidebarPlaylistList_description": "Show or hide the playlist list in the sidebar",
-        "sidebarPlaylistList": "Sidebar playlist list",
+        "sidebarPlaylistList_description": "Show your playlist tree in the sidebar. The main Playlists page stays available when this is off.",
+        "sidebarPlaylistList": "Playlist shortcuts",
         "sidebarPlaylistMode_description": "How each playlist is displayed in the sidebar list",
         "sidebarPlaylistMode": "Sidebar playlist mode",
         "sidebarPlaylistMode_optionCompact": "Compact",
@@ -1275,6 +1278,9 @@
             "addToLibrary": "Add to my library",
             "addToLibraryAudioOnly": "Audio only",
             "addToLibraryWithVideo": "Audio + video",
+            "addToPlaylist": "Add to playlist",
+            "addToQueue": "Add to queue",
+            "playNext": "Play next",
             "saveOffline": "Save offline",
             "updateSongInfo": "Update song info",
             "watchVideo": "Watch video",
@@ -1284,6 +1290,14 @@
             "continueOnDevice": "Listen on",
             "connectPhone": "Link your phone",
             "connectPersonalLibrary": "Connect your music library"
+        },
+        "commandPalette": {
+            "openSearchOrCommand": "Open search and command palette",
+            "searchOrCommand": "Search or run command"
+        },
+        "route": {
+            "invalidTitle": "This page is not available",
+            "invalidDescription": "Go back or return home to keep browsing your music."
         },
         "import": {
             "pageTitle": "Downloads",
@@ -1582,6 +1596,10 @@
             "audioFormat": "Audio format"
         },
         "error": {
+            "app": {
+                "title": "Something stopped working",
+                "description": "Try again, or refresh the app if this screen does not recover."
+            },
             "search": {
                 "failed": "Search could not finish right now. Try again in a moment."
             },
@@ -1615,6 +1633,7 @@
             }
         },
         "party": {
+            "together": "Together",
             "connection": "Connection",
             "connectionHint": "Share over the internet lets friends join from anywhere. Same network is for people on your Wi‑Fi.",
             "shareOverInternet": "Share over the internet",

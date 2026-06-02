@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { HashRouter, Route, Routes } from 'react-router';
+import { HashRouter, Navigate, Route, Routes } from 'react-router';
 
 import { ShuffleAllContextModal } from '/@/renderer/features/player/components/shuffle-all-modal';
 import { RouterErrorBoundary } from '/@/renderer/features/shared/components/router-error-boundary';
@@ -214,8 +214,16 @@ export const AppRouter = () => {
                                         <Route element={<HomeRoute />} index />
                                         <Route element={<HomeRoute />} path={AppRoute.HOME} />
                                         <Route
+                                            element={<Navigate replace to={AppRoute.HOME} />}
+                                            path={AppRoute.EXPLORE}
+                                        />
+                                        <Route
                                             element={<LocalFirstRoute />}
                                             path={AppRoute.LOCAL_FIRST}
+                                        />
+                                        <Route
+                                            element={<Navigate replace to={AppRoute.LOCAL_FIRST} />}
+                                            path={AppRoute.SERVERS}
                                         />
                                         <Route element={<SearchRoute />} path={AppRoute.SEARCH} />
                                         <Route
@@ -235,6 +243,10 @@ export const AppRouter = () => {
                                         <Route
                                             element={<NowPlayingRoute />}
                                             path={AppRoute.NOW_PLAYING}
+                                        />
+                                        <Route
+                                            element={<Navigate replace to={AppRoute.NOW_PLAYING} />}
+                                            path={AppRoute.PLAYING}
                                         />
                                         <Route element={<PartyRoute />} path={AppRoute.PARTY} />
                                         <Route path={AppRoute.LIBRARY_GENRES}>

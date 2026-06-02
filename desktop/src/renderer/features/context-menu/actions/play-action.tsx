@@ -83,10 +83,10 @@ export const PlayAction = ({ ids, itemType, songs }: PlayActionProps) => {
                     {t('player.play')}
                 </ContextMenu.Item>
                 <ContextMenu.Item leftIcon="mediaPlayNext" onSelect={handlePlayNext}>
-                    {t('player.addNext')}
+                    {t('productUx.action.playNext')}
                 </ContextMenu.Item>
                 <ContextMenu.Item leftIcon="mediaPlayLast" onSelect={handlePlayLast}>
-                    {t('player.addLast')}
+                    {t('productUx.action.addToQueue')}
                 </ContextMenu.Item>
                 <ContextMenu.Divider />
                 <ContextMenu.Item leftIcon="mediaShuffle" onSelect={handlePlayShuffled}>

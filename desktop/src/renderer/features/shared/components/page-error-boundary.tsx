@@ -42,11 +42,11 @@ const PageErrorFallback = ({ error, resetErrorBoundary }: PageErrorFallbackProps
                     <Group gap="xs">
                         <Icon fill="error" icon="error" size="lg" />
                         <TextTitle fw={700} order={3}>
-                            {t('error.genericError')}
+                            {t('productUx.error.app.title')}
                         </TextTitle>
                     </Group>
                     <Text style={{ wordBreak: 'break-word' }}>
-                        {error?.message || t('error.genericError')}
+                        {t('productUx.error.app.description')}
                     </Text>
                     {process.env.NODE_ENV === 'development' && error?.stack && (
                         <Code
@@ -64,7 +64,7 @@ const PageErrorFallback = ({ error, resetErrorBoundary }: PageErrorFallbackProps
                     )}
                     <Group grow>
                         <Button onClick={resetErrorBoundary} size="md" variant="default">
-                            {t('common.reload')}
+                            {t('productUx.error.recovery.tryAgain')}
                         </Button>
                         <Button onClick={handleRefresh} size="md" variant="filled">
                             {t('common.refresh')}

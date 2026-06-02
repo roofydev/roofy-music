@@ -7,12 +7,12 @@ import { useSortOrderFilter } from '/@/renderer/features/shared/hooks/use-sort-o
 import { FILTER_KEYS } from '/@/renderer/features/shared/utils';
 import { parseCustomFiltersParam } from '/@/renderer/utils/query-params';
 import { runInUrlTransition } from '/@/renderer/utils/url-transition';
-import { PlaylistListSort } from '/@/shared/types/domain-types';
+import { PlaylistListSort, SortOrder } from '/@/shared/types/domain-types';
 import { ItemListKey } from '/@/shared/types/types';
 
 export const usePlaylistListFilters = () => {
-    const sortByFilter = useSortByFilter<PlaylistListSort>(null, ItemListKey.PLAYLIST);
-    const sortOrderFilter = useSortOrderFilter(null, ItemListKey.PLAYLIST);
+    const sortByFilter = useSortByFilter<PlaylistListSort>(PlaylistListSort.NAME, ItemListKey.PLAYLIST);
+    const sortOrderFilter = useSortOrderFilter(SortOrder.ASC, ItemListKey.PLAYLIST);
 
     const { searchTerm, setSearchTerm } = useSearchTermFilter('');
 
@@ -28,7 +28,7 @@ export const usePlaylistListFilters = () => {
             runInUrlTransition(() => {
                 setSearchParams(
                     (prev) => {
-                        const previousValue = prev.get(FILTER_KEYS.ALBUM._CUSTOM);
+                        const previousValue = prev.get(FILTER_KEYS.PLAYLIST.CUSTOM);
 
                         const newCustom = {
                             ...(previousValue ? JSON.parse(previousValue) : {}),
@@ -41,7 +41,7 @@ export const usePlaylistListFilters = () => {
                             ),
                         );
 
-                        prev.set(FILTER_KEYS.ALBUM._CUSTOM, JSON.stringify(filteredNewCustom));
+                        prev.set(FILTER_KEYS.PLAYLIST.CUSTOM, JSON.stringify(filteredNewCustom));
                         return prev;
                     },
                     {
@@ -57,8 +57,8 @@ export const usePlaylistListFilters = () => {
         () => ({
             _custom: custom ?? undefined,
             searchTerm: searchTerm ?? undefined,
-            sortBy: sortByFilter.sortBy ?? undefined,
-            sortOrder: sortOrderFilter.sortOrder ?? undefined,
+            sortBy: sortByFilter.sortBy ?? PlaylistListSort.NAME,
+            sortOrder: sortOrderFilter.sortOrder ?? SortOrder.ASC,
         }),
         [custom, searchTerm, sortByFilter.sortBy, sortOrderFilter.sortOrder],
     );

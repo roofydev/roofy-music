@@ -15,6 +15,7 @@ import { AppRoute } from '/@/renderer/router/routes';
 import {
     SidebarItemType,
     useCollections,
+    useImportJobs,
     useSidebarCollapsedNavigation,
     useSidebarItems,
     useWindowSettings,
@@ -35,17 +36,21 @@ export const CollapsedSidebar = () => {
     const { windowBarStyle } = useWindowSettings();
     const sidebarCollapsedNavigation = useSidebarCollapsedNavigation();
     const sidebarItems = useSidebarItems();
+    const importJobs = useImportJobs();
     const translatedSidebarItemMap = useMemo(
         () => ({
             Albums: t('page.sidebar.albums'),
-            Artists: t('page.sidebar.albumArtists').replace(' ', '\n'),
-            'Artists-all': t('page.sidebar.artists'),
+            Artists: t('page.sidebar.artists'),
+            'Artists-all': t('page.sidebar.allArtists'),
             Collections: t('page.sidebar.collections'),
             Favorites: t('page.sidebar.favorites'),
             Folders: t('page.sidebar.folders'),
             Genres: t('page.sidebar.genres'),
             Home: t('page.sidebar.home'),
+            Imports: t('productUx.import.pageTitle'),
             'Now Playing': t('page.sidebar.nowPlaying'),
+            Offline: t('page.sidebar.offline'),
+            'Online Music': t('page.sidebar.onlineMusic'),
             Playlists: t('page.sidebar.playlists'),
             Radio: t('page.sidebar.radio'),
             Search: t('page.sidebar.search'),
@@ -55,21 +60,29 @@ export const CollapsedSidebar = () => {
         }),
         [t],
     );
+    const hasActionableImportJobs = useMemo(
+        () =>
+            Object.values(importJobs).some((job) =>
+                ['failed', 'queued', 'running'].includes(job.status),
+            ),
+        [importJobs],
+    );
 
     const sidebarItemsWithRoute: SidebarItemType[] = useMemo(() => {
         if (!sidebarItems) return [];
 
         const items = sidebarItems
-            .filter((item) => !item.disabled)
+            .filter((item) => !item.disabled || (item.id === 'Imports' && hasActionableImportJobs))
             .map((item) => ({
                 ...item,
+                disabled: item.id === 'Imports' && hasActionableImportJobs ? false : item.disabled,
                 label:
                     translatedSidebarItemMap[item.id as keyof typeof translatedSidebarItemMap] ??
                     item.label,
             }));
 
         return items;
-    }, [sidebarItems, translatedSidebarItemMap]);
+    }, [hasActionableImportJobs, sidebarItems, translatedSidebarItemMap]);
 
     return (
         <motion.div

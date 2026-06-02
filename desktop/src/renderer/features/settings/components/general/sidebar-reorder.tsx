@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
-import { dedupeSidebarItemsById } from '/@/renderer/features/sidebar/sidebar-nav-utils';
 import { DraggableItems } from '/@/renderer/features/settings/components/general/draggable-items';
+import { dedupeSidebarItemsById } from '/@/renderer/features/sidebar/sidebar-nav-utils';
 import {
     sidebarItems as defaultSidebarItems,
     SidebarItem,
@@ -12,13 +12,17 @@ import {
 
 const SIDEBAR_ITEMS: Array<[string, string]> = [
     [SidebarItem.ALBUMS, 'page.sidebar.albums'],
-    [SidebarItem.ARTISTS, 'page.sidebar.albumArtists'],
-    [SidebarItem.ARTISTS_ALL, 'page.sidebar.artists'],
+    [SidebarItem.ARTISTS, 'page.sidebar.artists'],
+    [SidebarItem.ARTISTS_ALL, 'page.sidebar.allArtists'],
     [SidebarItem.FAVORITES, 'page.sidebar.favorites'],
     [SidebarItem.FOLDERS, 'page.sidebar.folders'],
     [SidebarItem.GENRES, 'page.sidebar.genres'],
     [SidebarItem.HOME, 'page.sidebar.home'],
+    [SidebarItem.OFFLINE, 'page.sidebar.offline'],
+    [SidebarItem.IMPORTS, 'productUx.import.pageTitle'],
     [SidebarItem.NOW_PLAYING, 'page.sidebar.nowPlaying'],
+    [SidebarItem.ONLINE_MUSIC, 'page.sidebar.onlineMusic'],
+    [SidebarItem.PARTY, 'productUx.party.together'],
     [SidebarItem.PLAYLISTS, 'page.sidebar.playlists'],
     [SidebarItem.COLLECTIONS, 'page.sidebar.collections'],
     [SidebarItem.RADIO, 'page.sidebar.radio'],

@@ -1,6 +1,5 @@
 import {
     useMutation,
-    useQuery,
     useQueryClient,
     useSuspenseQuery,
     UseSuspenseQueryOptions,
@@ -61,6 +60,9 @@ function getInitialData(): InfiniteLoaderCacheData {
     };
 }
 
+const resolveLoaderData = (oldData: InfiniteLoaderCacheData | undefined): InfiniteLoaderCacheData =>
+    oldData ?? getInitialData();
+
 export const infiniteLoaderDataQueryKey = (
     serverId: string,
     itemType: LibraryItem,
@@ -108,6 +110,23 @@ export const useItemListInfiniteLoader = ({
         [serverId, itemType, query],
     );
 
+    const dataQueryKeyHash = useMemo(() => JSON.stringify(dataQueryKey), [dataQueryKey]);
+
+    const [loaderData, setLoaderData] = useState<InfiniteLoaderCacheData>(() =>
+        resolveLoaderData(queryClient.getQueryData<InfiniteLoaderCacheData>(dataQueryKey)),
+    );
+
+    const writeLoaderData = useCallback(
+        (updater: (base: InfiniteLoaderCacheData) => InfiniteLoaderCacheData) => {
+            setLoaderData((prev) => {
+                const next = updater(resolveLoaderData(prev));
+                queryClient.setQueryData(dataQueryKey, next);
+                return next;
+            });
+        },
+        [dataQueryKey, queryClient],
+    );
+
     const fetchPage = useCallback(
         async (pageNumber: number) => {
             const startIndex = pageNumber * itemsPerPage;
@@ -129,37 +148,35 @@ export const useItemListInfiniteLoader = ({
                 queryKey: queryKeys[getListQueryKeyName(itemType)].list(serverId, queryParams),
             });
 
-            // Update the query data with the fetched page
-            queryClient.setQueryData(dataQueryKey, (oldData: InfiniteLoaderCacheData) => {
-                const nextDataMap = new Map(oldData.dataMap);
-                const nextIdToIndexMap = new Map(oldData.idToIndexMap);
+            writeLoaderData((base) => {
+                const nextDataMap = new Map(base.dataMap);
+                const nextIdToIndexMap = new Map(base.idToIndexMap);
 
-                result.items.forEach((item, offset) => {
+                for (const [offset, item] of (result.items ?? []).entries()) {
                     const index = startIndex + offset;
                     nextDataMap.set(index, item);
                     if (item && typeof item === 'object' && 'id' in (item as any)) {
                         const id = String((item as any).id);
                         nextIdToIndexMap.set(id, index);
                     }
-                });
+                }
 
                 return {
                     dataMap: nextDataMap,
                     idToIndexMap: nextIdToIndexMap,
-                    pagesLoaded: { ...oldData.pagesLoaded, [pageNumber]: true },
-                    version: oldData.version + 1,
+                    pagesLoaded: { ...base.pagesLoaded, [pageNumber]: true },
+                    version: base.version + 1,
                 };
             });
 
-            // Track the last fetched page
             lastFetchedPageRef.current = Math.max(lastFetchedPageRef.current, pageNumber);
         },
-        [itemsPerPage, query, queryClient, serverId, dataQueryKey, listQueryFn, itemType],
+        [itemsPerPage, query, queryClient, serverId, listQueryFn, itemType, writeLoaderData],
     );
 
     // Reset the loaded pages and refetch current page when the query changes
     useEffect(() => {
-        const currentDataQueryKey = JSON.stringify(dataQueryKey);
+        const currentDataQueryKey = dataQueryKeyHash;
 
         if (previousDataQueryKeyRef.current === currentDataQueryKey || isRefetchingRef.current) {
             return;
@@ -168,43 +185,33 @@ export const useItemListInfiniteLoader = ({
         previousDataQueryKeyRef.current = currentDataQueryKey;
         isRefetchingRef.current = true;
 
-        // Capture the current visible range before resetting
         const visibleRange = currentVisibleRangeRef.current;
 
-        // Determine which page to fetch based on current visible range
         let pageToFetch = 0;
         if (visibleRange) {
             pageToFetch = Math.floor(visibleRange.startIndex / itemsPerPage);
         }
 
-        // Invalidate and refetch the count query to trigger Suspense
         const countQueryKey = listCountQuery.queryKey;
 
-        // Set refetching state and create a promise to suspend
         setIsRefetching(true);
         const refetchPromise = (async () => {
             try {
-                // Reset the loaded pages
-                queryClient.setQueryData(dataQueryKey, (oldData: any) => {
-                    if (!oldData) return oldData;
-                    return {
-                        ...oldData,
-                        dataMap: new Map(),
-                        idToIndexMap: new Map(),
-                        pagesLoaded: {},
-                        version: (oldData?.version ?? 0) + 1,
-                    };
-                });
+                writeLoaderData((base) => ({
+                    ...base,
+                    dataMap: new Map(),
+                    idToIndexMap: new Map(),
+                    pagesLoaded: {},
+                    version: base.version + 1,
+                }));
 
                 lastFetchedPageRef.current = -1;
                 currentVisibleRangeRef.current = null;
 
-                // Invalidate and wait for count query to refetch
                 await queryClient.ensureQueryData({
                     queryKey: countQueryKey,
                 });
 
-                // Fetch the first page after count is refetched
                 await fetchPage(pageToFetch);
             } finally {
                 setIsRefetching(false);
@@ -222,16 +229,7 @@ export const useItemListInfiniteLoader = ({
         });
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [dataQueryKey, queryClient, fetchPage, itemsPerPage]);
-
-    const { data } = useQuery<InfiniteLoaderCacheData>({
-        enabled: false,
-        initialData: getInitialData(),
-        queryFn: () => {
-            return getInitialData();
-        },
-        queryKey: dataQueryKey,
-    });
+    }, [dataQueryKeyHash, queryClient, fetchPage, itemsPerPage]);
 
     // Suspend if refetching
     if (isRefetching && refetchPromiseRef.current) {
@@ -240,15 +238,12 @@ export const useItemListInfiniteLoader = ({
 
     const onRangeChangedBase = useCallback(
         async (range: { startIndex: number; stopIndex: number }) => {
-            // Track the current visible range
             currentVisibleRangeRef.current = range;
 
             const pageNumber = Math.floor(range.startIndex / itemsPerPage);
 
-            const currentData = queryClient.getQueryData<{
-                dataMap: Map<number, unknown>;
-                pagesLoaded: Record<string, boolean>;
-            }>(dataQueryKey);
+            const currentData =
+                queryClient.getQueryData<InfiniteLoaderCacheData>(dataQueryKey) ?? loaderData;
 
             const startPageBoundary = pageNumber * itemsPerPage;
             const endPageBoundary = (pageNumber + 1) * itemsPerPage;
@@ -260,12 +255,10 @@ export const useItemListInfiniteLoader = ({
 
             const isCurrentPageLoaded = currentData?.pagesLoaded[pageNumber] ?? false;
 
-            // Fetch current page if not loaded
             if (!isCurrentPageLoaded) {
                 await fetchPage(pageNumber);
             }
 
-            // If current page is loaded, check if we should prefetch adjacent pages
             if (isCurrentPageLoaded) {
                 if (
                     distanceFromStartBoundary <= thresholdDistance &&
@@ -283,7 +276,7 @@ export const useItemListInfiniteLoader = ({
                 }
             }
         },
-        [itemsPerPage, fetchThreshold, queryClient, dataQueryKey, fetchPage],
+        [itemsPerPage, fetchThreshold, queryClient, dataQueryKey, fetchPage, loaderData],
     );
 
     const onRangeChanged = useMemo(
@@ -297,47 +290,30 @@ export const useItemListInfiniteLoader = ({
 
     const refreshMutation = useMutation({
         mutationFn: async (force?: boolean) => {
-            // Invalidate all queries to ensure fresh data
             queryClient.invalidateQueries();
 
-            // Reset the infinite list data
-            const currentData = queryClient.getQueryData<{
-                dataMap: Map<number, unknown>;
-                pagesLoaded: Record<string, boolean>;
-            }>(dataQueryKey);
+            const currentData = queryClient.getQueryData<InfiniteLoaderCacheData>(dataQueryKey);
 
             if (force || currentData) {
-                // Reset data to initial state and clear all loaded pages
-                await queryClient.setQueryData(dataQueryKey, (oldData: any) => {
-                    if (!oldData) return getInitialData();
-                    return {
-                        ...oldData,
-                        dataMap: new Map(),
-                        idToIndexMap: new Map(),
-                        pagesLoaded: {},
-                        version: (oldData?.version ?? 0) + 1,
-                    };
-                });
+                writeLoaderData((base) => ({
+                    ...base,
+                    dataMap: new Map(),
+                    idToIndexMap: new Map(),
+                    pagesLoaded: {},
+                    version: base.version + 1,
+                }));
                 lastFetchedPageRef.current = -1;
             }
 
-            // Add a delay to make the refresh visually clear
-            // await new Promise((resolve) => setTimeout(resolve, 150));
-
-            // Determine which page to refetch based on current visible range
             let pageToFetch = 0;
             if (currentVisibleRangeRef.current) {
-                // Calculate the page from the current visible range
                 pageToFetch = Math.floor(currentVisibleRangeRef.current.startIndex / itemsPerPage);
             } else if (lastFetchedPageRef.current >= 0) {
-                // Fallback to last fetched page if no visible range is tracked
                 pageToFetch = lastFetchedPageRef.current;
             }
 
-            // Refetch the current page
             await fetchPage(pageToFetch);
 
-            // Trigger range changed to ensure adjacent pages are prefetched if needed
             const startIndex = pageToFetch * itemsPerPage;
             const stopIndex = Math.min((pageToFetch + 1) * itemsPerPage, totalItemCount);
 
@@ -359,8 +335,8 @@ export const useItemListInfiniteLoader = ({
 
     const updateItems = useCallback(
         (indexes: number[], value: object) => {
-            queryClient.setQueryData(dataQueryKey, (prev: InfiniteLoaderCacheData) => {
-                const nextDataMap = new Map(prev.dataMap);
+            writeLoaderData((base) => {
+                const nextDataMap = new Map(base.dataMap);
 
                 indexes.forEach((index) => {
                     const existing = nextDataMap.get(index);
@@ -371,13 +347,13 @@ export const useItemListInfiniteLoader = ({
                 });
 
                 return {
-                    ...prev,
+                    ...base,
                     dataMap: nextDataMap,
-                    version: prev.version + 1,
+                    version: base.version + 1,
                 };
             });
         },
-        [queryClient, dataQueryKey],
+        [writeLoaderData],
     );
 
     useEffect(() => {
@@ -403,7 +379,7 @@ export const useItemListInfiniteLoader = ({
             }
 
             const dataIndexes = payload.id
-                .map((id: string) => (data as any).idToIndexMap?.get(id))
+                .map((id: string) => loaderData.idToIndexMap?.get(id))
                 .filter((idx): idx is number => typeof idx === 'number');
 
             if (dataIndexes.length === 0) {
@@ -419,7 +395,7 @@ export const useItemListInfiniteLoader = ({
             }
 
             const dataIndexes = payload.id
-                .map((id: string) => (data as any).idToIndexMap?.get(id))
+                .map((id: string) => loaderData.idToIndexMap?.get(id))
                 .filter((idx): idx is number => typeof idx === 'number');
 
             if (dataIndexes.length === 0) {
@@ -436,34 +412,33 @@ export const useItemListInfiniteLoader = ({
             eventEmitter.off('USER_FAVORITE', handleFavorite);
             eventEmitter.off('USER_RATING', handleRating);
         };
-    }, [data, eventKey, itemType, serverId, updateItems]);
+    }, [loaderData, eventKey, itemType, serverId, updateItems]);
 
     const itemCount = totalItemCount ?? 0;
 
     const getItem = useCallback(
         (index: number) => {
-            return (data as any).dataMap?.get(index);
+            return loaderData.dataMap.get(index);
         },
-        [data],
+        [loaderData],
     );
 
     const getItemIndex = useCallback(
         (id: string) => {
-            return (data as any).idToIndexMap?.get(id);
+            return loaderData.idToIndexMap.get(id);
         },
-        [data],
+        [loaderData],
     );
 
     const loadedItems = useMemo(() => {
-        const map: Map<number, unknown> | undefined = (data as any).dataMap;
-        if (!map || map.size === 0) return [];
-        return Array.from(map.entries())
+        if (loaderData.dataMap.size === 0) return [];
+        return Array.from(loaderData.dataMap.entries())
             .sort(([a], [b]) => a - b)
             .map(([, v]) => v);
-    }, [data]);
+    }, [loaderData]);
 
     return {
-        dataVersion: (data as any).version ?? 0,
+        dataVersion: loaderData.version,
         getItem,
         getItemIndex,
         itemCount,

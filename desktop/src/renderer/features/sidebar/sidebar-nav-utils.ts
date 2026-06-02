@@ -1,15 +1,24 @@
+import type { SidebarItemType } from '/@/renderer/store/settings.store';
+
 import { generatePath } from 'react-router';
 
 import { AppRoute } from '/@/renderer/router/routes';
-import type { SidebarItemType } from '/@/renderer/store/settings.store';
 import { LibraryItem } from '/@/shared/types/domain-types';
 
 /** Top-level sidebar entries rendered above the library accordion (not inside it). */
-export const PRIMARY_SIDEBAR_NAV_IDS = new Set<string>(['Search', 'Now Playing', 'Settings']);
+export const PRIMARY_SIDEBAR_NAV_IDS = new Set<string>([
+    'Now Playing',
+    'Online Music',
+    'Party',
+    'Search',
+    'Settings',
+]);
 
 const PRIMARY_SIDEBAR_NAV_ROUTES = new Set<string>([
     AppRoute.NOW_PLAYING,
+    AppRoute.PARTY,
     AppRoute.SETTINGS,
+    AppRoute.YOUTUBE_MUSIC,
     generatePath(AppRoute.SEARCH, { itemType: LibraryItem.SONG }),
 ]);
 

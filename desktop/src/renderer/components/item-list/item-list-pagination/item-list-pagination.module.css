@@ -8,7 +8,16 @@
     overflow: hidden;
 }
 
+.list-content {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .pagination-container {
+    flex-shrink: 0;
     padding: var(--theme-spacing-sm) var(--theme-spacing-sm);
     overflow: hidden;
     border-top: 1px solid var(--theme-colors-border);
