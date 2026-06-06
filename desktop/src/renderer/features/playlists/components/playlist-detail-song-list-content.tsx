@@ -9,8 +9,10 @@ import { useListContext } from '/@/renderer/context/list-context';
 import { eventEmitter } from '/@/renderer/events/event-emitter';
 import { playlistsQueries } from '/@/renderer/features/playlists/api/playlists-api';
 import { PlaylistDetailAlbumView } from '/@/renderer/features/playlists/components/playlist-detail-album-view';
+import { usePlaylistStreamEntries } from '/@/renderer/features/playlists/hooks/use-playlist-stream-entries';
 import { usePlaylistTrackList } from '/@/renderer/features/playlists/hooks/use-playlist-track-list';
 import { useCurrentServer, useImportJobs, useListSettings } from '/@/renderer/store';
+import type { PlaylistStreamEntry } from '/@/preload/local-first';
 import { Spinner } from '/@/shared/components/spinner/spinner';
 import {
     LibraryItem,
@@ -302,26 +304,67 @@ const PlaylistDetailTrackView = ({ data }: { data: PlaylistSongListResponse }) =
     return <PlaylistDetailTrackViewContent data={data} />;
 };
 
+const songFromPlaylistStreamEntry = (entry: PlaylistStreamEntry): Song => {
+    const artistName = entry.artist || 'Unknown Artist';
+    const songId = `ytm:${entry.videoId}`;
+
+    return {
+        _itemType: LibraryItem.SONG,
+        _serverId: YOUTUBE_MUSIC_SOURCE_ID,
+        _serverType: ServerType.YOUTUBE_MUSIC,
+        _uniqueId: `stream:${entry.playlistId}:${entry.videoId}`,
+        album: entry.album || '',
+        albumArtist: artistName,
+        albumArtistName: artistName,
+        albumArtists: [{ id: `stream-artist:${entry.id}`, name: artistName }],
+        artistName,
+        artists: [{ id: `stream-artist:${entry.id}`, name: artistName }],
+        duration: 0,
+        id: songId,
+        imageId: null,
+        imageUrl: entry.imageUrl || null,
+        name: entry.title,
+        playlistItemId: `stream:${entry.id}`,
+        youtubeMusic: {
+            videoId: entry.videoId,
+            watchUrl: `https://music.youtube.com/watch?v=${entry.videoId}`,
+        },
+    } as unknown as Song;
+};
+
+const playlistItemHasVideoId = (song: Song, videoId: string) => {
+    if (song.youtubeMusic?.videoId === videoId) return true;
+    const haystack = [song.id, song.name, song.path].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(videoId.toLowerCase());
+};
+
 const PlaylistDetailTrackViewContent = ({ data }: { data: PlaylistSongListResponse }) => {
     const { t } = useTranslation();
     const { playlistId } = useParams() as { playlistId: string };
     const server = useCurrentServer();
     const queryClient = useQueryClient();
     const jobs = useImportJobs();
+    const streamEntries = usePlaylistStreamEntries(playlistId);
 
     const pendingImportSongs = useMemo(() => {
+        const streamVideoIds = new Set(streamEntries.map((entry) => entry.videoId));
+
         return Object.values(jobs)
             .filter(
                 (job) =>
                     (job.status === 'queued' || job.status === 'running') &&
-                    job.targetPlaylistIds?.includes(playlistId),
+                    job.targetPlaylistIds?.includes(playlistId) &&
+                    (!job.videoId || !streamVideoIds.has(job.videoId)),
             )
             .map((job) => {
                 const artistName = job.artist || t('productUx.import.unknownArtist');
+                const videoId = job.videoId;
+                const songId = videoId ? `ytm:${videoId}` : `import:${job.id}`;
+
                 return {
                     _itemType: LibraryItem.SONG,
-                    _serverId: server.id,
-                    _serverType: ServerType.NAVIDROME,
+                    _serverId: videoId ? YOUTUBE_MUSIC_SOURCE_ID : server.id,
+                    _serverType: videoId ? ServerType.YOUTUBE_MUSIC : ServerType.NAVIDROME,
                     _uniqueId: `import:${job.id}`,
                     album: job.album || '',
                     albumArtist: artistName,
@@ -330,30 +373,43 @@ const PlaylistDetailTrackViewContent = ({ data }: { data: PlaylistSongListRespon
                     artistName,
                     artists: [{ id: `import-artist:${job.id}`, name: artistName }],
                     duration: 0,
-                    id: `import:${job.id}`,
+                    id: songId,
                     imageId: null,
                     imageUrl: job.imageUrl || null,
                     importProgress: job.progress,
                     importStatus: job.status,
                     name: job.title || job.name || 'Importing track',
                     playlistItemId: `import:${job.id}`,
-                    youtubeMusic: job.videoId ? { videoId: job.videoId } : undefined,
+                    youtubeMusic: videoId
+                        ? {
+                              videoId,
+                              watchUrl: `https://music.youtube.com/watch?v=${videoId}`,
+                          }
+                        : undefined,
                 } as unknown as Song;
             });
-    }, [jobs, playlistId, server.id]);
+    }, [jobs, playlistId, server.id, streamEntries, t]);
+
+    const streamSongs = useMemo(() => {
+        return streamEntries
+            .filter(
+                (entry) => !data.items.some((song) => playlistItemHasVideoId(song, entry.videoId)),
+            )
+            .map(songFromPlaylistStreamEntry);
+    }, [data.items, streamEntries]);
 
     const dataWithPendingImports = useMemo(() => {
-        if (pendingImportSongs.length === 0) {
+        const extraSongs = [...streamSongs, ...pendingImportSongs];
+        if (extraSongs.length === 0) {
             return data;
         }
 
         return {
             ...data,
-            items: [...pendingImportSongs, ...data.items],
-            totalRecordCount:
-                (data.totalRecordCount ?? data.items.length) + pendingImportSongs.length,
+            items: [...extraSongs, ...data.items],
+            totalRecordCount: (data.totalRecordCount ?? data.items.length) + extraSongs.length,
         };
-    }, [data, pendingImportSongs]);
+    }, [data, pendingImportSongs, streamSongs]);
 
     const completedImportKey = useMemo(() => {
         return Object.values(jobs)
@@ -379,6 +435,21 @@ const PlaylistDetailTrackViewContent = ({ data }: { data: PlaylistSongListRespon
 
         void queryClient.invalidateQueries({ queryKey });
     }, [completedImportKey, playlistId, queryClient, server.id]);
+
+    useEffect(() => {
+        if (streamEntries.length === 0) {
+            return;
+        }
+
+        const queryKey = playlistsQueries.songList({
+            query: {
+                id: playlistId,
+            },
+            serverId: server.id,
+        }).queryKey;
+
+        void queryClient.invalidateQueries({ queryKey });
+    }, [playlistId, queryClient, server.id, streamEntries.length]);
 
     const { sortedAndFilteredSongs } = usePlaylistTrackList(dataWithPendingImports);
     return (

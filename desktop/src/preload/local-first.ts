@@ -143,6 +143,32 @@ const onPlaylistImported = (cb: () => void) => {
     };
 };
 
+export type PlaylistStreamEntry = {
+    addedAt: string;
+    album?: string;
+    artist?: string;
+    id: string;
+    imageUrl?: string;
+    playlistId: string;
+    sourceTrackId?: string;
+    title: string;
+    videoId: string;
+};
+
+const getPlaylistStreamEntries = (playlistId?: string) =>
+    ipcRenderer.invoke('roofy-playlist-stream-entries', playlistId) as Promise<
+        PlaylistStreamEntry[]
+    >;
+
+const onPlaylistStreamEntriesUpdated = (
+    cb: (event: Electron.IpcRendererEvent, playlistId: string) => void,
+) => {
+    ipcRenderer.on('roofy-playlist-stream-entries-updated', cb);
+    return () => {
+        ipcRenderer.removeListener('roofy-playlist-stream-entries-updated', cb);
+    };
+};
+
 export const localFirst = {
     cancelImport,
     clearImports,
@@ -155,8 +181,10 @@ export const localFirst = {
     disconnectSpotify,
     enrichAudioFile,
     downloadVideoForSong,
+    getPlaylistStreamEntries,
     getVideoMetadata,
     onPlaylistImported,
+    onPlaylistStreamEntriesUpdated,
     openLibraryFolder,
     previewImport,
     removeImport,

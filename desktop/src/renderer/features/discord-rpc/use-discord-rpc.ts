@@ -25,6 +25,12 @@ import { getServerById } from '/@/renderer/store/auth.store';
 import { sentenceCase } from '/@/renderer/utils';
 import { LogCategory, logFn } from '/@/renderer/utils/logger';
 import { logMsg } from '/@/renderer/utils/logger-message';
+import {
+    applyPartyDiscordActivity,
+    applyYoutubeMusicDiscordLinks,
+    getPublicPartyJoinUrl,
+    resolveYoutubeMusicWatchUrl,
+} from '/@/renderer/features/discord-rpc/discord-activity-utils';
 import { useDebouncedCallback } from '/@/shared/hooks/use-debounced-callback';
 import { LibraryItem, QueueSong, ServerType } from '/@/shared/types/domain-types';
 import { PartyRoomState } from '/@/shared/types/party-types';
@@ -251,13 +257,13 @@ const resolvePublicArtworkUrl = async (song: QueueSong) => {
     return undefined;
 };
 
-const getPublicPartyJoinUrl = (partyState: null | PartyRoomState | undefined) => {
+const getPartyDiscordSnapshot = (partyState: null | PartyRoomState | undefined) => {
     if (
         !partyState?.isActive ||
         partyState.tunnelStatus.mode !== 'tunnel' ||
         partyState.tunnelStatus.state !== 'connected'
     ) {
-        return null;
+        return '';
     }
 
     const joinUrl = partyState.joinUrl.startsWith('https://')
@@ -267,66 +273,25 @@ const getPublicPartyJoinUrl = (partyState: null | PartyRoomState | undefined) =>
           : '';
 
     if (!joinUrl) {
-        return null;
-    }
-
-    try {
-        const url = new URL(joinUrl);
-        if (url.protocol !== 'https:') {
-            return null;
-        }
-
-        return url.toString();
-    } catch {
-        return null;
-    }
-};
-
-const getPartyDiscordSize = (partyState: PartyRoomState) => ({
-    max: partyState.settings.maxGuests + 1,
-    size: partyState.guests.filter((guest) => guest.status === 'approved').length + 1,
-});
-
-const getPartyDiscordSnapshot = (partyState: null | PartyRoomState | undefined) => {
-    const joinUrl = getPublicPartyJoinUrl(partyState);
-
-    if (!joinUrl || !partyState) {
         return '';
     }
 
-    const partySize = getPartyDiscordSize(partyState);
+    const partySize = {
+        max: partyState.settings.maxGuests + 1,
+        size: partyState.guests.filter((guest) => guest.status === 'approved').length + 1,
+    };
 
     return `${joinUrl}|${partyState.code}|${partySize.size}|${partySize.max}`;
-};
-
-const applyPartyDiscordActivity = (
-    activity: SetActivity,
-    partyState: null | PartyRoomState | undefined,
-) => {
-    const joinUrl = getPublicPartyJoinUrl(partyState);
-
-    if (!joinUrl || !partyState) {
-        return;
-    }
-
-    activity.partyId = partyState.code;
-    const partySize = getPartyDiscordSize(partyState);
-
-    activity.partySize = partySize.size;
-    activity.partyMax = partySize.max;
-    activity.buttons = [
-        {
-            label: 'Listen together',
-            url: joinUrl,
-        },
-    ];
 };
 
 const createPartyDiscordActivity = (
     partyState: PartyRoomState,
     showAsListening: boolean,
 ): SetActivity => {
-    const partySize = getPartyDiscordSize(partyState);
+    const partySize = {
+        max: partyState.settings.maxGuests + 1,
+        size: partyState.guests.filter((guest) => guest.status === 'approved').length + 1,
+    };
     const activity: SetActivity = {
         details: 'Hosting a listening party',
         instance: false,
@@ -458,6 +423,8 @@ export const useDiscordRpc = () => {
                 return;
             }
 
+            const youtubeWatchUrl = await resolveYoutubeMusicWatchUrl(song);
+
             const currentLargeImageKey =
                 firstDiscordFetchableImageUrl(imageUrlRef.current, song.imageUrl) ||
                 imageUrlRef.current ||
@@ -548,6 +515,10 @@ export const useDiscordRpc = () => {
                         activity.detailsUrl =
                             'https://musicbrainz.org/recording/' + song.mbzRecordingId;
                     }
+                }
+
+                if (youtubeWatchUrl) {
+                    applyYoutubeMusicDiscordLinks(activity, youtubeWatchUrl);
                 }
 
                 if (current[2] === PlayerStatus.PLAYING) {
@@ -678,7 +649,7 @@ export const useDiscordRpc = () => {
                     activity.largeImageKey = 'icon';
                 }
 
-                applyPartyDiscordActivity(activity, partyState);
+                applyPartyDiscordActivity(activity, partyState, { watchUrl: youtubeWatchUrl });
 
                 await publishActivity(activity);
                 previousLargeImageKeyRef.current = currentLargeImageKey || null;

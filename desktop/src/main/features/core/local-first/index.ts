@@ -28,6 +28,11 @@ import {
     summarizeSpotdlPreview,
 } from './spotdl';
 import { enrichAudioFileMetadata, probeAudioTags } from './metadata-enrichment';
+import {
+    addPlaylistStreamEntriesForImportJob,
+    getPlaylistStreamEntries,
+    removePlaylistStreamEntriesForVideo,
+} from './playlist-stream-entries';
 import { parseCloudflaredTunnelUrl } from './cloudflared-tunnel-url';
 import {
     createDeviceBridgeCoordinator,
@@ -1680,6 +1685,82 @@ const isAuthBlockedError = (output: string) => {
     );
 };
 
+const isSubtitleOnlyError = (output: string) => {
+    return /unable to download video subtitles|writing video subtitles/i.test(output);
+};
+
+const findAudioFilesForVideoId = (libraryPath: string, videoId?: string) => {
+    if (!videoId) return [];
+    const downloadsDir = path.join(libraryPath, 'Downloads');
+    if (!existsSync(downloadsDir)) return [];
+
+    return collectAudioFiles(downloadsDir).filter((filePath) => {
+        const baseName = path.basename(filePath, path.extname(filePath));
+        return baseName.includes(`[${videoId}]`) || baseName.includes(videoId);
+    });
+};
+
+const tryDownloadSubtitlesForInput = (
+    input: string,
+    audioFilePath: string,
+    cookieBrowser: string,
+    cookiesFilePath?: string,
+) => {
+    const ytDlp = getToolCommand('yt-dlp', 'ROOFY_YT_DLP_PATH');
+    const dir = path.dirname(audioFilePath);
+    const base = path.basename(audioFilePath, path.extname(audioFilePath));
+    const outputTemplate = path.join(dir, `${base}.%(ext)s`);
+
+    const child = spawn(
+        ytDlp,
+        [
+            '--no-warnings',
+            '--skip-download',
+            '--write-subs',
+            '--write-auto-subs',
+            '--sub-langs',
+            'en,-live_chat',
+            '--convert-subs',
+            'srt',
+            '--no-playlist',
+            ...getCookieArgs(cookieBrowser, cookiesFilePath),
+            ...getJsRuntimeArgs(),
+            '-o',
+            outputTemplate,
+            input,
+        ],
+        { windowsHide: true },
+    );
+
+    child.on('error', () => {});
+    child.stderr.on('data', () => {});
+    child.stdout.on('data', () => {});
+    child.on('close', () => {
+        try {
+            processSubtitleForFile(audioFilePath);
+        } catch (error) {
+            console.error('[local-first] Subtitle conversion failed:', error);
+        }
+    });
+};
+
+const ensurePlaylistStreamReferences = (job: ImportJob) => {
+    const videoId = job.videoId || extractYoutubeVideoId(job.input);
+    if (job.source !== 'youtube_music' || !videoId || !job.targetPlaylistIds?.length) {
+        return;
+    }
+
+    addPlaylistStreamEntriesForImportJob({
+        album: job.album,
+        artist: job.artist,
+        imageUrl: job.imageUrl,
+        playlistIds: job.targetPlaylistIds,
+        sourceTrackId: job.sourceTrackId,
+        title: job.title || job.name,
+        videoId,
+    });
+};
+
 const formatYtDlpError = (output: string, cookieBrowser: string, attempts: string[] = []) => {
     const cleanOutput = output.trim();
 
@@ -2595,12 +2676,7 @@ const runImport = (
         'jpg',
         '--add-metadata',
         '--no-mtime',
-        '--write-subs',
-        '--write-auto-subs',
-        '--sub-langs',
-        'en,-live_chat',
-        '--convert-subs',
-        'srt',
+        ...(job.playlist ? ['--ignore-errors'] : []),
         job.playlist ? '--yes-playlist' : '--no-playlist',
         '--audio-format',
         job.audioFormat,
@@ -2682,10 +2758,16 @@ const runImport = (
         sendImportJobEvent(current || job);
 
         const uniquePaths = [...new Set(candidatePaths)];
-        const audioFiles = uniquePaths
+        let audioFiles = uniquePaths
             .filter((p) => audioExts.has(path.extname(p).toLowerCase()))
             .filter((p) => existsSync(p));
         const output = recentOutput.join('\n');
+        const videoId = job.videoId || extractYoutubeVideoId(job.input);
+        if (audioFiles.length === 0 && videoId) {
+            audioFiles = findAudioFilesForVideoId(libraryPath, videoId);
+        }
+        const recoveredFromSubtitleFailure =
+            code !== 0 && audioFiles.length > 0 && isSubtitleOnlyError(output);
         const canCreateEmptyPlaylist =
             code !== 0 &&
             job.createPlaylist &&
@@ -2694,7 +2776,8 @@ const runImport = (
             !isAuthBlockedError(output) &&
             !isCookieDatabaseLockedError(output);
         const completedWithSkippedItems =
-            code !== 0 && (audioFiles.length > 0 || canCreateEmptyPlaylist);
+            code !== 0 &&
+            (audioFiles.length > 0 || canCreateEmptyPlaylist || recoveredFromSubtitleFailure);
         const partialWarning = completedWithSkippedItems
             ? formatPartialImportWarning(failedItemCount, job.playlist)
             : '';
@@ -2703,6 +2786,12 @@ const runImport = (
             for (const filePath of audioFiles) {
                 try {
                     processSubtitleForFile(filePath);
+                    tryDownloadSubtitlesForInput(
+                        normalizeDownloadUrl(job.input, job.playlist),
+                        filePath,
+                        cookieBrowser,
+                        cookiesFilePath,
+                    );
                 } catch (error) {
                     console.error('[local-first] Subtitle conversion failed:', error);
                 }
@@ -2827,10 +2916,16 @@ const runImport = (
                     return;
                 }
             } else if (job.targetPlaylistIds?.length) {
+                ensurePlaylistStreamReferences(job);
                 updateJob(job.id, {
-                    error: 'Import completed, but Roofy could not identify the downloaded audio file to add to the selected playlist.',
-                    message: 'Import completed - playlist update failed',
-                    status: 'failed',
+                    downloadedCount: 0,
+                    error: '',
+                    message: 'Added for streaming - download unavailable',
+                    progress: 100,
+                    status: 'completed',
+                    warning:
+                        output.trim() ||
+                        'The track was added to your playlist for streaming, but the local download failed.',
                 });
                 processImportQueue();
                 return;
@@ -2900,23 +2995,53 @@ const runImport = (
                 return;
             }
 
-            updateJob(job.id, {
-                error:
-                    formatYtDlpError(
+            if (job.targetPlaylistIds?.length && (job.videoId || extractYoutubeVideoId(job.input))) {
+                ensurePlaylistStreamReferences(job);
+                updateJob(job.id, {
+                    downloadedCount: 0,
+                    error: formatYtDlpError(
                         output || `yt-dlp exited with code ${code}`,
                         job.cookieBrowser,
                         nextAttemptedBrowsers,
-                    ) || `yt-dlp exited with code ${code}`,
-                message: 'Import failed',
-                status: 'failed',
-            });
+                    ),
+                    message: 'Added for streaming - download failed',
+                    progress: 100,
+                    status: 'completed',
+                    warning:
+                        'The track was added to your playlist for streaming, but the local download failed.',
+                });
+            } else {
+                updateJob(job.id, {
+                    error:
+                        formatYtDlpError(
+                            output || `yt-dlp exited with code ${code}`,
+                            job.cookieBrowser,
+                            nextAttemptedBrowsers,
+                        ) || `yt-dlp exited with code ${code}`,
+                    message: 'Import failed',
+                    status: 'failed',
+                });
+            }
         }
         processImportQueue();
     });
 
     child.on('error', (error) => {
         activeImport = null;
-        updateJob(job.id, { error: error.message, message: 'Import failed', status: 'failed' });
+        if (job.targetPlaylistIds?.length && (job.videoId || extractYoutubeVideoId(job.input))) {
+            ensurePlaylistStreamReferences(job);
+            updateJob(job.id, {
+                downloadedCount: 0,
+                error: error.message,
+                message: 'Added for streaming - download failed',
+                progress: 100,
+                status: 'completed',
+                warning:
+                    'The track was added to your playlist for streaming, but the local download failed.',
+            });
+        } else {
+            updateJob(job.id, { error: error.message, message: 'Import failed', status: 'failed' });
+        }
         sendImportJobEvent(importJobs.find((item) => item.id === job.id) || job);
         processImportQueue();
     });
@@ -3505,6 +3630,7 @@ export const createImportJob = async (
 
     importJobs.unshift(job);
     persistImportJobs();
+    ensurePlaylistStreamReferences(job);
     processImportQueue();
     return job;
 };
@@ -3821,6 +3947,11 @@ const addImportedSongsToTargetPlaylists = async (job: ImportJob, audioFiles: str
             );
         }
     }
+
+    const videoId = job.videoId || extractYoutubeVideoId(job.input);
+    if (videoId) {
+        removePlaylistStreamEntriesForVideo(videoId, job.targetPlaylistIds);
+    }
 };
 
 const deleteLocalTracks = async (songIds: string[]) => {
@@ -4057,6 +4188,10 @@ ipcMain.handle('roofy-local-select-library', async () => {
 ipcMain.handle('roofy-local-open-library-folder', async () => {
     ensureLocalFolders();
     return shell.openPath(getLibraryPath());
+});
+
+ipcMain.handle('roofy-playlist-stream-entries', (_event, playlistId?: string) => {
+    return getPlaylistStreamEntries(playlistId);
 });
 
 ipcMain.handle('roofy-local-spotify-connect', () => connectSpotify());
