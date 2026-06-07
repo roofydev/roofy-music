@@ -470,9 +470,6 @@ export const useDiscordRpc = () => {
                     details: truncate((song?.name && song.name.padEnd(2, ' ')) || 'Idle'),
                     instance: false,
                     largeImageKey: undefined,
-                    largeImageText: truncate(
-                        (song?.album && song.album.padEnd(2, ' ')) || 'Unknown album',
-                    ),
                     name: 'Roofy Music Desktop',
                     smallImageKey: undefined,
                     smallImageText: undefined,

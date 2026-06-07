@@ -382,11 +382,18 @@ export const PartyApp = () => {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const fullscreenRef = useRef<HTMLDivElement | null>(null);
     const socketRef = useRef<WebSocket | null>(null);
+    const reconnectAttemptRef = useRef(0);
+    const reconnectTimerRef = useRef<null | number>(null);
     const audioUnlockedRef = useRef(false);
+    const currentGuestIdRef = useRef<string | undefined>(undefined);
+    const displayNameRef = useRef('');
     const lastAppliedStatusRef = useRef<PlayerStatus | null>(null);
+    const lastVideoTrackIdRef = useRef<string | null>(null);
     const lastVideoSeekAtRef = useRef(0);
     const loadedVideoUrlRef = useRef<string | null>(null);
     const loadedTrackIdRef = useRef<string | null>(null);
+    const manualVideoPreferenceRef = useRef(false);
+    const requestSearchRef = useRef('');
     const trackReadyRef = useRef(false);
     const lastSeekAtRef = useRef(0);
     const videoChromeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -438,12 +445,27 @@ export const PartyApp = () => {
     }, [code]);
 
     useEffect(() => {
-        setVideoEnabled(localStorage.getItem(videoPreferenceStorageKey(code)) === 'true');
+        const enabled = localStorage.getItem(videoPreferenceStorageKey(code)) === 'true';
+        manualVideoPreferenceRef.current = enabled;
+        setVideoEnabled(enabled);
     }, [code]);
 
     useEffect(() => {
-        localStorage.setItem(videoPreferenceStorageKey(code), videoEnabled ? 'true' : 'false');
-    }, [code, videoEnabled]);
+        displayNameRef.current = displayName;
+    }, [displayName]);
+
+    useEffect(() => {
+        requestSearchRef.current = requestSearch;
+    }, [requestSearch]);
+
+    const setManualVideoEnabled = useCallback(
+        (enabled: boolean) => {
+            manualVideoPreferenceRef.current = enabled;
+            localStorage.setItem(videoPreferenceStorageKey(code), enabled ? 'true' : 'false');
+            setVideoEnabled(enabled);
+        },
+        [code],
+    );
 
     const safariBrowser = useMemo(() => isSafariBrowser(), []);
 
@@ -493,6 +515,7 @@ export const PartyApp = () => {
     }, [state?.settings.roomTheme]);
 
     const applyRoomState = useCallback((roomState: PartyRoomState) => {
+        currentGuestIdRef.current = roomState.currentGuestId;
         setState(roomState);
         if (roomState.chat?.length) {
             setChatMessages(roomState.chat);
@@ -500,128 +523,222 @@ export const PartyApp = () => {
     }, []);
 
     useEffect(() => {
-        const socket = new WebSocket(connectUrl());
-        socketRef.current = socket;
+        let disposed = false;
+        let activeSocket: null | WebSocket = null;
 
-        const attemptStoredJoin = () => {
-            const stored = loadStoredSession(code);
-            if (!stored) {
+        const scheduleReconnect = () => {
+            if (disposed || reconnectTimerRef.current !== null) return;
+            if (!loadStoredSession(code)) {
                 setRestoring(false);
+                setError('Connection closed');
                 return;
             }
 
-            setWaiting(true);
+            const attempt = reconnectAttemptRef.current;
+            reconnectAttemptRef.current += 1;
+            const delay = Math.min(10_000, 750 * 2 ** attempt) + Math.round(Math.random() * 250);
             setRestoring(true);
-            socket.send(
-                JSON.stringify({
-                    displayName: stored.displayName,
-                    sessionToken: stored.sessionToken,
-                    type: 'join',
-                } satisfies PartyClientMessage),
-            );
+            setError('Reconnecting...');
+            reconnectTimerRef.current = window.setTimeout(() => {
+                reconnectTimerRef.current = null;
+                connect();
+            }, delay);
         };
 
-        socket.addEventListener('open', attemptStoredJoin);
+        const connect = () => {
+            if (disposed) return;
 
-        socket.addEventListener('message', (event) => {
-            const message = JSON.parse(event.data) as PartyServerMessage;
-            switch (message.type) {
-                case 'join_pending':
+            const socket = new WebSocket(connectUrl());
+            activeSocket = socket;
+            socketRef.current = socket;
+
+            socket.addEventListener('open', () => {
+                reconnectAttemptRef.current = 0;
+                setError(null);
+
+                const stored = loadStoredSession(code);
+                if (!stored) {
                     setRestoring(false);
-                    setWaiting(true);
-                    setError(null);
-                    saveStoredSession(code, {
-                        displayName:
-                            loadStoredSession(code)?.displayName || displayName.trim() || 'Guest',
-                        sessionToken: message.sessionToken,
-                    });
-                    break;
-                case 'join_approved':
-                    setRestoring(false);
-                    setWaiting(false);
-                    setJoined(true);
-                    applyRoomState(message.state);
-                    saveStoredSession(code, {
-                        displayName:
-                            message.state.guests.find(
-                                (guest) => guest.id === message.state.currentGuestId,
-                            )?.displayName ||
-                            loadStoredSession(code)?.displayName ||
-                            displayName.trim() ||
-                            'Guest',
-                        sessionToken: message.sessionToken,
-                    });
-                    send({ type: 'sync_request' });
-                    break;
-                case 'join_rejected':
-                    setRestoring(false);
-                    setWaiting(false);
-                    setJoined(false);
-                    clearStoredSession(code);
-                    setError(message.reason);
-                    break;
-                case 'room_state':
-                case 'sync':
-                    applyRoomState(message.state);
-                    break;
-                case 'guest_kicked':
-                    setRestoring(false);
-                    setJoined(false);
-                    setState(null);
-                    clearStoredSession(code);
-                    if (message.reason !== 'Guest left the room') {
-                        setError(message.reason);
-                    } else {
+                    return;
+                }
+
+                setWaiting(true);
+                setRestoring(true);
+                socket.send(
+                    JSON.stringify({
+                        displayName: stored.displayName,
+                        sessionToken: stored.sessionToken,
+                        type: 'join',
+                    } satisfies PartyClientMessage),
+                );
+            });
+
+            socket.addEventListener('message', (event) => {
+                let message: PartyServerMessage;
+                try {
+                    message = JSON.parse(event.data) as PartyServerMessage;
+                } catch {
+                    return;
+                }
+
+                switch (message.type) {
+                    case 'join_pending':
+                        setRestoring(false);
+                        setWaiting(true);
                         setError(null);
-                    }
-                    break;
-                case 'room_ended':
-                    setRestoring(false);
-                    setJoined(false);
-                    setState(null);
-                    clearStoredSession(code);
-                    setError('Party ended');
-                    break;
-                case 'error':
-                    setError(message.message);
-                    break;
-                case 'ping':
-                    send({ type: 'pong' });
-                    break;
-                case 'search_results':
-                    setSearchResults(message.results);
-                    break;
-                case 'chat_message':
-                    setChatMessages((current) => [...current, message.message].slice(-100));
-                    break;
-                case 'chat_history':
-                    setChatMessages(message.messages);
-                    break;
-                case 'buffer_complete':
-                    setWaitingForBuffer(false);
-                    setAudioLoadIssue(null);
-                    lastAppliedStatusRef.current = null;
-                    send({ type: 'sync_request' });
-                    break;
-                case 'voice_offer':
-                case 'voice_answer':
-                case 'voice_ice':
-                    break;
-                default:
-                    break;
-            }
-        });
+                        saveStoredSession(code, {
+                            displayName:
+                                loadStoredSession(code)?.displayName ||
+                                displayNameRef.current.trim() ||
+                                'Guest',
+                            sessionToken: message.sessionToken,
+                        });
+                        break;
+                    case 'join_approved':
+                        setRestoring(false);
+                        setWaiting(false);
+                        setJoined(true);
+                        setError(null);
+                        applyRoomState(message.state);
+                        saveStoredSession(code, {
+                            displayName:
+                                message.state.guests.find(
+                                    (guest) => guest.id === message.state.currentGuestId,
+                                )?.displayName ||
+                                loadStoredSession(code)?.displayName ||
+                                displayNameRef.current.trim() ||
+                                'Guest',
+                            sessionToken: message.sessionToken,
+                        });
+                        send({ type: 'sync_request' });
+                        break;
+                    case 'join_rejected':
+                        setRestoring(false);
+                        setWaiting(false);
+                        setJoined(false);
+                        clearStoredSession(code);
+                        setError(message.reason);
+                        break;
+                    case 'room_state':
+                    case 'sync':
+                        applyRoomState(message.state);
+                        break;
+                    case 'guest_kicked':
+                        setRestoring(false);
+                        setJoined(false);
+                        setState(null);
+                        clearStoredSession(code);
+                        setError(message.reason === 'Guest left the room' ? null : message.reason);
+                        break;
+                    case 'room_ended':
+                        setRestoring(false);
+                        setJoined(false);
+                        setState(null);
+                        clearStoredSession(code);
+                        setError('Party ended');
+                        break;
+                    case 'error':
+                        setError(message.message);
+                        break;
+                    case 'ping':
+                        send({ type: 'pong' });
+                        break;
+                    case 'search_results':
+                        if (message.query === requestSearchRef.current.trim()) {
+                            setSearchResults(message.results);
+                        }
+                        break;
+                    case 'suggestion_update':
+                        if (
+                            message.suggestion.error &&
+                            message.suggestion.guestId === currentGuestIdRef.current
+                        ) {
+                            setError(message.suggestion.error);
+                        }
+                        setState((current) => {
+                            if (!current) return current;
+                            const suggestions = current.suggestions.some(
+                                (item) => item.id === message.suggestion.id,
+                            )
+                                ? current.suggestions.map((item) =>
+                                      item.id === message.suggestion.id ? message.suggestion : item,
+                                  )
+                                : [message.suggestion, ...current.suggestions];
+                            const requestQueue =
+                                message.suggestion.status === 'rejected'
+                                    ? current.requestQueue.filter(
+                                          (item) => item.id !== message.suggestion.id,
+                                      )
+                                    : current.requestQueue.some(
+                                            (item) => item.id === message.suggestion.id,
+                                        )
+                                      ? current.requestQueue.map((item) =>
+                                            item.id === message.suggestion.id
+                                                ? message.suggestion
+                                                : item,
+                                        )
+                                      : [message.suggestion, ...current.requestQueue];
 
-        socket.addEventListener('close', (event) => {
-            if (event.code === 4001) return;
-            setRestoring(false);
-            setError('Connection closed');
-        });
+                            return { ...current, requestQueue, suggestions };
+                        });
+                        break;
+                    case 'chat_message':
+                        setChatMessages((current) => [...current, message.message].slice(-100));
+                        break;
+                    case 'chat_history':
+                        setChatMessages(message.messages);
+                        break;
+                    case 'buffer_complete':
+                        setWaitingForBuffer(false);
+                        setAudioLoadIssue(null);
+                        lastAppliedStatusRef.current = null;
+                        send({ type: 'sync_request' });
+                        break;
+                    case 'voice_offer':
+                    case 'voice_answer':
+                    case 'voice_ice':
+                    case 'guest_update':
+                        break;
+                    default:
+                        break;
+                }
+            });
+
+            socket.addEventListener('close', (event) => {
+                if (socketRef.current === socket) socketRef.current = null;
+                if (disposed || event.code === 4001) return;
+                if (event.code === 4002) {
+                    setRestoring(false);
+                    setError('This party session was opened in another tab.');
+                    return;
+                }
+                if (event.code === 4003 || event.code === 4004) return;
+                scheduleReconnect();
+            });
+        };
+
+        connect();
 
         return () => {
-            socket.close(4001);
+            disposed = true;
+            if (reconnectTimerRef.current !== null) {
+                window.clearTimeout(reconnectTimerRef.current);
+                reconnectTimerRef.current = null;
+            }
+            if (activeSocket && activeSocket.readyState < WebSocket.CLOSING) {
+                activeSocket.close(4001);
+            }
+            if (socketRef.current === activeSocket) socketRef.current = null;
         };
     }, [applyRoomState, code, send]);
+
+    useEffect(() => {
+        const track = state?.nowPlaying;
+        if (!track?.id || lastVideoTrackIdRef.current === track.id) return;
+
+        lastVideoTrackIdRef.current = track.id;
+        setVideoEnabled(track.preferVideo ? true : manualVideoPreferenceRef.current);
+    }, [state?.nowPlaying?.id, state?.nowPlaying?.preferVideo]);
 
     useEffect(() => {
         const interval = window.setInterval(() => setNow(Date.now()), PROGRESS_TICK_MS);
@@ -1241,6 +1358,7 @@ export const PartyApp = () => {
             return;
         }
 
+        setSearchResults([]);
         const timeout = window.setTimeout(() => {
             send({ query, type: 'search' });
         }, 450);
@@ -1363,7 +1481,11 @@ export const PartyApp = () => {
     );
 
     const suggestTrack = (result: PartyTrack) => {
-        send({ query: result.videoId || result.title, type: 'suggest' });
+        send({
+            preferVideo: result.preferVideo,
+            query: result.videoId || result.title,
+            type: 'suggest',
+        });
         setRequestSearch('');
         setSearchResults([]);
         setActiveTab('side');
@@ -1380,7 +1502,7 @@ export const PartyApp = () => {
 
     const enableSyncedVideo = () => {
         setVideoLoadIssue(null);
-        setVideoEnabled(true);
+        setManualVideoEnabled(true);
         void tryPlay();
     };
 
@@ -1661,10 +1783,9 @@ export const PartyApp = () => {
                         className="icon-btn party-media-action"
                         onClick={() => {
                             setVideoLoadIssue(null);
-                            setVideoEnabled((enabled) => {
-                                if (!enabled) void tryPlay();
-                                return !enabled;
-                            });
+                            const enabled = !videoEnabled;
+                            setManualVideoEnabled(enabled);
+                            if (enabled) void tryPlay();
                         }}
                         title={videoEnabled ? 'Hide video' : 'Show synced video'}
                         type="button"

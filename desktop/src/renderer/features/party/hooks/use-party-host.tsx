@@ -1,13 +1,14 @@
 import { useEffect, useRef } from 'react';
 
 import { getItemImageUrl } from '/@/renderer/components/item-image/item-image';
-import { getSongUrl } from '/@/renderer/features/player/audio-player/hooks/use-stream-url';
 import { usePlayerEvents } from '/@/renderer/features/player/audio-player/hooks/use-player-events';
-import { usePlayer } from '/@/renderer/features/player/context/player-context';
+import { getSongUrl } from '/@/renderer/features/player/audio-player/hooks/use-stream-url';
 import { usePartyStoreActions } from '/@/renderer/features/party/party-store';
+import { usePlayer } from '/@/renderer/features/player/context/player-context';
 import { usePlayerStore, useSettingsStore } from '/@/renderer/store';
 import { useTimestampStoreBase } from '/@/renderer/store/timestamp.store';
 import { toast } from '/@/shared/components/toast/toast';
+import { partyTrackPrefersVideo, youtubeVideoIdFromSong } from '/@/shared/party-track-utils';
 import { LibraryItem, QueueSong } from '/@/shared/types/domain-types';
 import { PartyHostSnapshot, PartyTrack, defaultPartyTrackFields } from '/@/shared/types/party-types';
 import { Play, PlayerStatus } from '/@/shared/types/types';
@@ -17,13 +18,7 @@ const party = window.api?.party ?? null;
 const HOST_SNAPSHOT_THROTTLE_MS = 2000;
 
 const videoIdFromSong = (song: QueueSong | undefined): null | string => {
-    const metadata = (song as (QueueSong & { youtubeMusic?: { videoId?: string } }) | undefined)
-        ?.youtubeMusic;
-    const candidate =
-        metadata?.videoId ||
-        (song?.id?.startsWith('ytm:') ? song.id.slice(4) : undefined) ||
-        song?.id;
-    return candidate && /^[A-Za-z0-9_-]{11}$/.test(candidate) ? candidate : null;
+    return youtubeVideoIdFromSong(song);
 };
 
 const partyTrackIdFromSong = (song: QueueSong): string => {
@@ -60,6 +55,7 @@ const trackFromSong = async (song: QueueSong | undefined): Promise<null | PartyT
         durationMs: Number(song.duration || 0),
         hostStreamUrl,
         id: videoId ? `youtube:${videoId}` : `host:${song._serverId}:${song._uniqueId || song.id}`,
+        preferVideo: partyTrackPrefersVideo(song),
         source: videoId ? 'youtube' : 'host',
         title: song.name || 'Untitled',
         videoId: videoId || undefined,

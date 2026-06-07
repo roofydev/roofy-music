@@ -6,7 +6,8 @@ import {
 } from '/@/renderer/components/item-list/item-table-list/default-columns';
 import { ItemTableList } from '/@/renderer/components/item-list/item-table-list/item-table-list';
 import { ItemTableListColumn } from '/@/renderer/components/item-list/item-table-list/item-table-list-column';
-import { ItemControls } from '/@/renderer/components/item-list/types';
+import { DefaultItemControlProps, ItemControls } from '/@/renderer/components/item-list/types';
+import { ContextMenuController } from '/@/renderer/features/context-menu/context-menu-controller';
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
 import { LibraryItem, Song } from '/@/shared/types/domain-types';
 import { Play, TableColumn } from '/@/shared/types/types';
@@ -57,6 +58,22 @@ export const YoutubeMusicSongsTable = ({ songs }: YoutubeMusicSongsTableProps) =
                 if (index !== undefined && index >= 0) {
                     player.addToQueueByData(items, playType, item.id);
                 }
+            },
+            onMore: ({ event, internalState, item }: DefaultItemControlProps) => {
+                if (!item || !event) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                const selected = internalState?.getSelected() ?? [];
+                const items = selected.length > 0 ? (selected as Song[]) : [item as Song];
+
+                ContextMenuController.call({
+                    cmd: { items, type: LibraryItem.SONG },
+                    event,
+                });
             },
         }),
         [player],

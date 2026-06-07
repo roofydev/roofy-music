@@ -58,6 +58,7 @@ export interface PartyTrack {
     durationMs: number;
     hostStreamUrl?: string;
     id: string;
+    preferVideo?: boolean;
     source: 'host' | 'youtube';
     streamUrl?: string;
     suggestedBy?: string;
@@ -162,7 +163,7 @@ export type PartyClientMessage =
     | { displayName: string; sessionToken?: string; type: 'join' }
     | { query: string; type: 'search' }
     | { sdp: RTCSessionDescriptionInit; type: 'voice_answer' }
-    | { query: string; type: 'suggest' }
+    | { preferVideo?: boolean; query: string; type: 'suggest' }
     | { toIndex: number; trackId: string; type: 'reorder_queue' }
     | { trackId: string; type: 'ready' }
     | { trackId: string; type: 'vote_track' }
@@ -184,7 +185,7 @@ export type PartyServerMessage =
     | { message: string; type: 'error' }
     | { type: 'room_ended' }
     | { type: 'ping' }
-    | { results: PartyTrack[]; type: 'search_results' }
+    | { query: string; results: PartyTrack[]; type: 'search_results' }
     | { trackId: string; type: 'buffer_complete' }
     | PartyVoiceSignalPayload & { type: 'voice_offer' }
     | PartyVoiceSignalPayload & { type: 'voice_answer' }

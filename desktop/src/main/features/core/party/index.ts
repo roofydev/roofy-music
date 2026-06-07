@@ -12,8 +12,13 @@ import { z } from 'zod';
 
 import { ensureCloudflared } from '/@/main/features/core/party/cloudflared-binary';
 import { relayVoiceToHost, resetVoiceState, setHostMicActive } from '/@/main/features/core/party/voice-signaling';
-import { getMainWindow } from '/@/main/index';
 import { youtubeMusic } from '/@/main/features/core/youtube-music';
+import { getMainWindow } from '/@/main/index';
+import {
+    extractYoutubeVideoId,
+    partyTrackPrefersVideo,
+    youtubeVideoIdFromSong,
+} from '/@/shared/party-track-utils';
 import { hashAvatarColor } from '/@/shared/party-utils';
 import { Song } from '/@/shared/types/domain-types';
 import {
@@ -64,7 +69,7 @@ const DEFAULT_SETTINGS: PartySettings = {
 const CHAT_MAX_MESSAGES = 100;
 const CHAT_MAX_BODY_LENGTH = 400;
 const CHAT_RATE_LIMIT_MS = 2000;
-const SUGGESTION_RATE_LIMIT_MS = 30000;
+const SUGGESTION_RATE_LIMIT_MS = 3000;
 const YOUTUBE_STREAM_CACHE_MS = 10 * 60 * 1000;
 const ROOM_TOKEN_MAX_MS = 24 * 60 * 60 * 1000;
 const BUFFER_GATE_TIMEOUT_MS = 5000;
@@ -93,6 +98,7 @@ const CLIENT_MESSAGE_SCHEMA = z.discriminatedUnion('type', [
         type: z.literal('search'),
     }),
     z.object({
+        preferVideo: z.boolean().optional(),
         query: z.string().trim().min(2).max(500),
         type: z.literal('suggest'),
     }),
@@ -131,7 +137,6 @@ const CLIENT_MESSAGE_SCHEMA = z.discriminatedUnion('type', [
     }),
 ]);
 
-const VIDEO_ID_REGEX = /^[A-Za-z0-9_-]{11}$/;
 const PING_TIMEOUT_MS = 10000;
 
 const youtubeStreamCache = new Map<string, { expiresAt: number; url: string }>();
@@ -287,49 +292,17 @@ const broadcastState = () => {
     updateRendererState();
 };
 
-const asVideoId = (value: string) => {
-    const trimmed = value.trim();
-    if (VIDEO_ID_REGEX.test(trimmed)) return trimmed;
-
-    try {
-        const url = new URL(trimmed);
-        const fromParam = url.searchParams.get('v');
-        if (fromParam && VIDEO_ID_REGEX.test(fromParam)) return fromParam;
-        const shortMatch = url.pathname.match(/\/(?:shorts|embed|watch)\/([A-Za-z0-9_-]{11})/);
-        if (shortMatch) return shortMatch[1];
-        const youtuBeMatch = url.hostname.includes('youtu.be')
-            ? url.pathname.match(/^\/([A-Za-z0-9_-]{11})/)
-            : null;
-        if (youtuBeMatch) return youtuBeMatch[1];
-    } catch {
-        return null;
-    }
-
-    return null;
-};
-
-const songVideoId = (song: Song): null | string => {
-    const metadata = (song as Song & { youtubeMusic?: { videoId?: string } }).youtubeMusic;
-    const candidate =
-        metadata?.videoId ||
-        (song.id?.startsWith('ytm:') ? song.id.slice(4) : undefined) ||
-        asVideoId(song.id || '');
-
-    return candidate && VIDEO_ID_REGEX.test(candidate) ? candidate : null;
-};
-
-const trackFromSong = (song: Song): null | PartyTrack => {
-    const videoId = songVideoId(song);
+const trackFromSong = (song: Song, directVideoRequest = false): null | PartyTrack => {
+    const videoId = youtubeVideoIdFromSong(song);
     if (!videoId) return null;
 
     return {
         album: song.album,
         artist: song.artistName || 'Unknown artist',
-        artworkUrl:
-            song.imageUrl ||
-            `https://i.ytimg.com/vi/${videoId}/default.jpg`,
+        artworkUrl: song.imageUrl || `https://i.ytimg.com/vi/${videoId}/default.jpg`,
         durationMs: Number(song.duration || 0),
         id: `youtube:${videoId}`,
+        preferVideo: partyTrackPrefersVideo(song, directVideoRequest),
         source: 'youtube',
         title: song.name || 'Untitled',
         videoId,
@@ -337,25 +310,50 @@ const trackFromSong = (song: Song): null | PartyTrack => {
     };
 };
 
-const resolveSuggestion = async (query: string): Promise<{ song: Song; track: PartyTrack }> => {
-    const videoId = asVideoId(query);
-    const song = videoId
+const resolveSuggestion = async (
+    query: string,
+    preferVideo?: boolean,
+): Promise<{ song: Song; track: PartyTrack }> => {
+    const videoId = extractYoutubeVideoId(query);
+    const sourceSong = videoId
         ? await youtubeMusic.getSongDetail(videoId)
         : ((await youtubeMusic.search(query)) as { songs?: Song[] }).songs?.[0];
 
-    if (!song) throw new Error('No matching YouTube Music track found');
+    if (!sourceSong) throw new Error('No matching YouTube Music track found');
 
-    const track = trackFromSong(song);
+    const directVideoRequest = preferVideo ?? Boolean(videoId);
+    const song =
+        videoId && directVideoRequest
+            ? {
+                  ...sourceSong,
+                  youtubeMusic: {
+                      ...sourceSong.youtubeMusic,
+                      mediaType: 'video' as const,
+                      videoId,
+                      watchUrl:
+                          sourceSong.youtubeMusic?.watchUrl ||
+                          `https://www.youtube.com/watch?v=${videoId}`,
+                  },
+              }
+            : sourceSong;
+    const track = trackFromSong(song, directVideoRequest);
     if (!track) throw new Error('Track is not streamable through YouTube Music');
 
     return { song, track };
 };
 
 const searchTracks = async (query: string) => {
+    const videoId = extractYoutubeVideoId(query);
+    if (videoId) {
+        const song = await youtubeMusic.getSongDetail(videoId);
+        const track = trackFromSong(song, true);
+        return track ? [track] : [];
+    }
+
     const result = (await youtubeMusic.search(query)) as { songs?: Song[] };
     return (result.songs || [])
         .slice(0, 8)
-        .map(trackFromSong)
+        .map((song) => trackFromSong(song))
         .filter((track): track is PartyTrack => Boolean(track));
 };
 
@@ -1003,7 +1001,10 @@ const handleGuestMessage = async (client: PartyWebSocket, message: PartyClientMe
                 (item) => item.id === client.guestId && item.status === 'approved',
             );
             if (!guest) {
-                send(client, { message: 'Join must be approved before suggesting tracks', type: 'error' });
+                send(client, {
+                    message: 'Join must be approved before suggesting tracks',
+                    type: 'error',
+                });
                 return;
             }
 
@@ -1020,8 +1021,8 @@ const handleGuestMessage = async (client: PartyWebSocket, message: PartyClientMe
                 });
                 return;
             }
-            suggestionRateLimits.set(guest.id, Date.now());
-
+            const suggestionStartedAt = Date.now();
+            suggestionRateLimits.set(guest.id, suggestionStartedAt);
             const suggestion: PartySuggestion = {
                 createdAt: Date.now(),
                 guestDisplayName: guest.displayName,
@@ -1031,12 +1032,14 @@ const handleGuestMessage = async (client: PartyWebSocket, message: PartyClientMe
                 status: 'pending',
             };
             room.suggestions.unshift(suggestion);
-            room.requestQueue = room.suggestions.filter((item) => item.status === 'pending' || item.status === 'approved');
+            room.requestQueue = room.suggestions.filter(
+                (item) => item.status === 'pending' || item.status === 'approved',
+            );
             broadcast({ suggestion, type: 'suggestion_update' });
             broadcastState();
 
             try {
-                const resolved = await resolveSuggestion(message.query);
+                const resolved = await resolveSuggestion(message.query, message.preferVideo);
                 suggestion.track = {
                     ...resolved.track,
                     suggestedBy: guest.displayName,
@@ -1050,13 +1053,20 @@ const handleGuestMessage = async (client: PartyWebSocket, message: PartyClientMe
                         song: resolved.song,
                         suggestionId: suggestion.id,
                     } satisfies PartyApprovedSuggestion);
+                    approvedSuggestionSongs.delete(suggestion.id);
                 }
             } catch (error) {
                 suggestion.error = (error as Error).message;
+                suggestion.status = 'rejected';
+                if (suggestionRateLimits.get(guest.id) === suggestionStartedAt) {
+                    suggestionRateLimits.delete(guest.id);
+                }
             }
 
             broadcast({ suggestion, type: 'suggestion_update' });
-            room.requestQueue = room.suggestions.filter((item) => item.status === 'pending' || item.status === 'approved');
+            room.requestQueue = room.suggestions.filter(
+                (item) => item.status === 'pending' || item.status === 'approved',
+            );
             broadcastState();
             break;
         }
@@ -1072,7 +1082,7 @@ const handleGuestMessage = async (client: PartyWebSocket, message: PartyClientMe
                 ...track,
                 artworkUrl: syncGuestArtworkUrl(track.artworkUrl, guest.id),
             }));
-            send(client, { results, type: 'search_results' });
+            send(client, { query: message.query, results, type: 'search_results' });
             break;
         }
         case 'sync_request': {
@@ -1517,15 +1527,18 @@ ipcMain.handle('party:promote-codj', (_event, guestId: string) => {
 ipcMain.handle('party:approve-suggestion-next', (_event, suggestionId: string) => {
     const suggestion = room?.suggestions.find((item) => item.id === suggestionId);
     const song = approvedSuggestionSongs.get(suggestionId);
-    if (!room || !suggestion || !song) return false;
+    if (!room || !suggestion || suggestion.status !== 'pending' || !song) return false;
 
     suggestion.status = 'approved';
-    room.requestQueue = room.suggestions.filter((item) => item.status === 'pending' || item.status === 'approved');
+    room.requestQueue = room.suggestions.filter(
+        (item) => item.status === 'pending' || item.status === 'approved',
+    );
     sendToRenderer('party:suggestion-approved', {
         insertAtFront: true,
         song,
         suggestionId,
     } satisfies PartyApprovedSuggestion);
+    approvedSuggestionSongs.delete(suggestionId);
     broadcastState();
     return true;
 });
@@ -1592,14 +1605,17 @@ ipcMain.handle('party:reject-join', (_event, guestId: string) => {
 ipcMain.handle('party:approve-suggestion', (_event, suggestionId: string) => {
     const suggestion = room?.suggestions.find((item) => item.id === suggestionId);
     const song = approvedSuggestionSongs.get(suggestionId);
-    if (!room || !suggestion || !song) return false;
+    if (!room || !suggestion || suggestion.status !== 'pending' || !song) return false;
 
     suggestion.status = 'approved';
-    room.requestQueue = room.suggestions.filter((item) => item.status === 'pending' || item.status === 'approved');
+    room.requestQueue = room.suggestions.filter(
+        (item) => item.status === 'pending' || item.status === 'approved',
+    );
     sendToRenderer('party:suggestion-approved', {
         song,
         suggestionId,
     } satisfies PartyApprovedSuggestion);
+    approvedSuggestionSongs.delete(suggestionId);
     broadcastState();
     return true;
 });
@@ -1609,8 +1625,11 @@ ipcMain.handle('party:reject-suggestion', (_event, suggestionId: string) => {
     if (!suggestion) return false;
 
     suggestion.status = 'rejected';
+    approvedSuggestionSongs.delete(suggestionId);
     if (room) {
-        room.requestQueue = room.suggestions.filter((item) => item.status === 'pending' || item.status === 'approved');
+        room.requestQueue = room.suggestions.filter(
+            (item) => item.status === 'pending' || item.status === 'approved',
+        );
     }
     broadcast({ suggestion, type: 'suggestion_update' });
     broadcastState();
